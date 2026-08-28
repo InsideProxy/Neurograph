@@ -35,8 +35,20 @@ def region_to_node(region: Region, coordinate: Coordinate, network: Network | No
     "unclassified" es un valor explícito para "todavía no hay una
     pertenencia a red calculada para esta región" (p. ej. otros atlas sin
     clasificación Cole-Anticevic todavía) — nunca se inventa una red.
+
+    El slug incluye la fuente de la red (`<fuente>.<código_local>`, p. ej.
+    `cole-anticevic.default`), no solo el código local: varias
+    parcelaciones tienen redes con el mismo nombre pero distinto método
+    (Cole-Anticevic y Gordon 333 tienen las dos una red "Default"). Usar
+    solo el código local colapsaría dos redes distintas en una misma
+    clave de color/leyenda en el frontend sin ningún aviso — ver riesgo
+    13 de docs/analisis-arquitectura.md.
     """
-    network_slug = "unclassified" if network is None else parse_id(network.id)["local_code"]
+    if network is None:
+        network_slug = "unclassified"
+    else:
+        parsed = parse_id(network.id)
+        network_slug = f"{parsed['source']}.{parsed['local_code']}"
     return RegionNode(
         id=region.id,
         label=region.name,

@@ -24,10 +24,27 @@ def test_region_to_node_without_network_is_explicitly_unclassified():
     assert node.reference_space == "fsLR_32k_S1200_groupavg_midthickness_MSMAll"
 
 
-def test_region_to_node_with_network_uses_its_local_code_as_slug():
+def test_region_to_node_with_network_uses_a_source_qualified_slug():
+    # No solo el código local ("visual"): distintas parcelaciones tienen
+    # redes con el mismo nombre pero método distinto (p. ej.
+    # Cole-Anticevic y Gordon 333 tienen las dos una red "Default"). El
+    # slug lleva la fuente por delante para que nunca se confundan.
     region, coordinate = _region_and_coordinate()
     network = Network(id="network.human.cole-anticevic.visual", name="Visual")
 
     node = region_to_node(region, coordinate, network=network)
 
-    assert node.network == "visual"
+    assert node.network == "cole-anticevic.visual"
+
+
+def test_region_to_node_disambiguates_networks_with_the_same_local_code():
+    region, coordinate = _region_and_coordinate()
+    ca_default = Network(id="network.human.cole-anticevic.default", name="Default")
+    gordon_default = Network(id="network.human.gordon333.default", name="Default")
+
+    ca_node = region_to_node(region, coordinate, network=ca_default)
+    gordon_node = region_to_node(region, coordinate, network=gordon_default)
+
+    assert ca_node.network != gordon_node.network
+    assert ca_node.network == "cole-anticevic.default"
+    assert gordon_node.network == "gordon333.default"

@@ -73,7 +73,13 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   tálamo... por hemisferio, más cerebelo y tronco del encéfalo), como
   su propio atlas (`atlas.human.hcp.subcortex_grayordinates`),
   citando a quien de verdad la define: Glasser et al. (2013),
-  NeuroImage, DOI 10.1016/j.neuroimage.2013.04.127.
+  NeuroImage, DOI 10.1016/j.neuroimage.2013.04.127. Riesgo 13
+  corregido el mismo día: el color/nombre de cada red en el frontend
+  ya se resuelve por `<fuente>.<red>` (p. ej. `gordon333.default`),
+  no solo por el nombre corto de la red, para que dos redes de
+  distinta procedencia con el mismo nombre nunca compartan color sin
+  aviso (`backend/api/routers/regions.py`,
+  `frontend/src/theme/networks.ts`).
 - **Fase 4 — Conectividad (en curso).** Atlas Brainnetome (Fan et al.,
   2016) dado de alta: 246 regiones y coordenadas reales (mismo patrón que
   HCP-MMP1.0, pero volumétrico: vóxel real más cercano al centroide, en

@@ -56,7 +56,10 @@ real que sí trae el espacio de grayordinates del HCP (19
 estructuras: amígdala, hipocampo, tálamo... más cerebelo y tronco
 del encéfalo) como su propio atlas, citando a quien de verdad la
 define (Glasser et al., 2013, DOI 10.1016/j.neuroimage.2013.04.127),
-no a Gordon et al.
+no a Gordon et al. El color de cada red en la interfaz ya se resuelve
+por `<fuente>.<red>` (no solo por el nombre corto): dos redes de
+atlas distintos con el mismo nombre ("Default", "Visual"...) nunca
+comparten color sin aviso.
 
 **Fase 4 — Conectividad (en curso).** Segundo atlas real: Brainnetome
 (246 regiones, coordenadas volumétricas reales en MNI152). Conectividad

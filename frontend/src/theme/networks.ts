@@ -3,37 +3,59 @@
 // mostrar colores distintos para la misma red (inconsistencia que rompería
 // la lectura conjunta exigida por la sección 5.3).
 //
-// Las 12 redes con prefijo real (Visual, Visual2, Somatomotor...) son las
-// de la parcelación Cole-Anticevic (Ji et al., 2019, NeuroImage), cargada
-// el 28/08/2026 sobre HCP-MMP1.0 (ver
-// backend/ingestion/neuroimaging/cole_anticevic_networks.py). Sus colores
-// son los mismos que trae el archivo .dlabel.nii original, no inventados:
-// así un lector que conozca la convención de Cole-Anticevic reconoce la
-// red por el color, igual que en la literatura.
+// Las claves de red real llevan la fuente por delante
+// (`<fuente>.<código_local>`, p. ej. `cole-anticevic.default`), no solo
+// el nombre corto de la red: varias parcelaciones tienen redes con el
+// mismo nombre pero método distinto (Cole-Anticevic y Gordon 333 tienen
+// las dos una red "Default" y una "Visual"). Usar solo el nombre corto
+// colapsaría dos redes distintas en el mismo color sin ningún aviso —
+// riesgo 13 de docs/analisis-arquitectura.md, corregido el 28/08/2026
+// junto con `backend/api/routers/regions.py` (que genera esta misma
+// clave con `<fuente>.<código_local>`).
 export const NETWORK_COLORS: Record<string, string> = {
   // -- Datos de demostración (frontend/src/data/demo.ts) --
+  // Nunca colisionan con datos reales: la fuente nunca muestra datos de
+  // demostración y reales a la vez (frontend/src/App.tsx).
   executive: "#e05a47",
   memory: "#3f7fbf",
   attention: "#e8a33d",
   limbic: "#8e5fc7",
+  language: "#7a4fa0",
   sensory: "#2fb0b0",
   motor: "#c0574f",
-  // -- Redes reales de Cole-Anticevic (colores del archivo original) --
-  visual: "#0000ff",
-  visual2: "#6400ff",
-  somatomotor: "#00ffff",
-  "cingulo-opercular": "#990099",
-  "dorsal-attention": "#00ff00",
-  language: "#009b9b",
-  frontoparietal: "#ffff00",
-  auditory: "#fa3efb",
-  default: "#ff0000",
-  "posterior-multimodal": "#b15928",
-  "ventral-multimodal": "#ff9d00",
-  "orbito-affective": "#417d00",
+  // -- Redes reales de Cole-Anticevic (Ji et al., 2019), cargadas sobre
+  // HCP-MMP1.0. Colores extraídos del propio .dlabel.nii, no inventados.
+  "cole-anticevic.visual": "#0000ff",
+  "cole-anticevic.visual2": "#6400ff",
+  "cole-anticevic.somatomotor": "#00ffff",
+  "cole-anticevic.cingulo-opercular": "#990099",
+  "cole-anticevic.dorsal-attention": "#00ff00",
+  "cole-anticevic.language": "#009b9b",
+  "cole-anticevic.frontoparietal": "#ffff00",
+  "cole-anticevic.auditory": "#fa3efb",
+  "cole-anticevic.default": "#ff0000",
+  "cole-anticevic.posterior-multimodal": "#b15928",
+  "cole-anticevic.ventral-multimodal": "#ff9d00",
+  "cole-anticevic.orbito-affective": "#417d00",
+  // -- Redes propias del atlas Gordon 333 (Gordon et al., 2016), no
+  // derivadas por voto como las de Cole-Anticevic: vienen ya decididas
+  // en el propio archivo. Colores extraídos igualmente del
+  // Gordon333.32k_fs_LR.dlabel.nii original, no inventados.
+  "gordon333.default": "#ff0000",
+  "gordon333.visual": "#0000be",
+  "gordon333.smhand": "#00ffff",
+  "gordon333.cinguloopunerc": "#800080",
+  "gordon333.dorsalattn": "#00ff00",
+  "gordon333.frontoparietal": "#ffff00",
+  "gordon333.auditory": "#ff00ff",
+  "gordon333.ventralattn": "#008080",
+  "gordon333.parietooccip": "#ffffcc",
+  "gordon333.smmouth": "#ff8000",
+  "gordon333.medialparietal": "#9b4bff",
+  "gordon333.salience": "#000000",
   // Región sin pertenencia a red calculada todavía (p. ej. otros atlas
-  // sin clasificación funcional cargada). Gris deliberado: no es una red
-  // más, es la ausencia explícita de una.
+  // sin clasificación funcional cargada, como el subcórtex del HCP).
+  // Gris deliberado: no es una red más, es la ausencia explícita de una.
   unclassified: "#8a8a8a",
 };
 
@@ -42,20 +64,33 @@ export const NETWORK_LABELS: Record<string, string> = {
   memory: "Memoria",
   attention: "Atención",
   limbic: "Límbico",
+  language: "Lenguaje",
   sensory: "Sensorial / visión",
   motor: "Moción y acción",
-  visual: "Visual",
-  visual2: "Visual 2",
-  somatomotor: "Somatomotora",
-  "cingulo-opercular": "Cíngulo-opercular",
-  "dorsal-attention": "Atención dorsal",
-  language: "Lenguaje",
-  frontoparietal: "Frontoparietal",
-  auditory: "Auditiva",
-  default: "Por defecto (Default Mode Network)",
-  "posterior-multimodal": "Multimodal posterior",
-  "ventral-multimodal": "Multimodal ventral",
-  "orbito-affective": "Orbito-afectiva",
+  "cole-anticevic.visual": "Visual (Cole-Anticevic)",
+  "cole-anticevic.visual2": "Visual 2 (Cole-Anticevic)",
+  "cole-anticevic.somatomotor": "Somatomotora (Cole-Anticevic)",
+  "cole-anticevic.cingulo-opercular": "Cíngulo-opercular (Cole-Anticevic)",
+  "cole-anticevic.dorsal-attention": "Atención dorsal (Cole-Anticevic)",
+  "cole-anticevic.language": "Lenguaje (Cole-Anticevic)",
+  "cole-anticevic.frontoparietal": "Frontoparietal (Cole-Anticevic)",
+  "cole-anticevic.auditory": "Auditiva (Cole-Anticevic)",
+  "cole-anticevic.default": "Por defecto (Cole-Anticevic, Default Mode Network)",
+  "cole-anticevic.posterior-multimodal": "Multimodal posterior (Cole-Anticevic)",
+  "cole-anticevic.ventral-multimodal": "Multimodal ventral (Cole-Anticevic)",
+  "cole-anticevic.orbito-affective": "Orbito-afectiva (Cole-Anticevic)",
+  "gordon333.default": "Por defecto (Gordon 333, Default Mode Network)",
+  "gordon333.visual": "Visual (Gordon 333)",
+  "gordon333.smhand": "Somatomotora — mano (Gordon 333)",
+  "gordon333.cinguloopunerc": "Cíngulo-opercular (Gordon 333)",
+  "gordon333.dorsalattn": "Atención dorsal (Gordon 333)",
+  "gordon333.frontoparietal": "Frontoparietal (Gordon 333)",
+  "gordon333.auditory": "Auditiva (Gordon 333)",
+  "gordon333.ventralattn": "Atención ventral (Gordon 333)",
+  "gordon333.parietooccip": "Parieto-occipital (Gordon 333)",
+  "gordon333.smmouth": "Somatomotora — boca (Gordon 333)",
+  "gordon333.medialparietal": "Parietal medial (Gordon 333)",
+  "gordon333.salience": "Saliencia (Gordon 333)",
   unclassified: "Sin red asignada",
 };
 

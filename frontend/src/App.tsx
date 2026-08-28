@@ -24,8 +24,9 @@ type DataSource =
 // ninguna red funcional calculada todavía; Gordon 333 trae sus propias
 // 12 redes (no las de Cole-Anticevic: incluso cuando coinciden en
 // nombre, como "Default" o "Visual", son dos clasificaciones distintas
-// -- ver riesgo de colisión de nombres de red en
-// docs/analisis-arquitectura.md); el subcórtex del HCP son solo 19
+// -- el backend y theme/networks.ts las distinguen con una clave
+// `<fuente>.<red>`, ver riesgo 13 de docs/analisis-arquitectura.md);
+// el subcórtex del HCP son solo 19
 // estructuras anatómicas, sin red ni conexión todavía. Mostrar dos
 // atlas a la vez sería mezclar sus nodos (que ocupan el mismo espacio
 // físico del cerebro dos veces, una por cada parcelación) — así que se
