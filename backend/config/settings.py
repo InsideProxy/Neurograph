@@ -6,15 +6,31 @@ punto de entrada para leer configuración: ningún otro módulo debe leer
 YAML o variables de entorno directamente, para que cambiar de proveedor
 de IA o de base de datos sea siempre una operación de configuración
 (sección 17 de la especificación) y no un cambio de código.
+
+Prioridad, de más a menos: valores pasados explícitamente al construir
+`Settings(...)` > variables de entorno > archivo `.env` > `default.yaml`
+> valores por defecto de los propios campos. El YAML se registra como una
+fuente de baja prioridad (`settings_customise_sources`) en vez de pasarse
+como argumentos al constructor: pasarlo como argumentos (la implementación
+original) hacía que CUALQUIER clave presente en el YAML tapara
+silenciosamente la variable de entorno equivalente, porque un valor
+pasado al constructor siempre gana — ver riesgo 9 en
+docs/analisis-arquitectura.md, descubierto el 28/08/2026 al no poder la
+API dentro de Docker conectar con `NEUROGRAPH_DATABASE__HOST=postgres`
+(seguía intentando `localhost`, el valor de `default.yaml`).
 """
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "default.yaml"
 
@@ -47,6 +63,26 @@ class APISettings(BaseModel):
     port: int = 8420
 
 
+class _YamlConfigSettingsSource(PydanticBaseSettingsSource):
+    """Fuente de configuración de baja prioridad: `default.yaml`. Las
+    variables de entorno (o cualquier valor explícito al construir
+    `Settings`) siempre ganan sobre esto — si no fuera así, un valor
+    puesto en el YAML (aunque coincidiera con el valor por defecto del
+    propio campo, como pasaba con `database.host`) taparía en silencio
+    cualquier variable de entorno equivalente.
+    """
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        # No se usa: __call__ ya devuelve el diccionario completo de una
+        # vez, no campo a campo.
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        if not DEFAULT_CONFIG_PATH.exists():
+            return {}
+        return yaml.safe_load(DEFAULT_CONFIG_PATH.read_text()) or {}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="NEUROGRAPH_", env_nested_delimiter="__")
 
@@ -56,11 +92,30 @@ class Settings(BaseSettings):
     api: APISettings = APISettings()
 
     @classmethod
-    def load(cls, yaml_path: Path = DEFAULT_CONFIG_PATH) -> "Settings":
-        raw: dict = {}
-        if yaml_path.exists():
-            raw = yaml.safe_load(yaml_path.read_text()) or {}
-        return cls(**raw)
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            _YamlConfigSettingsSource(settings_cls),
+            file_secret_settings,
+        )
+
+    @classmethod
+    def load(cls) -> "Settings":
+        """Mantenido por compatibilidad con el resto del código (que
+        llama a `Settings.load()`); ahora es equivalente a `Settings()`,
+        porque el YAML ya se lee como una fuente más a través de
+        `settings_customise_sources`, no como argumentos explícitos que
+        taparían las variables de entorno."""
+        return cls()
 
 
 def get_settings() -> Settings:
