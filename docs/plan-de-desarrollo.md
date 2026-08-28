@@ -14,8 +14,10 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   y tabla `libraries` (migración 0002) hechos y probados. Biblioteca real
   creada en `E:\NeuroData` (separada del código) con `initialize_library()`
   y SQL de alta generado en `backend/database/seed/register_library_neurodata.sql`.
-  Pendiente: indexación real de datasets según vayan llegando datos, y
-  registro de datasets (no solo de la biblioteca) en la base de datos.
+  Migración 0002 y alta de la biblioteca ya aplicadas y confirmadas en la
+  base de datos real (28/08/2026). Pendiente: indexación real de datasets
+  según vayan llegando datos, y registro de datasets (no solo de la
+  biblioteca) en la base de datos.
 - **Fase 3 — Neuroimagen.** NIfTI, atlas, regiones, coordenadas,
   visualización básica.
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
