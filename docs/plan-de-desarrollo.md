@@ -9,8 +9,13 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   local, Tauri pendiente de Rust); esquema de PostgreSQL definitivo,
   aplicado en la base de datos real del usuario y comprobado
   funcionalmente (relaciones, JSONB, arrays, integridad referencial).
-- **Fase 2 — Biblioteca de datos.** Registro del SSD, indexación,
-  metadatos, detección de datasets, separación original/derivado.
+- **Fase 2 — Biblioteca de datos (en curso).** Modelo `Library`, manifiesto
+  de dataset (`dataset.yaml`), escaneo de biblioteca (`scan_library_datasets`)
+  y tabla `libraries` (migración 0002) hechos y probados. Biblioteca real
+  creada en `E:\NeuroData` (separada del código) con `initialize_library()`
+  y SQL de alta generado en `backend/database/seed/register_library_neurodata.sql`.
+  Pendiente: indexación real de datasets según vayan llegando datos, y
+  registro de datasets (no solo de la biblioteca) en la base de datos.
 - **Fase 3 — Neuroimagen.** NIfTI, atlas, regiones, coordenadas,
   visualización básica.
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,

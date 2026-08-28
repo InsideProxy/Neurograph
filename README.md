@@ -25,6 +25,16 @@ JSONB, arrays y la integridad referencial (rechaza claves foráneas que no
 existen) — ver `backend/database/migrations/`. Falta: decidir el
 empaquetado de escritorio (Tauri) cuando haya Rust disponible.
 
+**Fase 2 — Biblioteca de datos (en curso).** Manifiesto de biblioteca
+(`.neurograph_library.yaml`), manifiesto de dataset (`dataset.yaml`) y
+escaneo automático de una biblioteca (`scan_library_datasets`) hechos y
+probados. Biblioteca real creada en `E:\NeuroData` (separada del
+código, tal y como describe `docs/portabilidad.md`), con tabla `libraries`
+en la base de datos (migración 0002) y su alta generada en
+`backend/database/seed/register_library_neurodata.sql`. Falta: registrar
+datasets concretos en la base de datos según se vayan incorporando datos
+reales.
+
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
 con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de
 adyacencia, matriz de grados, Laplaciano (explícito), autovalores/
