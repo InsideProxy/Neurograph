@@ -11,10 +11,16 @@ export interface GraphNode {
   position3d: [number, number, number];
 }
 
+export type EvidenceLevel = "direct" | "indirect" | "hypothetical";
+
 export interface GraphConnection {
   id: string;
   source: string; // GraphNode.id
   target: string; // GraphNode.id
   type: "structural" | "functional" | "effective";
   weight: number;
+  // Sección 24: un dato observado directamente, una inferencia indirecta y
+  // una hipótesis nunca deben mostrarse igual. "direct" = línea continua;
+  // "indirect"/"hypothetical" = línea discontinua (sección 5.1).
+  evidenceLevel: EvidenceLevel;
 }

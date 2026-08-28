@@ -3,7 +3,10 @@
 // cada conexión, una línea recta entre dos esferas (un tracto real,
 // cuando exista, sustituirá esta línea por la geometría de streamline
 // cargada del backend — sección 4.1 de docs/analisis-arquitectura.md).
-// Selección sincronizada vía el store compartido (sección 5.3).
+// Selección sincronizada vía el store compartido (sección 5.3). Lo
+// hipotético/indirecto se dibuja discontinuo y la conectividad efectiva
+// lleva una flecha de dirección (secciones 5.1 y 24): la codificación
+// visual debe coincidir con la del connectograma.
 //
 // Nota de implementación: usamos three/examples/jsm/controls/OrbitControls
 // directamente (de forma imperativa) en vez de @react-three/drei, para no
@@ -51,32 +54,91 @@ function NodeMesh({ node }: { node: GraphNode }) {
   );
 }
 
+function DirectionArrow({
+  from,
+  to,
+  color,
+}: {
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  color: string;
+}) {
+  // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
+  // el equivalente 3D de la flecha del connectograma para conectividad
+  // efectiva (sección 5.1: "Se puede codificar dirección... mediante
+  // flechas").
+  const position = useMemo(() => from.clone().lerp(to, 0.8), [from, to]);
+  const quaternion = useMemo(() => {
+    const direction = to.clone().sub(from).normalize();
+    return new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      direction
+    );
+  }, [from, to]);
+
+  return (
+    <mesh position={position} quaternion={quaternion}>
+      <coneGeometry args={[0.035, 0.09, 12]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
+  );
+}
+
 function ConnectionLine({
   a,
   b,
   isSelected,
+  isDashed,
+  isDirected,
   onClick,
 }: {
   a: [number, number, number];
   b: [number, number, number];
   isSelected: boolean;
+  isDashed: boolean;
+  isDirected: boolean;
   onClick: () => void;
 }) {
+  const from = useMemo(() => new THREE.Vector3(...a), [a]);
+  const to = useMemo(() => new THREE.Vector3(...b), [b]);
+  const color = isSelected ? "#222222" : "#999999";
+
   const geometry = useMemo(() => {
-    return new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(...a),
-      new THREE.Vector3(...b),
-    ]);
-  }, [a, b]);
+    const geom = new THREE.BufferGeometry().setFromPoints([from, to]);
+    if (isDashed) {
+      // computeLineDistances() vive en THREE.Line, no en BufferGeometry;
+      // como aquí no tenemos la instancia de Line todavía, se calcula a
+      // mano el atributo lineDistance que necesita lineDashedMaterial
+      // (con dos puntos es solo [0, distancia entre ambos]).
+      geom.setAttribute(
+        "lineDistance",
+        new THREE.Float32BufferAttribute([0, from.distanceTo(to)], 1)
+      );
+    }
+    return geom;
+  }, [from, to, isDashed]);
 
   return (
-    <threeLine geometry={geometry} onClick={onClick}>
-      <lineBasicMaterial
-        color={isSelected ? "#222222" : "#999999"}
-        transparent
-        opacity={isSelected ? 0.95 : 0.35}
-      />
-    </threeLine>
+    <>
+      <threeLine geometry={geometry} onClick={onClick}>
+        {isDashed ? (
+          <lineDashedMaterial
+            color={color}
+            transparent
+            opacity={isSelected ? 0.95 : 0.35}
+            dashSize={0.08}
+            gapSize={0.06}
+          />
+        ) : (
+          <lineBasicMaterial
+            color={color}
+            transparent
+            opacity={isSelected ? 0.95 : 0.35}
+          />
+        )}
+      </threeLine>
+      {isDirected && <DirectionArrow from={from} to={to} color={color} />}
+    </>
   );
 }
 
@@ -113,6 +175,8 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
             a={a.position3d}
             b={b.position3d}
             isSelected={isSelected}
+            isDashed={conn.evidenceLevel !== "direct"}
+            isDirected={conn.type === "effective"}
             onClick={() => selectConnection(conn.id)}
           />
         );

@@ -18,10 +18,11 @@ export const DEMO_NODES: GraphNode[] = [
 ];
 
 export const DEMO_CONNECTIONS: GraphConnection[] = [
-  { id: "conn.demo.1", source: "region.human.demo.prefrontal", target: "region.human.demo.episodic_memory", type: "structural", weight: 0.73 },
-  { id: "conn.demo.2", source: "region.human.demo.prefrontal", target: "region.human.demo.attention", type: "functional", weight: 0.55 },
-  { id: "conn.demo.3", source: "region.human.demo.language", target: "region.human.demo.executive_control", type: "structural", weight: 0.41 },
-  { id: "conn.demo.4", source: "region.human.demo.vision", target: "region.human.demo.attention", type: "structural", weight: 0.62 },
-  { id: "conn.demo.5", source: "region.human.demo.motor", target: "region.human.demo.executive_control", type: "effective", weight: 0.38 },
-  { id: "conn.demo.6", source: "region.human.demo.limbic", target: "region.human.demo.episodic_memory", type: "structural", weight: 0.67 },
+  { id: "conn.demo.1", source: "region.human.demo.prefrontal", target: "region.human.demo.episodic_memory", type: "structural", weight: 0.73, evidenceLevel: "direct" },
+  { id: "conn.demo.2", source: "region.human.demo.prefrontal", target: "region.human.demo.attention", type: "functional", weight: 0.55, evidenceLevel: "direct" },
+  { id: "conn.demo.3", source: "region.human.demo.language", target: "region.human.demo.executive_control", type: "structural", weight: 0.41, evidenceLevel: "indirect" },
+  { id: "conn.demo.4", source: "region.human.demo.vision", target: "region.human.demo.attention", type: "structural", weight: 0.62, evidenceLevel: "direct" },
+  { id: "conn.demo.5", source: "region.human.demo.motor", target: "region.human.demo.executive_control", type: "effective", weight: 0.38, evidenceLevel: "direct" },
+  { id: "conn.demo.6", source: "region.human.demo.limbic", target: "region.human.demo.episodic_memory", type: "structural", weight: 0.67, evidenceLevel: "direct" },
+  { id: "conn.demo.7", source: "region.human.demo.attention", target: "region.human.demo.executive_control", type: "effective", weight: 0.3, evidenceLevel: "hypothetical" },
 ];

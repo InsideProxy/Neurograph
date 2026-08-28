@@ -4,7 +4,7 @@ import type { GraphConnection, GraphNode } from "../types/domain";
 
 const nodeA: GraphNode = { id: "a", label: "A", network: "memory", position3d: [0, 0, 0] };
 const nodeB: GraphNode = { id: "b", label: "B", network: "language", position3d: [1, 0, 0] };
-const connAB: GraphConnection = { id: "ab", source: "a", target: "b", type: "structural", weight: 0.5 };
+const connAB: GraphConnection = { id: "ab", source: "a", target: "b", type: "structural", weight: 0.5, evidenceLevel: "direct" };
 
 describe("isNodeVisible", () => {
   it("es visible si su red no está oculta", () => {

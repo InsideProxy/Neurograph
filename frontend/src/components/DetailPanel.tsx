@@ -3,7 +3,7 @@
 // (Fase 3+) esta es la superficie donde aparecerán también evidencia,
 // estudios, homologías y fenotipos — por eso ya se estructura como una
 // lista de campos, no como una frase suelta.
-import { CONNECTION_TYPE_LABELS, NETWORK_LABELS } from "../theme/networks";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS, NETWORK_LABELS } from "../theme/networks";
 import { useSelectionStore } from "../state/selection";
 import type { GraphConnection, GraphNode } from "../types/domain";
 
@@ -67,6 +67,8 @@ export function DetailPanel({ nodes, connections }: Props) {
           <dd>{CONNECTION_TYPE_LABELS[connection.type]}</dd>
           <dt>Peso</dt>
           <dd>{connection.weight}</dd>
+          <dt>Nivel de evidencia</dt>
+          <dd>{EVIDENCE_LEVEL_LABELS[connection.evidenceLevel]}</dd>
         </dl>
       </aside>
     );

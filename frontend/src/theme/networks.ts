@@ -27,3 +27,9 @@ export const CONNECTION_TYPE_LABELS: Record<string, string> = {
   functional: "Funcional",
   effective: "Efectiva",
 };
+
+export const EVIDENCE_LEVEL_LABELS: Record<string, string> = {
+  direct: "Dato observado directamente",
+  indirect: "Inferencia indirecta",
+  hypothetical: "Hipótesis",
+};

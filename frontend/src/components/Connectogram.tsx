@@ -50,6 +50,19 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   return (
     <svg width={size} height={size} role="img" aria-label="Connectograma">
+      <defs>
+        <marker
+          id="connectogram-arrow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#222" />
+        </marker>
+      </defs>
       <g>
         {connections.map((conn) => {
           const a = positions.get(conn.source);
@@ -59,6 +72,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
             selectedConnectionId === conn.id ||
             selectedNodeId === conn.source ||
             selectedNodeId === conn.target;
+          // Sección 5.1/24: lo hipotético o indirecto nunca se dibuja igual
+          // que lo observado directamente; la dirección (conectividad
+          // efectiva) se marca con una flecha, no solo con el grosor.
+          const isDashed = conn.evidenceLevel !== "direct";
+          const isDirected = conn.type === "effective";
           return (
             <path
               key={conn.id}
@@ -67,6 +85,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               stroke={isSelected ? "#222" : "#b8b8b8"}
               strokeOpacity={isSelected ? 0.9 : 0.35}
               strokeWidth={Math.max(1, conn.weight * 6)}
+              strokeDasharray={isDashed ? "6 4" : undefined}
+              markerEnd={isDirected ? "url(#connectogram-arrow)" : undefined}
               style={{ cursor: "pointer" }}
               onClick={() => selectConnection(conn.id)}
             />
