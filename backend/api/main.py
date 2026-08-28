@@ -17,6 +17,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.routers.connections import router as connections_router
 from backend.api.routers.regions import router as regions_router
 from backend.config.settings import get_settings
 
@@ -45,6 +46,7 @@ app.add_middleware(
 )
 
 app.include_router(regions_router)
+app.include_router(connections_router)
 
 
 @app.get("/health")

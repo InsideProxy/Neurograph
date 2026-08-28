@@ -64,7 +64,11 @@ class Connection(Base, ProvenanceMixin):
     """Una afirmación de conectividad entre dos entidades (sección 7-8).
 
     No mezclar tipos de conectividad: `type` distingue explícitamente
-    structural / functional / effective.
+    structural / functional / effective. Tampoco se mezcla lo observado
+    con lo inferido (sección 24): `evidence_level` es obligatorio y
+    distingue direct / indirect / hypothetical, igual que en el resto de
+    entidades derivadas del proyecto (riesgo 4) — nunca se asume "direct"
+    por omisión.
     """
 
     __tablename__ = "connections"
@@ -73,6 +77,7 @@ class Connection(Base, ProvenanceMixin):
     source_id: Mapped[str] = mapped_column(String, nullable=False)
     target_id: Mapped[str] = mapped_column(String, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)  # structural|functional|effective
+    evidence_level: Mapped[str] = mapped_column(String, nullable=False)  # direct|indirect|hypothetical
     tract_id: Mapped[str | None] = mapped_column(ForeignKey("tracts.id"), nullable=True)
     weight: Mapped[float | None] = mapped_column(Float, nullable=True)
     evidence_ids: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)

@@ -45,8 +45,16 @@ amarillo "DATOS SINTÉTICOS" — nunca mezclados en la misma vista. Las
 Cole-Anticevic (voto mayoritario de vértices, confidence y method
 registrados por región — nunca inventado); el connectograma y el
 cerebro 3D las colorean por red real en vez de mostrarlas todas del
-mismo gris. Falta: conectividad real (Fase 4) para las líneas del
-connectograma.
+mismo gris.
+
+**Fase 4 — Conectividad (en curso).** Segundo atlas real: Brainnetome
+(246 regiones, coordenadas volumétricas reales en MNI152). Conectividad
+estructural real derivada de sus mapas de probabilidad de tractografía
+(30 135 conexiones, media simetrizada sin umbral — decisión tomada con
+la usuaria; cada una con `evidence_level=indirect` explícito, nunca
+asumido). Nuevo `GET /connections` y un selector de atlas en el
+frontend (HCP-MMP1.0 con redes, o Brainnetome con conectividad — nunca
+los dos a la vez).
 
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
 con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de

@@ -58,8 +58,27 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   otras parcelaciones del mismo paquete HCP (Gordon333), y enlace
   estructurado atlas→cita bibliográfica (hueco de esquema anotado, no
   resuelto todavía).
-- **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
-  matrices, grafos, conectomas.
+- **Fase 4 — Conectividad (en curso).** Atlas Brainnetome (Fan et al.,
+  2016) dado de alta: 246 regiones y coordenadas reales (mismo patrón que
+  HCP-MMP1.0, pero volumétrico: vóxel real más cercano al centroide, en
+  espacio `MNI152_FSL_2mm`, verificado con la matriz affine real, no
+  asumido). Conectividad estructural real derivada de `BNA_SC_4D.nii.gz`
+  (246 mapas de probabilidad de tractografía): 30 135 conexiones
+  (media simetrizada, sin umbral — decisión de la usuaria, ver
+  `docs/analisis-arquitectura.md` sección 7.5), cada una con
+  `evidence_level = indirect` explícito (nueva columna obligatoria en
+  `connections`, migración 0004 — nunca se asumía "direct" por
+  omisión). Nuevo endpoint `GET /connections`. El dataset Brainnetome se
+  organizó en su propia carpeta (`original/atlases/brainnetome/`, antes
+  suelto junto a otros atlas) y se registró con un checksum combinado
+  (`backend/library/dataset_registration.py`, no un único archivo
+  contenedor como el paquete HCP). El frontend ahora tiene un selector
+  de atlas: HCP-MMP1.0 (redes, sin conexiones) o Brainnetome
+  (conexiones, sin redes todavía) — nunca los dos mezclados, porque
+  ocupan el mismo espacio físico dos veces. Pendiente: ejecutar
+  pipelines completos de dMRI (fuera del alcance salvo decisión en
+  contra, sección 6), y decidir si merece la pena mapear las redes de
+  Cole-Anticevic también sobre Brainnetome.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
   análisis de redes.
 - **Fase 6 — Literatura.** Ingesta de artículos, extracción estructurada,

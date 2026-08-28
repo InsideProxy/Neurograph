@@ -3,7 +3,7 @@
 // datos), quien llama debe caer de vuelta a los datos de demostración —
 // nunca mezclar ambos en la misma vista (sección 24: nunca presentar lo
 // real y lo ilustrativo como si fueran lo mismo).
-import type { GraphNode } from "../types/domain";
+import type { GraphConnection, GraphNode } from "../types/domain";
 
 const API_BASE_URL = "http://127.0.0.1:8420";
 
@@ -37,5 +37,33 @@ export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
     label: row.label,
     network: row.network,
     position3d: row.position3d.map((v) => v * DISPLAY_SCALE) as [number, number, number],
+  }));
+}
+
+interface ApiConnectionEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: "structural" | "functional" | "effective";
+  weight: number;
+  evidenceLevel: "direct" | "indirect" | "hypothetical";
+}
+
+export async function fetchRealConnections(atlasId?: string): Promise<GraphConnection[]> {
+  const url = new URL("/connections", API_BASE_URL);
+  if (atlasId) url.searchParams.set("atlas_id", atlasId);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`la API respondió ${response.status}`);
+  }
+  const rows: ApiConnectionEdge[] = await response.json();
+  return rows.map((row) => ({
+    id: row.id,
+    source: row.source,
+    target: row.target,
+    type: row.type,
+    weight: row.weight,
+    evidenceLevel: row.evidenceLevel,
   }));
 }
