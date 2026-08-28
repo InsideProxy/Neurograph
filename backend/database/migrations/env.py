@@ -16,6 +16,7 @@ from sqlalchemy import engine_from_config, pool
 # de que Alembic compare el esquema (autogenerate) o genere el SQL inicial.
 from backend.database.models.base import Base
 from backend.database.models import entities  # noqa: F401  (registra las tablas)
+from backend.database.models import library  # noqa: F401
 from backend.config.settings import get_settings
 
 config = context.config
