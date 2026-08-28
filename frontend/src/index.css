@@ -17,7 +17,16 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  /* NeuroGraph no tiene (todavía) un tema oscuro propio: badges,
+     paneles y el SVG del connectograma están pensados para fondo
+     claro con texto oscuro. Dejar 'light dark' aquí hacía que, en
+     cualquier ordenador con el sistema en modo oscuro, el fondo
+     pasara a #16171d (ver la media query de abajo) mientras el texto
+     del connectograma seguía siendo oscuro (#333) — casi invisible.
+     Confirmado el 28/08/2026 con las 360 regiones reales: se veía
+     como ruido de píxeles en vez de etiquetas. Fijado a 'light' hasta
+     que se diseñe un tema oscuro de verdad para toda la app. */
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -30,25 +39,11 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* Tema oscuro deshabilitado deliberadamente (ver comentario en
+   color-scheme más arriba): la app aún no tiene un diseño para
+   fondo oscuro, así que forzar 'light' es más seguro que dejar
+   que el navegador cambie los colores por su cuenta. */
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
 
 #root {
   width: 1126px;

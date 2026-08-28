@@ -3,7 +3,18 @@
 // angular), conexiones como arcos. El grosor codifica el peso; el color,
 // la red a la que pertenece cada nodo origen. Selección sincronizada vía
 // el store compartido (sección 5.3).
-import { useMemo } from "react";
+//
+// Con 8 nodos de demostración, mostrar siempre las 360 etiquetas de texto
+// alrededor del círculo no daba problemas. Con las 360 regiones reales de
+// HCP-MMP1.0 (confirmado el 28/08/2026, ver captura de la usuaria), esas
+// 360 etiquetas simultáneas se solapan hasta volverse ilegibles — y,
+// combinado con un fondo oscuro heredado sin querer del tema por defecto
+// del navegador (ver src/index.css), el texto oscuro sobre fondo oscuro
+// prácticamente desaparecía, dejando solo un ruido de píxeles. Por eso
+// ahora solo se dibuja la etiqueta del nodo seleccionado o con el ratón
+// encima; el resto se identifican por color/posición y aparecen al pasar
+// por ellos.
+import { useMemo, useState } from "react";
 import * as d3 from "d3";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
@@ -22,9 +33,14 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const radius = size / 2 - 40;
   const center = size / 2;
+
+  // Con muchos nodos, puntos más pequeños evitan que se toquen entre sí
+  // alrededor del círculo.
+  const nodeRadius = nodes.length > 150 ? 3 : nodes.length > 40 ? 4.5 : 6;
 
   const angleScale = useMemo(
     () =>
@@ -49,7 +65,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   }, [nodes, angleScale, center, radius]);
 
   return (
-    <svg width={size} height={size} role="img" aria-label="Connectograma">
+    <svg
+      width={size}
+      height={size}
+      role="img"
+      aria-label="Connectograma"
+      style={{ background: "#fff", borderRadius: 8 }}
+    >
       <defs>
         <marker
           id="connectogram-arrow"
@@ -98,25 +120,39 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           const pos = positions.get(node.id);
           if (!pos) return null;
           const isSelected = selectedNodeId === node.id;
+          const isHovered = hoveredNodeId === node.id;
+          const showLabel = isSelected || isHovered;
           return (
-            <g key={node.id} transform={`translate(${pos.x}, ${pos.y})`}>
+            <g
+              key={node.id}
+              transform={`translate(${pos.x}, ${pos.y})`}
+              onMouseEnter={() => setHoveredNodeId(node.id)}
+              onMouseLeave={() => setHoveredNodeId((current) => (current === node.id ? null : current))}
+            >
               <circle
-                r={isSelected ? 9 : 6}
+                r={isSelected || isHovered ? nodeRadius + 3 : nodeRadius}
                 fill={NETWORK_COLORS[node.network] ?? "#888"}
                 stroke={isSelected ? "#111" : "none"}
                 strokeWidth={2}
                 style={{ cursor: "pointer" }}
                 onClick={() => selectNode(node.id)}
               />
-              <text
-                x={pos.x > center ? 12 : -12}
-                textAnchor={pos.x > center ? "start" : "end"}
-                dy={4}
-                fontSize={11}
-                fill="#333"
-              >
-                {node.label}
-              </text>
+              {showLabel && (
+                <text
+                  x={pos.x > center ? 12 : -12}
+                  textAnchor={pos.x > center ? "start" : "end"}
+                  dy={4}
+                  fontSize={12}
+                  fontWeight={600}
+                  fill="#111"
+                  stroke="#fff"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {node.label}
+                </text>
+              )}
             </g>
           );
         })}
