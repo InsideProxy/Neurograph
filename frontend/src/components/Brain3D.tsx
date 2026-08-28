@@ -15,7 +15,7 @@
 // las conexiones usan la etiqueta <threeLine> que @react-three/fiber ya
 // expone precisamente para evitar la colisión entre el <line> de three.js
 // y el <line> de SVG en el sistema de tipos de React.
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -25,7 +25,29 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { NETWORK_COLORS } from "../theme/networks";
 
-function Controls() {
+// Con 8 nodos de demostración, orbitar alrededor del origen (0,0,0) daba
+// igual porque los datos ya estaban ahí centrados. Con 360 regiones
+// reales el centro real de la nube de puntos no coincide con el origen
+// (ver docs/analisis-arquitectura.md): si la cámara orbita alrededor de
+// un punto que no es donde está el cerebro, al girar el cerebro se sale
+// del encuadre — parece que "todo desaparece" aunque no haya ningún
+// error. Por eso el objetivo de la cámara se calcula a partir de los
+// nodos reales en vez de asumir el origen.
+function computeCentroid(nodes: GraphNode[]): THREE.Vector3 {
+  if (nodes.length === 0) return new THREE.Vector3(0, 0, 0);
+  const sum = nodes.reduce(
+    (acc, n) => {
+      acc.x += n.position3d[0];
+      acc.y += n.position3d[1];
+      acc.z += n.position3d[2];
+      return acc;
+    },
+    { x: 0, y: 0, z: 0 }
+  );
+  return new THREE.Vector3(sum.x / nodes.length, sum.y / nodes.length, sum.z / nodes.length);
+}
+
+function Controls({ target }: { target: THREE.Vector3 }) {
   const { camera, gl } = useThree();
   const controls = useMemo(
     () => new OrbitControls(camera, gl.domElement),
@@ -33,9 +55,39 @@ function Controls() {
   );
   useEffect(() => {
     controls.enablePan = false;
+    // Límites de zoom: sin ellos, la rueda del ratón puede acercar la
+    // cámara casi hasta el plano "near" (todo se recorta) o alejarla
+    // muchísimo (el cerebro se vuelve un punto). No es la causa del
+    // problema reportado, pero es la misma familia de fallo silencioso.
+    controls.minDistance = 2;
+    controls.maxDistance = 30;
+    controls.target.copy(target);
+    controls.update();
     return () => controls.dispose();
-  }, [controls]);
+  }, [controls, target]);
   useFrame(() => controls.update());
+  return null;
+}
+
+// Si el contexto WebGL se pierde (ocurre en algunos equipos con GPU
+// integrada cuando hay muchos objetos en pantalla), el navegador no lanza
+// ningún error de JavaScript: simplemente deja de dibujar, y la escena
+// desaparece sin avisar — el síntoma exacto de "parece que ha crusheado".
+// Esto lo detecta y avisa en vez de dejar un lienzo en blanco sin
+// explicación.
+function ContextLossWatcher({ onLost }: { onLost: () => void }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const handleLost = (event: Event) => {
+      event.preventDefault();
+      // eslint-disable-next-line no-console
+      console.error("Se perdió el contexto WebGL del cerebro 3D.");
+      onLost();
+    };
+    canvas.addEventListener("webglcontextlost", handleLost);
+    return () => canvas.removeEventListener("webglcontextlost", handleLost);
+  }, [gl, onLost]);
   return null;
 }
 
@@ -44,7 +96,10 @@ function NodeMesh({ node }: { node: GraphNode }) {
   const isSelected = selectedNodeId === node.id;
   return (
     <mesh position={node.position3d} onClick={() => selectNode(node.id)}>
-      <sphereGeometry args={[isSelected ? 0.16 : 0.11, 24, 24]} />
+      {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
+          segmento de más cuesta 360 veces más caro que en la demo de 8
+          nodos. Sigue viéndose redondo a esta escala. */}
+      <sphereGeometry args={[isSelected ? 0.16 : 0.11, 14, 14]} />
       <meshStandardMaterial
         color={NETWORK_COLORS[node.network] ?? "#888"}
         emissive={isSelected ? "#ffffff" : "#000000"}
@@ -152,12 +207,36 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   const filters = useFiltersStore();
   const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  const [contextLost, setContextLost] = useState(false);
+  // Centroide de TODOS los nodos (no solo los visibles tras filtrar): así
+  // el punto de giro no salta cada vez que se oculta o muestra una red.
+  const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
+
+  if (contextLost) {
+    return (
+      <p className="canvas-error">
+        Se perdió el contexto gráfico (WebGL) al dibujar el cerebro 3D —
+        pasa a veces con muchos objetos en pantalla en algunos equipos.
+        Recarga la página. Si se repite, dime qué navegador y sistema usas.
+      </p>
+    );
+  }
 
   return (
-    <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+    <Canvas
+      camera={{ position: [0, 0, 6], fov: 45 }}
+      onCreated={({ gl }) => {
+        gl.domElement.addEventListener(
+          "webglcontextrestored",
+          () => setContextLost(false),
+          { once: true }
+        );
+      }}
+    >
       <ambientLight intensity={0.6} />
       <pointLight position={[5, 5, 5]} intensity={60} />
-      <Controls />
+      <Controls target={target} />
+      <ContextLossWatcher onLost={() => setContextLost(true)} />
       {nodes.map((node) => (
         <NodeMesh key={node.id} node={node} />
       ))}

@@ -7,6 +7,7 @@
 main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; }
 .panel { flex: 1 1 380px; min-width: 0; }
 .canvas-wrap { width: 100%; height: 420px; border: 1px solid #ddd; border-radius: 8px; }
+.canvas-error { padding: 1rem; color: #7a1f1f; background: #fdeaea; border-radius: 8px; font-size: 0.9rem; }
 
 .filter-panel, .detail-panel {
   flex: 0 0 220px;

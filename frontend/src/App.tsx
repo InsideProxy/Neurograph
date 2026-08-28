@@ -3,6 +3,7 @@ import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { FilterPanel } from "./components/FilterPanel";
 import { DetailPanel } from "./components/DetailPanel";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchRealNodes } from "./data/api";
 import type { GraphConnection, GraphNode } from "./types/domain";
@@ -79,7 +80,17 @@ export default function App() {
           <section className="panel">
             <h2>Cerebro 3D</h2>
             <div className="canvas-wrap">
-              <Brain3D nodes={source.nodes} connections={source.connections} />
+              <ErrorBoundary
+                fallback={
+                  <p className="canvas-error">
+                    No se pudo mostrar el cerebro 3D (error inesperado).
+                    Recarga la página; si se repite, abre la consola del
+                    navegador (F12 → Console) y dime qué aparece ahí.
+                  </p>
+                }
+              >
+                <Brain3D nodes={source.nodes} connections={source.connections} />
+              </ErrorBoundary>
             </div>
           </section>
         </main>
