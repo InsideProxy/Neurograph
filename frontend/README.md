@@ -22,17 +22,37 @@ cd frontend
 npm install
 npm run dev       # servidor de desarrollo con recarga en caliente
 npm run build      # build de producción, comprueba también los tipos
+npm test           # pruebas de la lógica de filtrado (src/logic)
 ```
 
 ## Estructura
 
 ```
 src/
-├── types/domain.ts       tipos mínimos (temporales, ver comentario en el archivo)
-├── state/selection.ts     estado de selección compartido entre las dos vistas
-├── data/demo.ts           datos SINTÉTICOS de demostración, etiquetados
+├── types/domain.ts        tipos mínimos (temporales, ver comentario en el archivo)
+├── theme/networks.ts       colores y nombres de red, compartidos entre vistas
+├── state/
+│   ├── selection.ts        selección compartida entre las dos vistas
+│   └── filters.ts          filtros compartidos (redes, tipo, peso mínimo)
+├── logic/visibility.ts     lógica pura de filtrado (con pruebas en visibility.test.ts)
+├── data/demo.ts            datos SINTÉTICOS de demostración, etiquetados
 ├── components/
-│   ├── Connectogram.tsx   visualización 1 (diagrama de cuerdas, D3)
-│   └── Brain3D.tsx        visualización 2 (cerebro 3D, react-three-fiber)
-└── App.tsx                monta ambas vistas lado a lado
+│   ├── Connectogram.tsx    visualización 1 (diagrama de cuerdas, D3)
+│   ├── Brain3D.tsx         visualización 2 (cerebro 3D, react-three-fiber)
+│   ├── FilterPanel.tsx     filtros por red, tipo de conectividad y peso
+│   └── DetailPanel.tsx     detalle de la selección actual
+└── App.tsx                 monta filtros + las dos vistas + detalle
 ```
+
+## Filtros e interacción implementados hasta ahora
+
+- Ocultar/mostrar por red cognitiva (con el mismo color en las dos vistas).
+- Ocultar/mostrar por tipo de conectividad (estructural / funcional / efectiva).
+- Umbral mínimo de peso de conexión.
+- Selección de un nodo o una conexión, sincronizada entre las dos vistas
+  (sección 5.3) y mostrada en el panel de detalle.
+
+Pendiente (fases posteriores): datos reales en vez de `demo.ts`, tractos
+como geometría real en vez de líneas rectas, y las demás propiedades del
+panel de detalle (evidencia, estudios, homologías, fenotipos) en cuanto
+existan en la API.

@@ -18,16 +18,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
-
-const NETWORK_COLORS: Record<string, string> = {
-  executive: "#e05a47",
-  memory: "#3f7fbf",
-  attention: "#e8a33d",
-  limbic: "#8e5fc7",
-  language: "#3fa66a",
-  sensory: "#2fb0b0",
-  motor: "#c0574f",
-};
+import { useFiltersStore } from "../state/filters";
+import { filterGraph } from "../logic/visibility";
+import { NETWORK_COLORS } from "../theme/networks";
 
 function Controls() {
   const { camera, gl } = useThree();
@@ -92,8 +85,10 @@ interface Props {
   connections: GraphConnection[];
 }
 
-export function Brain3D({ nodes, connections }: Props) {
+export function Brain3D({ nodes: allNodes, connections: allConnections }: Props) {
   const { selectedNodeId, selectedConnectionId, selectConnection } = useSelectionStore();
+  const filters = useFiltersStore();
+  const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
 
   return (

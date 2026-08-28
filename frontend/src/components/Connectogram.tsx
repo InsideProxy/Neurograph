@@ -7,16 +7,9 @@ import { useMemo } from "react";
 import * as d3 from "d3";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
-
-const NETWORK_COLORS: Record<string, string> = {
-  executive: "#e05a47",
-  memory: "#3f7fbf",
-  attention: "#e8a33d",
-  limbic: "#8e5fc7",
-  language: "#3fa66a",
-  sensory: "#2fb0b0",
-  motor: "#c0574f",
-};
+import { useFiltersStore } from "../state/filters";
+import { filterGraph } from "../logic/visibility";
+import { NETWORK_COLORS } from "../theme/networks";
 
 interface Props {
   nodes: GraphNode[];
@@ -24,9 +17,11 @@ interface Props {
   size?: number;
 }
 
-export function Connectogram({ nodes, connections, size = 420 }: Props) {
+export function Connectogram({ nodes: allNodes, connections: allConnections, size = 420 }: Props) {
   const { selectedNodeId, selectedConnectionId, selectNode, selectConnection } =
     useSelectionStore();
+  const filters = useFiltersStore();
+  const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
 
   const radius = size / 2 - 40;
   const center = size / 2;
