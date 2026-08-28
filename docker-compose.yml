@@ -1,0 +1,19 @@
+# Base de datos de NeuroGraph (sección 14).
+# Ejecutar con: docker compose up -d
+# Requiere Docker Desktop en tu ordenador (esta imagen no se ejecuta desde
+# el asistente, solo se define aquí para que la levantes tú localmente).
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: neurograph-postgres
+    environment:
+      POSTGRES_DB: neurograph
+      POSTGRES_USER: neurograph
+      POSTGRES_PASSWORD: ${NEUROGRAPH_DB_PASSWORD:-neurograph_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - neurograph_pgdata:/var/lib/postgresql/data
+
+volumes:
+  neurograph_pgdata:

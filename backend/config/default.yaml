@@ -1,0 +1,21 @@
+# Configuración por defecto de NeuroGraph.
+# No incluir secretos aquí: usar variables de entorno (.env) para credenciales.
+
+library:
+  # Ruta a la biblioteca de datos (SSD). Se detecta automáticamente si hay
+  # un archivo .neurograph_library.yaml en la raíz de la ruta indicada.
+  path: null
+
+database:
+  host: localhost
+  port: 5432
+  name: neurograph
+  user: neurograph
+  # password: usar variable de entorno NEUROGRAPH_DB_PASSWORD
+
+ai:
+  provider: claude   # claude | openai | local | generic
+
+api:
+  host: 127.0.0.1
+  port: 8420

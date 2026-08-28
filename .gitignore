@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+dist/
+frontend/src-tauri/target/
+
+# Entorno y secretos
+.env
+*.local.yaml
+
+# Bases de datos locales
+*.sqlite3
+pgdata/
+
+# SO
+.DS_Store
+Thumbs.db
+
+# Datos científicos (nunca deben vivir en el repo de código;
+# viven en la biblioteca SSD, ver docs/portabilidad.md)
+/data/
