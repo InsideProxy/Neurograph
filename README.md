@@ -40,8 +40,13 @@ explícito: `fsLR_32k_S1200_groupavg_midthickness_MSMAll`, nunca
 asumido como MNI/Talairach). El frontend ya las consume de verdad: si
 `docker compose up -d` está corriendo, `GET /regions` las sirve y la
 vista de desarrollo muestra el aviso verde "DATOS REALES" en vez del
-amarillo "DATOS SINTÉTICOS" — nunca mezclados en la misma vista. Falta:
-conectividad real (Fase 4) para las líneas del connectograma.
+amarillo "DATOS SINTÉTICOS" — nunca mezclados en la misma vista. Las
+360 regiones ya están clasificadas en las 12 redes funcionales de
+Cole-Anticevic (voto mayoritario de vértices, confidence y method
+registrados por región — nunca inventado); el connectograma y el
+cerebro 3D las colorean por red real en vez de mostrarlas todas del
+mismo gris. Falta: conectividad real (Fase 4) para las líneas del
+connectograma.
 
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
 con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de

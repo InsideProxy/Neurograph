@@ -31,6 +31,16 @@ class EntityType(str, Enum):
     COORDINATE = "coordinate"
     ATLAS = "atlas"
     DATASET = "dataset"
+    # Pertenencia (derivada) de una región a una red funcional: no es
+    # una entidad científica observada como Region o Network, es la
+    # relación entre ambas calculada por un método concreto (p. ej. voto
+    # mayoritario de vértices sobre una parcelación de red) — por eso
+    # necesita su propio namespace de identificador, igual que Homology
+    # y Connection (riesgo 4: nunca opcionales method/confidence en un
+    # dato derivado). Un único sustantivo, como el resto de EntityType
+    # (el patrón de identificador no permite "_" en este primer tramo):
+    # el par especie/fuente ya deja claro que es "región-red".
+    MEMBERSHIP = "membership"
 
 
 _ID_PATTERN = re.compile(r"^[a-z]+\.[a-z0-9_]+\.[a-z0-9_\-\.]+\.[a-z0-9_\-]+$")

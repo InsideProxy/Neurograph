@@ -11,8 +11,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.database.models.entities import Coordinate, Region
+from backend.database.models.entities import Coordinate, Network, Region, RegionNetworkMembership
 from backend.database.session import get_db
+from backend.ontology.schema import parse_id
 
 router = APIRouter(prefix="/regions", tags=["regions"])
 
@@ -25,18 +26,21 @@ class RegionNode(BaseModel):
     reference_space: str
 
 
-def region_to_node(region: Region, coordinate: Coordinate) -> RegionNode:
+def region_to_node(region: Region, coordinate: Coordinate, network: Network | None) -> RegionNode:
     """Traducción pura (sin base de datos) de una `Region` + su
-    `Coordinate` a la forma que consume el frontend. Separada del
-    endpoint para poder probarla sin una base de datos real.
+    `Coordinate` (+ opcionalmente su `Network`, vía
+    `region_network_memberships`) a la forma que consume el frontend.
+    Separada del endpoint para poder probarla sin una base de datos real.
+
+    "unclassified" es un valor explícito para "todavía no hay una
+    pertenencia a red calculada para esta región" (p. ej. otros atlas sin
+    clasificación Cole-Anticevic todavía) — nunca se inventa una red.
     """
+    network_slug = "unclassified" if network is None else parse_id(network.id)["local_code"]
     return RegionNode(
         id=region.id,
         label=region.name,
-        # Fase 3 todavía no carga redes funcionales (llegan con la
-        # parcelación Cole-Anticevic); "unclassified" es explícito, no un
-        # valor inventado.
-        network="unclassified",
+        network=network_slug,
         position3d=(coordinate.x, coordinate.y, coordinate.z),
         reference_space=coordinate.reference_space,
     )
@@ -46,9 +50,17 @@ def region_to_node(region: Region, coordinate: Coordinate) -> RegionNode:
 def list_regions(atlas_id: str | None = None, db: Session = Depends(get_db)) -> list[RegionNode]:
     """Devuelve las regiones que tienen coordenada registrada (una región
     sin coordenada no se puede colocar en el cerebro 3D, así que se
-    excluye en vez de mandarse con una posición inventada)."""
-    query = select(Region, Coordinate).join(Coordinate, Coordinate.entity_id == Region.id)
+    excluye en vez de mandarse con una posición inventada). La red
+    funcional es opcional (LEFT JOIN): una región sin pertenencia
+    calculada todavía se devuelve igual, marcada "unclassified".
+    """
+    query = (
+        select(Region, Coordinate, Network)
+        .join(Coordinate, Coordinate.entity_id == Region.id)
+        .outerjoin(RegionNetworkMembership, RegionNetworkMembership.region_id == Region.id)
+        .outerjoin(Network, Network.id == RegionNetworkMembership.network_id)
+    )
     if atlas_id is not None:
         query = query.where(Region.atlas_id == atlas_id)
     rows = db.execute(query).all()
-    return [region_to_node(region, coordinate) for region, coordinate in rows]
+    return [region_to_node(region, coordinate, network) for region, coordinate, network in rows]

@@ -123,3 +123,22 @@ class Dataset(Base, IdentifiedMixin, ProvenanceMixin):
     format: Mapped[str] = mapped_column(String, nullable=False)
     license: Mapped[str | None] = mapped_column(String, nullable=True)
     checksum_sha256: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class RegionNetworkMembership(Base, ProvenanceMixin):
+    """Pertenencia derivada de una región a una red funcional (p. ej. una
+    de las 12 redes de Cole-Anticevic). No es una afirmación del atlas de
+    origen, sino el resultado de aplicar un método explícito de agregación
+    sobre una parcelación de vértices distinta — por eso `confidence` y
+    `method` son obligatorios (riesgo 4 del análisis de arquitectura), no
+    opcionales como en `Homology`: aquí siempre hay un método concreto que
+    documentar, nunca una asignación "a ojo".
+    """
+
+    __tablename__ = "region_network_memberships"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    region_id: Mapped[str] = mapped_column(ForeignKey("regions.id"), nullable=False)
+    network_id: Mapped[str] = mapped_column(ForeignKey("networks.id"), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    method: Mapped[str] = mapped_column(String, nullable=False)

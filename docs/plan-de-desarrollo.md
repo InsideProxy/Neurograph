@@ -47,10 +47,17 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   juntos, sin necesitar Python instalado) y el frontend cae a datos
   reales automáticamente cuando la API responde, sin mezclarlos nunca
   con los sintéticos (aviso verde "DATOS REALES" / amarillo "DATOS
-  SINTÉTICOS", nunca ambos a la vez). Pendiente: otras parcelaciones del
-  mismo paquete HCP (Gordon333, Cole-Anticevic), y enlace estructurado
-  atlas→cita bibliográfica (hueco de esquema anotado, no resuelto
-  todavía).
+  SINTÉTICOS", nunca ambos a la vez). Clasificación funcional real:
+  las 360 regiones de HCP-MMP1.0 están clasificadas en las 12 redes de
+  Cole-Anticevic (Ji et al., 2019), calculada por voto mayoritario de
+  vértices sobre la partición original
+  (`backend/ingestion/neuroimaging/cole_anticevic_networks.py`), con
+  confidence y method registrados por región (nueva tabla
+  `region_network_memberships`, migración 0003) — nunca una etiqueta
+  inventada. Confianza real entre 0,74 y 1,0 (media ~0,95). Pendiente:
+  otras parcelaciones del mismo paquete HCP (Gordon333), y enlace
+  estructurado atlas→cita bibliográfica (hueco de esquema anotado, no
+  resuelto todavía).
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
   matrices, grafos, conectomas.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
