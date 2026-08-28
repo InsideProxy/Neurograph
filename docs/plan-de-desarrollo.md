@@ -62,7 +62,11 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
 - **Fase 8 — Neuropsicología.** Lesiones, funciones, fenotipos,
   asociaciones clínicas.
 - **Fase 9 — Visualizador avanzado.** Connectograma y cerebro 3D completos
-  y sincronizados (secciones 5.1, 5.2, 5.3).
+  y sincronizados (secciones 5.1, 5.2, 5.3). Pendiente señalado por la
+  usuaria el 28/08/2026: los paneles del connectograma y del cerebro 3D
+  son demasiado pequeños (tamaño fijo heredado de cuando solo había 8
+  nodos de demostración); ampliarlos es trabajo de diseño de interfaz,
+  pospuesto a esta fase a propósito en vez de parchearlo ahora.
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
