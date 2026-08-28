@@ -15,13 +15,24 @@ datos, ontología inicial, sistema de biblioteca SSD y API mínima están
 esqueletizados y probados.
 
 **Fase 1 — Arquitectura (en marcha).** El frontend (Vite + React +
-TypeScript + Three.js + D3) ya renderiza el connectograma y el cerebro 3D
-con datos sintéticos y demuestra la sincronización entre ambas vistas
-(sección 5.3). Falta: esquema definitivo de PostgreSQL con Alembic, y
-decidir el empaquetado de escritorio (Tauri) cuando haya Rust disponible.
+TypeScript + Three.js + D3) renderiza el connectograma y el cerebro 3D con
+datos sintéticos, con filtros (red / tipo de conectividad / peso), panel
+de detalle y codificación visual de nivel de evidencia y dirección
+(secciones 5.1, 5.3, 24), todo sincronizado entre las dos vistas. Falta:
+esquema definitivo de PostgreSQL con Alembic (pendiente de que actives
+Docker), y decidir el empaquetado de escritorio (Tauri) cuando haya Rust
+disponible.
 
-Todavía no hay lógica científica real conectada: eso llega en las fases
-siguientes (ver `docs/plan-de-desarrollo.md`).
+**Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
+con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de
+adyacencia, matriz de grados, Laplaciano (explícito), autovalores/
+autovectores, embedding espectral, detección de comunidades, modularidad,
+centralidad (grado/intermediación/autovector), coeficiente de
+participación, rich-club y caminos mínimos. 12 pruebas, todas en verde.
+
+Todavía no hay datos científicos reales conectados a estos módulos: eso
+llega cuando la biblioteca de datos (Fase 2) y la base de datos alimenten
+al motor con conexiones reales.
 
 ## Estructura
 
