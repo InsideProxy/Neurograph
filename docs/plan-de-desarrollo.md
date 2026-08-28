@@ -42,11 +42,15 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   análisis de arquitectura). 36 pruebas, incluidas dos contra los archivos
   reales (con comprobación de que cada hemisferio cae en el signo de x
   esperado). Alta generada en `backend/database/seed/register_atlas_hcp_mmp1.sql`.
-  Pendiente: otras parcelaciones del mismo paquete HCP (Gordon333,
-  Cole-Anticevic), enlace estructurado atlas→cita bibliográfica (hueco de
-  esquema anotado, no resuelto todavía), y visualización básica en la
-  interfaz con estas regiones y coordenadas reales en vez de datos
-  sintéticos.
+  Interfaz ya conectada: `GET /regions` (backend/api/routers/regions.py),
+  API dockerizada (`docker compose up -d` levanta Postgres y la API
+  juntos, sin necesitar Python instalado) y el frontend cae a datos
+  reales automáticamente cuando la API responde, sin mezclarlos nunca
+  con los sintéticos (aviso verde "DATOS REALES" / amarillo "DATOS
+  SINTÉTICOS", nunca ambos a la vez). Pendiente: otras parcelaciones del
+  mismo paquete HCP (Gordon333, Cole-Anticevic), y enlace estructurado
+  atlas→cita bibliográfica (hueco de esquema anotado, no resuelto
+  todavía).
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
   matrices, grafos, conectomas.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,

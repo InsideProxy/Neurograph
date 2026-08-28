@@ -10,6 +10,11 @@ export const NETWORK_COLORS: Record<string, string> = {
   language: "#3fa66a",
   sensory: "#2fb0b0",
   motor: "#c0574f",
+  // Regiones reales cargadas desde un atlas (p. ej. HCP-MMP1.0) que aún
+  // no tienen una red funcional asignada (eso llega con la parcelación
+  // Cole-Anticevic, todavía no cargada). Gris deliberado: no es una red
+  // más, es la ausencia explícita de una.
+  unclassified: "#8a8a8a",
 };
 
 export const NETWORK_LABELS: Record<string, string> = {
@@ -20,6 +25,7 @@ export const NETWORK_LABELS: Record<string, string> = {
   language: "Lenguaje",
   sensory: "Sensorial / visión",
   motor: "Moción y acción",
+  unclassified: "Sin red asignada",
 };
 
 export const CONNECTION_TYPE_LABELS: Record<string, string> = {

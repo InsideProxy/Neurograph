@@ -1,5 +1,6 @@
 .app { font-family: system-ui, sans-serif; padding: 1rem 1.5rem; color: #222; }
 .demo-badge { display: inline-block; background: #fff3cd; color: #7a5b00; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+.real-badge { display: inline-block; background: #d7f0da; color: #1f5c2a; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
 
 .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
 

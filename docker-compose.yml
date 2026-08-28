@@ -1,7 +1,9 @@
-# Base de datos de NeuroGraph (sección 14).
+# Base de datos y API de NeuroGraph (secciones 14 y 15).
 # Ejecutar con: docker compose up -d
-# Requiere Docker Desktop en tu ordenador (esta imagen no se ejecuta desde
-# el asistente, solo se define aquí para que la levantes tú localmente).
+# Requiere Docker Desktop en tu ordenador (estas imágenes no se ejecutan
+# desde el asistente, solo se definen aquí para que las levantes tú
+# localmente). El frontend sigue aparte (npm run dev en frontend/): no
+# está aquí porque en desarrollo necesita recarga en caliente.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -14,6 +16,19 @@ services:
       - "5432:5432"
     volumes:
       - neurograph_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: neurograph-api
+    depends_on:
+      - postgres
+    environment:
+      NEUROGRAPH_DATABASE__HOST: postgres
+      NEUROGRAPH_DATABASE__PASSWORD: ${NEUROGRAPH_DB_PASSWORD:-neurograph_dev}
+    ports:
+      - "8420:8420"
 
 volumes:
   neurograph_pgdata:

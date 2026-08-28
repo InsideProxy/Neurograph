@@ -14,15 +14,13 @@ decisiones tomadas.
 datos, ontología inicial, sistema de biblioteca SSD y API mínima están
 esqueletizados y probados.
 
-**Fase 1 — Arquitectura (en marcha).** El frontend (Vite + React +
-TypeScript + Three.js + D3) renderiza el connectograma y el cerebro 3D con
-datos sintéticos, con filtros (red / tipo de conectividad / peso), panel
-de detalle y codificación visual de nivel de evidencia y dirección
-(secciones 5.1, 5.3, 24), todo sincronizado entre las dos vistas. El
-esquema de PostgreSQL ya está aplicado en tu base de datos local (15
-tablas) y comprobado funcionalmente: relaciones entre tablas, campos
-JSONB, arrays y la integridad referencial (rechaza claves foráneas que no
-existen) — ver `backend/database/migrations/`. Falta: decidir el
+**Fase 1 — Arquitectura (hecho).** El frontend (Vite + React +
+TypeScript + Three.js + D3) renderiza el connectograma y el cerebro 3D,
+con filtros (red / tipo de conectividad / peso), panel de detalle y
+codificación visual de nivel de evidencia y dirección (secciones 5.1,
+5.3, 24), todo sincronizado entre las dos vistas. El esquema de
+PostgreSQL está aplicado en la base de datos real y comprobado
+funcionalmente — ver `backend/database/migrations/`. Falta: decidir el
 empaquetado de escritorio (Tauri) cuando haya Rust disponible.
 
 **Fase 2 — Biblioteca de datos (en curso).** Manifiesto de biblioteca
@@ -34,6 +32,16 @@ en la base de datos (migración 0002) y su alta generada en
 `backend/database/seed/register_library_neurodata.sql`. Falta: registrar
 datasets concretos en la base de datos según se vayan incorporando datos
 reales.
+
+**Fase 3 — Neuroimagen (en curso).** Primer atlas real cargado:
+HCP-MMP1.0 (Glasser et al., 2016) — especie, atlas, 360 regiones
+corticales y sus 360 coordenadas reales (espacio de referencia
+explícito: `fsLR_32k_S1200_groupavg_midthickness_MSMAll`, nunca
+asumido como MNI/Talairach). El frontend ya las consume de verdad: si
+`docker compose up -d` está corriendo, `GET /regions` las sirve y la
+vista de desarrollo muestra el aviso verde "DATOS REALES" en vez del
+amarillo "DATOS SINTÉTICOS" — nunca mezclados en la misma vista. Falta:
+conectividad real (Fase 4) para las líneas del connectograma.
 
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
 con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de
@@ -70,25 +78,40 @@ scripts/
 
 ## Poner en marcha el entorno de desarrollo
 
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # En Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-pytest
-```
-
-Para la base de datos (necesita Docker Desktop instalado en tu ordenador):
+**1. Base de datos y API** (necesita Docker Desktop instalado):
 
 ```bash
 cp .env.example .env             # y edita la contraseña
 docker compose up -d
 ```
 
-Para arrancar la API:
+Esto levanta dos contenedores: Postgres (puerto 5432) y la API de
+NeuroGraph (puerto 8420, `backend/Dockerfile`) — no hace falta tener
+Python instalado para esto. Comprobar que responde:
+`curl http://127.0.0.1:8420/health`.
+
+**2. Frontend** (necesita Node.js instalado):
 
 ```bash
-uvicorn backend.api.main:app --reload --port 8420
+cd frontend
+npm install
+npm run dev
+```
+
+Abre la URL que imprima (normalmente `http://localhost:5173`). Si la API
+del paso 1 está corriendo y tiene datos, verás el aviso verde "DATOS
+REALES"; si no, cae automáticamente a datos sintéticos con aviso
+amarillo — nunca los mezcla.
+
+**3. Backend en desarrollo** (solo si vas a tocar código Python; para
+solo usar la aplicación, el paso 1 ya es suficiente):
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate        # En Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+pytest
 ```
 
 ## Principios que gobiernan el diseño
