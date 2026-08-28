@@ -54,10 +54,26 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   (`backend/ingestion/neuroimaging/cole_anticevic_networks.py`), con
   confidence y method registrados por región (nueva tabla
   `region_network_memberships`, migración 0003) — nunca una etiqueta
-  inventada. Confianza real entre 0,74 y 1,0 (media ~0,95). Pendiente: otras
-  parcelaciones del mismo paquete HCP (Gordon333). El enlace
+  inventada. Confianza real entre 0,74 y 1,0 (media ~0,95). El enlace
   estructurado atlas→cita bibliográfica que quedaba pendiente aquí se
-  cerró junto con la Fase 4 (ver más abajo).
+  cerró junto con la Fase 4 (ver más abajo). Otra parcelación del
+  mismo paquete HCP (Gordon 333) ya está cargada también, ver el
+  párrafo siguiente.
+  Segunda parcelación del mismo paquete HCP ya cargada (28/08/2026):
+  Gordon 333 (Gordon et al., 2016, Cerebral Cortex, DOI
+  10.1093/cercor/bhu239), solo corteza — 333 regiones reales y sus 12
+  redes propias del atlas (no las de Cole-Anticevic: son dos
+  clasificaciones distintas, aunque coincidan en algunos nombres como
+  "Default" o "Visual" -- ver riesgo 13). El mismo archivo declara 19
+  etiquetas subcorticales sin ningún dato real detrás (comprobado
+  empíricamente, ver sección 7.7 del análisis de arquitectura): se
+  excluyeron de Gordon 333 y, en su lugar, se dio de alta por
+  separado la segmentación subcortical real que sí trae el espacio de
+  grayordinates del HCP (19 estructuras: amígdala, hipocampo,
+  tálamo... por hemisferio, más cerebelo y tronco del encéfalo), como
+  su propio atlas (`atlas.human.hcp.subcortex_grayordinates`),
+  citando a quien de verdad la define: Glasser et al. (2013),
+  NeuroImage, DOI 10.1016/j.neuroimage.2013.04.127.
 - **Fase 4 — Conectividad (en curso).** Atlas Brainnetome (Fan et al.,
   2016) dado de alta: 246 regiones y coordenadas reales (mismo patrón que
   HCP-MMP1.0, pero volumétrico: vóxel real más cercano al centroide, en

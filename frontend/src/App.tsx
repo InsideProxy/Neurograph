@@ -21,10 +21,15 @@ type DataSource =
 // Cada atlas real cargado hasta ahora cuenta una historia distinta:
 // HCP-MMP1.0 tiene redes funcionales (Cole-Anticevic) pero ninguna
 // conexión todavía; Brainnetome tiene conectividad estructural real pero
-// ninguna red funcional calculada todavía. Mostrar los dos a la vez sería
-// mezclar sus nodos (que ocupan el mismo espacio físico del cerebro dos
-// veces, una por cada parcelación) — así que se elige uno u otro, nunca
-// los dos superpuestos.
+// ninguna red funcional calculada todavía; Gordon 333 trae sus propias
+// 12 redes (no las de Cole-Anticevic: incluso cuando coinciden en
+// nombre, como "Default" o "Visual", son dos clasificaciones distintas
+// -- ver riesgo de colisión de nombres de red en
+// docs/analisis-arquitectura.md); el subcórtex del HCP son solo 19
+// estructuras anatómicas, sin red ni conexión todavía. Mostrar dos
+// atlas a la vez sería mezclar sus nodos (que ocupan el mismo espacio
+// físico del cerebro dos veces, una por cada parcelación) — así que se
+// elige uno u otro, nunca varios superpuestos.
 interface AtlasOption {
   id: string;
   label: string;
@@ -33,6 +38,8 @@ interface AtlasOption {
 const ATLASES: AtlasOption[] = [
   { id: "atlas.human.hcp.mmp1_0", label: "HCP-MMP1.0 — 360 regiones, redes funcionales" },
   { id: "atlas.human.brainnetome.bna_246", label: "Brainnetome — 246 regiones, conectividad estructural" },
+  { id: "atlas.human.gordon333.cortex", label: "Gordon 333 — 333 regiones corticales, redes propias del atlas" },
+  { id: "atlas.human.hcp.subcortex_grayordinates", label: "Subcórtex HCP — 19 regiones (amígdala, tálamo, cerebelo...)" },
 ];
 
 export default function App() {

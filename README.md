@@ -45,7 +45,18 @@ amarillo "DATOS SINTÉTICOS" — nunca mezclados en la misma vista. Las
 Cole-Anticevic (voto mayoritario de vértices, confidence y method
 registrados por región — nunca inventado); el connectograma y el
 cerebro 3D las colorean por red real en vez de mostrarlas todas del
-mismo gris.
+mismo gris. Segundo atlas cortical cargado: Gordon 333 (Gordon et
+al., 2016, DOI 10.1093/cercor/bhu239) — 333 regiones y sus propias
+12 redes (no las de Cole-Anticevic: son dos clasificaciones
+distintas, aunque coincidan en algún nombre — ver el riesgo anotado
+en `docs/analisis-arquitectura.md`). El mismo archivo declaraba 19
+estructuras subcorticales sin ningún dato real detrás (comprobado,
+no asumido); en su lugar se dio de alta la segmentación subcortical
+real que sí trae el espacio de grayordinates del HCP (19
+estructuras: amígdala, hipocampo, tálamo... más cerebelo y tronco
+del encéfalo) como su propio atlas, citando a quien de verdad la
+define (Glasser et al., 2013, DOI 10.1016/j.neuroimage.2013.04.127),
+no a Gordon et al.
 
 **Fase 4 — Conectividad (en curso).** Segundo atlas real: Brainnetome
 (246 regiones, coordenadas volumétricas reales en MNI152). Conectividad
