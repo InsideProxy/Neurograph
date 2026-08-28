@@ -5,9 +5,10 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
 
 - **Fase 0 — Entorno.** Repositorio, estructura de módulos, base de datos,
   ontología inicial, sistema de biblioteca SSD, configuración. **(hecho)**
-- **Fase 1 — Arquitectura.** Revisión y confirmación de las decisiones de
-  `docs/analisis-arquitectura.md`: stack de interfaz, alcance de
-  tractografía, esquema de PostgreSQL definitivo, API.
+- **Fase 1 — Arquitectura (hecho).** Stack de interfaz confirmado (web
+  local, Tauri pendiente de Rust); esquema de PostgreSQL definitivo,
+  aplicado en la base de datos real del usuario y comprobado
+  funcionalmente (relaciones, JSONB, arrays, integridad referencial).
 - **Fase 2 — Biblioteca de datos.** Registro del SSD, indexación,
   metadatos, detección de datasets, separación original/derivado.
 - **Fase 3 — Neuroimagen.** NIfTI, atlas, regiones, coordenadas,
