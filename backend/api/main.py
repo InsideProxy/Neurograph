@@ -29,9 +29,17 @@ app = FastAPI(
 # CORS abierto a los orígenes de desarrollo local del frontend (Vite).
 # Esta API solo escucha en localhost (ver backend/config/default.yaml,
 # api.host = 127.0.0.1): no hay riesgo de exponer esto a la red.
+#
+# Un puerto fijo (antes solo 5173) se demostró frágil el 28/08/2026: si
+# el proceso de "npm run dev" anterior no libera el puerto a tiempo (p.
+# ej. al cerrar la ventana de PowerShell sin Ctrl+C), Vite arranca en el
+# siguiente puerto libre (5174, 5175...) sin avisar de forma llamativa, y
+# el navegador bloquea la petición por CORS con un error que no tiene
+# nada que ver con la causa real. Con localhost/127.0.0.1 en cualquier
+# puerto basta, porque el origen ya está acotado a la propia máquina.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_methods=["GET"],
     allow_headers=["*"],
 )

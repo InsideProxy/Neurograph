@@ -18,12 +18,28 @@
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { NETWORK_COLORS } from "../theme/networks";
+
+// Registro explícito de <threeLine> bajo la clave 'ThreeLine' del
+// catálogo de react-three-fiber (en vez de confiar en que r3f le quite
+// el prefijo "three" automáticamente). Confirmado el 28/08/2026: en esta
+// versión (@react-three/fiber 9.7.0 + React 19), quitar el prefijo SÍ
+// pasa al crear el elemento por primera vez, pero NO al actualizarlo
+// (commitUpdate llama a validateInstance con el nombre sin recortar) —
+// una inconsistencia real de la librería entre creación y actualización,
+// nunca detectada antes porque `connections` siempre había estado vacío
+// (Fase 4 no empezada): la primera vez que de verdad se dibujó una línea
+// fue con los datos de demostración (que sí traen conexiones), al caer
+// a ellos por un fallo de CORS — ver riesgo 12 del análisis de
+// arquitectura. Con el registro explícito, la búsqueda en el catálogo
+// encuentra 'ThreeLine' directamente tanto al crear como al actualizar,
+// sin pasar nunca por ese mecanismo de recorte.
+extend({ ThreeLine: THREE.Line });
 
 // Con 8 nodos de demostración, orbitar alrededor del origen (0,0,0) daba
 // igual porque los datos ya estaban ahí centrados. Con 360 regiones
