@@ -76,16 +76,24 @@ ahora de forma estructurada con la publicación que lo define
 su nombre — DOI verificados directamente en la web del editor, no
 adivinados.
 
-**Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
-con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de
-adyacencia, matriz de grados, Laplaciano (explícito), autovalores/
-autovectores, embedding espectral, detección de comunidades, modularidad,
-centralidad (grado/intermediación/autovector), coeficiente de
-participación, rich-club y caminos mínimos. 12 pruebas, todas en verde.
-
-Todavía no hay datos científicos reales conectados a estos módulos: eso
-llega cuando la biblioteca de datos (Fase 2) y la base de datos alimenten
-al motor con conexiones reales.
+**Fase 5 — Matemática (en curso).** `backend/core/graph/` calcula, con
+NetworkX/NumPy/SciPy: matriz de adyacencia, matriz de grados, Laplaciano
+(explícito), autovalores/autovectores, embedding espectral, detección de
+comunidades, modularidad, centralidad (grado/intermediación/autovector),
+coeficiente de participación, rich-club y caminos mínimos. Desde el
+28/08/2026 ya está conectado a datos reales: `GET /graph-metrics?atlas_id=...`
+construye el grafo con las regiones y conexiones reales de un atlas (un
+par con peso exactamente 0 se excluye, nunca cuenta como conexión débil)
+y devuelve sus métricas. Probado con la conectividad real de Brainnetome
+(246 nodos, 15 803 aristas, ~3 s): encuentra 3 comunidades y sitúa el
+tálamo como la estructura más central, coherente con la literatura. De
+paso se encontró y corrigió un error real en la centralidad de
+intermediación, que invertía conexiones fuertes y débiles (nunca
+detectado antes porque las pruebas solo usaban pesos uniformes). Total:
+21 pruebas del motor matemático, todas en verde. HCP-MMP1.0 y Gordon 333
+no tienen ninguna conexión cargada todavía, así que ahí el endpoint
+responde pero no aporta nada útil hasta que haya conectividad real que
+analizar.
 
 ## Estructura
 

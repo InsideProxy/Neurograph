@@ -45,6 +45,27 @@ def test_betweenness_is_zero_for_leaf_nodes():
     assert centrality["center"] > 0.0
 
 
+def test_betweenness_centrality_favors_the_strong_weight_path():
+    # A y C solo se conectan por dos caminos: A-B-C (fuerte, peso 10 en
+    # cada tramo) y A-D-C (débil, peso 0.1 en cada tramo). Un peso mayor
+    # es una conexión más fuerte, no un coste mayor -- el camino real
+    # "más corto" es el fuerte (A-B-C), así que toda la intermediación
+    # debe caer en B, ninguna en D. Antes del 28/08/2026 esta función
+    # pasaba el peso tal cual a NetworkX (que lo interpreta como
+    # distancia), así que habría dado justo lo contrario: toda la
+    # intermediación en D.
+    graph = build_graph(
+        ["A", "B", "C", "D"],
+        [
+            Edge("A", "B", 10.0), Edge("B", "C", 10.0),
+            Edge("A", "D", 0.1), Edge("D", "C", 0.1),
+        ],
+    )
+    centrality = betweenness_centrality(graph)
+    assert centrality["B"] > 0.0
+    assert centrality["D"] == 0.0
+
+
 def test_detect_communities_separates_two_clusters():
     graph = _two_clusters_graph()
     communities = detect_communities(graph)

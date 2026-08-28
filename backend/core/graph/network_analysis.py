@@ -14,7 +14,28 @@ def degree_centrality(graph: nx.Graph) -> dict[str, float]:
 
 
 def betweenness_centrality(graph: nx.Graph) -> dict[str, float]:
-    return nx.betweenness_centrality(graph, weight="weight")
+    """Centralidad de intermediación, ponderada por 1/peso -- igual
+    principio que en `shortest_paths` (más abajo): un peso mayor
+    representa una conexión más fuerte, no un coste mayor, así que se
+    invierte antes de que NetworkX busque caminos mínimos.
+
+    Pasar el peso tal cual (como hacía esta función hasta el
+    28/08/2026) le dice a NetworkX que lo trate como una DISTANCIA: una
+    conexión FUERTE (peso alto) se interpretaría entonces como la más
+    LEJANA, justo al revés de lo esperado, y la intermediación
+    terminaría favoreciendo caminos que pasan por conexiones débiles en
+    vez de fuertes. El error nunca se detectó porque las pruebas hasta
+    entonces usaban solo pesos uniformes (1.0): con todos los pesos
+    iguales, invertir o no da el mismo resultado -- solo se manifestó
+    al conectar el motor a datos reales no uniformes (Fase 5,
+    conectividad estructural de Brainnetome). Ver
+    `test_betweenness_centrality_favors_the_strong_weight_path`.
+    """
+    inverted = graph.copy()
+    for _, _, data in inverted.edges(data=True):
+        weight = data.get("weight", 1.0)
+        data["distance"] = 1.0 / weight if weight > 0 else float("inf")
+    return nx.betweenness_centrality(inverted, weight="distance")
 
 
 def eigenvector_centrality(graph: nx.Graph, max_iter: int = 1000) -> dict[str, float]:

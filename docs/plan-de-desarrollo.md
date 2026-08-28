@@ -107,8 +107,31 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   llevar la cita como texto suelto en su nombre — DOI verificados
   directamente en la web del editor (nature.com, academic.oup.com), no
   adivinados. Ver `docs/analisis-arquitectura.md` sección 7.6.
-- **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
-  análisis de redes.
+- **Fase 5 — Matemática (en curso, conectada a datos reales el
+  28/08/2026).** El motor (`backend/core/graph/`: Laplaciano explícito,
+  descomposición espectral, embedding espectral, centralidad de grado/
+  intermediación/autovector, comunidades por modularidad, coeficiente de
+  participación, rich-club) ya existía desde antes con datos de ejemplo;
+  ahora tiene un adaptador real
+  (`backend/core/graph/from_connections.py`) y un endpoint
+  (`GET /graph-metrics?atlas_id=...`) que lo alimenta con las regiones y
+  conexiones reales de un atlas. Un par con `weight` exactamente 0 se
+  excluye del grafo, no se cuenta como arista débil (sobre todo relevante
+  para Brainnetome: casi la mitad de sus 30 135 pares vale 0 exacto, ver
+  sección 7.8 del análisis de arquitectura); un umbral mayor es parámetro
+  explícito de la consulta (`min_weight`), nunca fijo. Probado con la
+  conectividad real de Brainnetome (246 nodos, 15 803 aristas): tarda
+  ~3 s, encuentra 3 comunidades (modularidad 0,38) y sitúa el tálamo
+  como la estructura más central por grado y por intermediación —
+  coherente con su papel de centro de relevo en la literatura, no un
+  número sin sentido. Se encontró y corrigió de paso un error real en
+  `betweenness_centrality()` (riesgo 14): interpretaba el peso de cada
+  conexión como una distancia en vez de como fuerza, invirtiendo qué
+  caminos contaban como "más cortos" — nunca detectado porque las
+  pruebas anteriores solo usaban pesos uniformes. HCP-MMP1.0 y Gordon 333
+  todavía no tienen ninguna conexión cargada: el endpoint responde igual
+  (grafo sin aristas, cada región su propia comunidad), pero no aporta
+  nada hasta que haya conectividad real que analizar en esos dos atlas.
 - **Fase 6 — Literatura.** Ingesta de artículos, extracción estructurada,
   evidencia, referencias, Knowledge Graph.
 - **Fase 7 — Evolución.** Especies, correspondencias, homologías,
