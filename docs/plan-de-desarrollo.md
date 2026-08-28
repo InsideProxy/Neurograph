@@ -32,14 +32,21 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
 - **Fase 3 — Neuroimagen (en curso).** Lector genérico de etiquetas CIFTI
   (`backend/ingestion/neuroimaging/cifti_labels.py`) y primer atlas real
   cargado: HCP-MMP1.0 (Glasser et al., 2016) — especie `Homo sapiens`,
-  atlas y sus 360 regiones corticales (180 por hemisferio, cada una su
-  propia entidad), leídas del `.dlabel.nii` real y verificadas (33 pruebas,
-  incluida una contra el archivo real). Alta generada en
-  `backend/database/seed/register_atlas_hcp_mmp1.sql`. Pendiente:
-  coordenadas (posiciones reales desde las superficies `.surf.gii`),
-  otras parcelaciones del mismo paquete HCP (Gordon333, Cole-Anticevic),
-  y visualización básica en la interfaz con estas regiones reales en vez
-  de datos sintéticos.
+  atlas, sus 360 regiones corticales (180 por hemisferio, cada una su
+  propia entidad) y sus 360 coordenadas reales (vértice de la superficie
+  "midthickness" más cercano al centroide de cada región — nunca un punto
+  interpolado). Espacio de referencia registrado explícitamente como
+  `fsLR_32k_S1200_groupavg_midthickness_MSMAll`, no "MNI" ni "Talairach"
+  (el .surf.gii dice "talairach" en sus metadatos, pero es una convención
+  genérica de HCP, no coordenadas Talairach reales — ver riesgo 5 del
+  análisis de arquitectura). 36 pruebas, incluidas dos contra los archivos
+  reales (con comprobación de que cada hemisferio cae en el signo de x
+  esperado). Alta generada en `backend/database/seed/register_atlas_hcp_mmp1.sql`.
+  Pendiente: otras parcelaciones del mismo paquete HCP (Gordon333,
+  Cole-Anticevic), enlace estructurado atlas→cita bibliográfica (hueco de
+  esquema anotado, no resuelto todavía), y visualización básica en la
+  interfaz con estas regiones y coordenadas reales en vez de datos
+  sintéticos.
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
   matrices, grafos, conectomas.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
