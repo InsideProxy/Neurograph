@@ -10,10 +10,18 @@ decisiones tomadas.
 
 ## Estado del proyecto
 
-**Fase 0 — Entorno.** Repositorio, estructura de módulos, base de datos,
-ontología inicial, sistema de biblioteca SSD y API mínima están
-esqueletizados y probados. Todavía no hay lógica científica implementada:
-eso llega en las fases siguientes (ver `docs/plan-de-desarrollo.md`).
+**Fase 0 — Entorno (hecho).** Repositorio, estructura de módulos, base de
+datos, ontología inicial, sistema de biblioteca SSD y API mínima están
+esqueletizados y probados.
+
+**Fase 1 — Arquitectura (en marcha).** El frontend (Vite + React +
+TypeScript + Three.js + D3) ya renderiza el connectograma y el cerebro 3D
+con datos sintéticos y demuestra la sincronización entre ambas vistas
+(sección 5.3). Falta: esquema definitivo de PostgreSQL con Alembic, y
+decidir el empaquetado de escritorio (Tauri) cuando haya Rust disponible.
+
+Todavía no hay lógica científica real conectada: eso llega en las fases
+siguientes (ver `docs/plan-de-desarrollo.md`).
 
 ## Estructura
 
