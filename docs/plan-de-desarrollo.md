@@ -29,8 +29,17 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   en `dataset.yaml`, fuente de verdad para reproducibilidad. Pendiente:
   atlas Brainnetome (en descarga), y dar de alta cada parcelación del
   paquete HCP como entidad `atlas` propia en la Fase 3.
-- **Fase 3 — Neuroimagen.** NIfTI, atlas, regiones, coordenadas,
-  visualización básica.
+- **Fase 3 — Neuroimagen (en curso).** Lector genérico de etiquetas CIFTI
+  (`backend/ingestion/neuroimaging/cifti_labels.py`) y primer atlas real
+  cargado: HCP-MMP1.0 (Glasser et al., 2016) — especie `Homo sapiens`,
+  atlas y sus 360 regiones corticales (180 por hemisferio, cada una su
+  propia entidad), leídas del `.dlabel.nii` real y verificadas (33 pruebas,
+  incluida una contra el archivo real). Alta generada en
+  `backend/database/seed/register_atlas_hcp_mmp1.sql`. Pendiente:
+  coordenadas (posiciones reales desde las superficies `.surf.gii`),
+  otras parcelaciones del mismo paquete HCP (Gordon333, Cole-Anticevic),
+  y visualización básica en la interfaz con estas regiones reales en vez
+  de datos sintéticos.
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
   matrices, grafos, conectomas.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
