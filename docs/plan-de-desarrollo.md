@@ -15,9 +15,15 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   creada en `E:\NeuroData` (separada del código) con `initialize_library()`
   y SQL de alta generado en `backend/database/seed/register_library_neurodata.sql`.
   Migración 0002 y alta de la biblioteca ya aplicadas y confirmadas en la
-  base de datos real (28/08/2026). Pendiente: indexación real de datasets
-  según vayan llegando datos, y registro de datasets (no solo de la
-  biblioteca) en la base de datos.
+  base de datos real (28/08/2026). Primer dataset real catalogado:
+  `dataset.human.hcp.s1200_groupavg` (HCP S1200 Group Average, vía BALSA),
+  con `dataset.yaml`, checksum SHA-256 verificado y alta generada en
+  `backend/database/seed/register_dataset_hcp_s1200_groupavg.sql`. Nota de
+  diseño: la tabla `datasets` guarda solo identidad/formato/licencia/checksum
+  (consultable); la procedencia narrativa completa vive en `dataset.yaml`,
+  que es la fuente de verdad para reproducibilidad. Pendiente: atlas
+  Brainnetome (en descarga), y dar de alta cada parcelación del paquete HCP
+  como entidad `atlas` propia en la Fase 3.
 - **Fase 3 — Neuroimagen.** NIfTI, atlas, regiones, coordenadas,
   visualización básica.
 - **Fase 4 — Conectividad.** Importación de tractografía ya calculada,
