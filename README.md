@@ -18,9 +18,10 @@ esqueletizados y probados.
 TypeScript + Three.js + D3) renderiza el connectograma y el cerebro 3D con
 datos sintéticos, con filtros (red / tipo de conectividad / peso), panel
 de detalle y codificación visual de nivel de evidencia y dirección
-(secciones 5.1, 5.3, 24), todo sincronizado entre las dos vistas. Falta:
-esquema definitivo de PostgreSQL con Alembic (pendiente de que actives
-Docker), y decidir el empaquetado de escritorio (Tauri) cuando haya Rust
+(secciones 5.1, 5.3, 24), todo sincronizado entre las dos vistas. El
+esquema de PostgreSQL ya está definido y versionado con Alembic
+(`backend/database/migrations/`, ver ese directorio para aplicarlo).
+Falta: decidir el empaquetado de escritorio (Tauri) cuando haya Rust
 disponible.
 
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
