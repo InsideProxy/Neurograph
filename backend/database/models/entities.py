@@ -23,6 +23,12 @@ class Atlas(Base, IdentifiedMixin):
     __tablename__ = "atlases"
     species_id: Mapped[str] = mapped_column(ForeignKey("species.id"))
     version: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Enlace estructurado a la publicación que define el atlas (sección 6):
+    # antes solo vivía como texto suelto dentro de `name`
+    # ("... (Glasser et al., 2016, Nature)"), sin poder consultarse ni
+    # reutilizarse cuando la Fase 6 (literatura) empiece a enlazar más
+    # evidencia al mismo estudio.
+    study_id: Mapped[str | None] = mapped_column(ForeignKey("studies.id"), nullable=True)
 
 
 class Region(Base, IdentifiedMixin):

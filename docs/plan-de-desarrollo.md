@@ -54,10 +54,10 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   (`backend/ingestion/neuroimaging/cole_anticevic_networks.py`), con
   confidence y method registrados por región (nueva tabla
   `region_network_memberships`, migración 0003) — nunca una etiqueta
-  inventada. Confianza real entre 0,74 y 1,0 (media ~0,95). Pendiente:
-  otras parcelaciones del mismo paquete HCP (Gordon333), y enlace
-  estructurado atlas→cita bibliográfica (hueco de esquema anotado, no
-  resuelto todavía).
+  inventada. Confianza real entre 0,74 y 1,0 (media ~0,95). Pendiente: otras
+  parcelaciones del mismo paquete HCP (Gordon333). El enlace
+  estructurado atlas→cita bibliográfica que quedaba pendiente aquí se
+  cerró junto con la Fase 4 (ver más abajo).
 - **Fase 4 — Conectividad (en curso).** Atlas Brainnetome (Fan et al.,
   2016) dado de alta: 246 regiones y coordenadas reales (mismo patrón que
   HCP-MMP1.0, pero volumétrico: vóxel real más cercano al centroide, en
@@ -79,6 +79,12 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   pipelines completos de dMRI (fuera del alcance salvo decisión en
   contra, sección 6), y decidir si merece la pena mapear las redes de
   Cole-Anticevic también sobre Brainnetome.
+  Cierre de cabos sueltos de las Fases 3/4 (28/08/2026): cada atlas ya
+  cargado enlaza ahora de forma estructurada con el `Study` que lo
+  define (columna `atlases.study_id`, migración 0005), en vez de solo
+  llevar la cita como texto suelto en su nombre — DOI verificados
+  directamente en la web del editor (nature.com, academic.oup.com), no
+  adivinados. Ver `docs/analisis-arquitectura.md` sección 7.6.
 - **Fase 5 — Matemática.** Laplacianos, espectro, comunidades, centralidad,
   análisis de redes.
 - **Fase 6 — Literatura.** Ingesta de artículos, extracción estructurada,

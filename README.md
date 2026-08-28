@@ -56,6 +56,12 @@ asumido). Nuevo `GET /connections` y un selector de atlas en el
 frontend (HCP-MMP1.0 con redes, o Brainnetome con conectividad — nunca
 los dos a la vez).
 
+Cierre de cabos sueltos de las Fases 3/4: cada atlas ya cargado enlaza
+ahora de forma estructurada con la publicación que lo define
+(`atlases.study_id`), en vez de solo llevar la cita como texto suelto en
+su nombre — DOI verificados directamente en la web del editor, no
+adivinados.
+
 **Fase 5 — Matemática (adelantada).** `backend/core/graph/` ya calcula,
 con NetworkX/NumPy/SciPy y sin depender de la base de datos: matriz de
 adyacencia, matriz de grados, Laplaciano (explícito), autovalores/
