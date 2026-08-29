@@ -15,7 +15,7 @@
 // las conexiones usan la etiqueta <threeLine> que @react-three/fiber ya
 // expone precisamente para evitar la colisión entre el <line> de three.js
 // y el <line> de SVG en el sistema de tipos de React.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
@@ -65,23 +65,53 @@ function computeCentroid(nodes: GraphNode[]): THREE.Vector3 {
 
 function Controls({ target }: { target: THREE.Vector3 }) {
   const { camera, gl } = useThree();
-  const controls = useMemo(
-    () => new OrbitControls(camera, gl.domElement),
-    [camera, gl]
-  );
+  const controlsRef = useRef<OrbitControls | null>(null);
+
+  // Encontrado y corregido el 29/08/2026 (reportado por la usuaria:
+  // "una dirección aleja el cerebro al mover el ratón, no solo con la
+  // rueda" -- comportamiento errático, no un simple ajuste de
+  // velocidad). La causa: `new OrbitControls(...)` tiene un efecto
+  // secundario real en su propio constructor (engancha listeners de
+  // puntero/rueda al DOM del canvas), y antes se creaba dentro de
+  // `useMemo` -- pero `useMemo` es solo para cálculos puros. En
+  // desarrollo, StrictMode invoca dos veces cualquier cálculo hecho
+  // dentro de useMemo precisamente para detectar este tipo de
+  // impureza: se creaban DOS instancias de OrbitControls enganchadas
+  // al mismo canvas, pero solo la segunda quedaba guardada y con
+  // `dispose()` en su limpieza -- la primera quedaba huérfana, sin
+  // nadie que la desconectara, y seguía moviendo la cámara por su
+  // cuenta en cada arrastre: dos sistemas de coordenadas esféricas
+  // independientes escribiendo sobre la misma cámara a la vez, lo que
+  // se sentía como una dirección que aleja el cerebro de forma
+  // errática. `useEffect` sí tiene un ciclo de limpieza real en
+  // StrictMode (monta -> limpia -> monta de nuevo), así que aquí la
+  // instancia se crea una sola vez de verdad por cada montaje real.
   useEffect(() => {
+    const controls = new OrbitControls(camera, gl.domElement);
     controls.enablePan = false;
     // Límites de zoom: sin ellos, la rueda del ratón puede acercar la
     // cámara casi hasta el plano "near" (todo se recorta) o alejarla
-    // muchísimo (el cerebro se vuelve un punto). No es la causa del
-    // problema reportado, pero es la misma familia de fallo silencioso.
+    // muchísimo (el cerebro se vuelve un punto).
     controls.minDistance = 2;
     controls.maxDistance = 30;
-    controls.target.copy(target);
-    controls.update();
-    return () => controls.dispose();
-  }, [controls, target]);
-  useFrame(() => controls.update());
+    controlsRef.current = controls;
+    return () => {
+      controls.dispose();
+      controlsRef.current = null;
+    };
+  }, [camera, gl]);
+
+  // Sincronizar el objetivo de la cámara es un efecto aparte, separado
+  // de la creación: `target` cambia de identidad cada vez que cambian
+  // los nodos reales (ver computeCentroid más arriba), y no queremos
+  // destruir y recrear los controles -- perdiendo el ángulo de cámara
+  // actual del usuario -- solo porque el centroide se recalculó.
+  useEffect(() => {
+    controlsRef.current?.target.copy(target);
+    controlsRef.current?.update();
+  }, [target]);
+
+  useFrame(() => controlsRef.current?.update());
   return null;
 }
 
