@@ -105,6 +105,8 @@ entidad `Tract` en el grafo (52 = 26 x 2 hemisferios), con conexiones
 tracto -> región (9360, sin umbral, incluido el 75,3% en probabilidad
 exactamente 0.0).
 
+**Cerebelo — distribución de redes, sin voto mayoritario único (29/08/2026).** El tálamo ya estaba cubierto (Brainnetome + tractos corticotalámicos de Yeh); el cerebelo no tenía ninguna conexión. Sin descargar nada nuevo: el archivo de Cole-Anticevic ya usado para las redes de HCP-MMP1.0 trae también redes reales para el cerebelo (100% de sus 17 853 grayordinates). Forzar un único ganador (como se hace para HCP-MMP1.0) sería engañoso aquí — la red mayoritaria del cerebelo apenas llega al 30% — así que se registra la distribución completa (10 de 12 redes por hemisferio, confianzas que suman 1.0).
+
 ## Estructura
 
 ```

@@ -145,3 +145,81 @@ def region_network_assignments(
             )
         )
     return assignments
+
+
+def subcortical_network_distribution(
+    ca_dlabel_path: Path, cifti_structure_name: str, region_id: str
+) -> list[RegionNetworkAssignment]:
+    """Distribución COMPLETA de redes de Cole-Anticevic sobre los
+    grayordinates de una estructura subcortical (identificada por su
+    nombre CIFTI_STRUCTURE_*, ver `hcp_subcortical_structures.py`) --
+    nunca un único ganador por voto mayoritario.
+
+    Decisión (con la usuaria, 29/08/2026, ver
+    docs/analisis-arquitectura.md): a diferencia de
+    `region_network_assignments()` (una región de HCP-MMP1.0,
+    anatómicamente pequeña y funcionalmente homogénea, donde un único
+    ganador con alta confianza es representativo), una estructura como
+    el cerebelo tiene una organización funcional DISTRIBUIDA por
+    diseño -- no hay una única red "verdadera" a la que pertenezca.
+    Comprobado empíricamente sobre el archivo real (29/08/2026): el
+    cerebelo izquierdo reparte sus grayordinates entre las 10 de las 12
+    redes presentes en absoluto, con la red mayoritaria (Frontoparietal)
+    quedándose en apenas ~30% -- forzar un único ganador ocultaría el
+    70% restante de la señal real. Se registra una fila por cada red
+    presente, sin filtrar ninguna por pequeña que sea su fracción
+    (sección 24): `confidence` = fracción de grayordinates de la
+    estructura que caen en esa red.
+    """
+    import nibabel as nib
+
+    img = nib.load(str(ca_dlabel_path))
+    data = img.get_fdata()[0]
+    label_table = img.header.get_axis(0).label[0]
+    index_to_name = {index: name for index, (name, _rgba) in label_table.items()}
+
+    brain_model = img.header.get_axis(1)
+    structure_per_grayordinate = np.asarray(brain_model.name)
+    mask = structure_per_grayordinate == cifti_structure_name
+    n_total = int(mask.sum())
+    if n_total == 0:
+        raise ValueError(
+            f"la estructura {cifti_structure_name!r} no tiene grayordinates en este archivo"
+        )
+
+    values = data[mask]
+    names = [index_to_name[int(v)] for v in values]
+    non_background = [name for name in names if name != _BACKGROUND_LABEL]
+    if not non_background:
+        return []
+
+    networks_by_slug = {net.slug: net for net in read_networks(ca_dlabel_path)}
+    n_with_network = len(non_background)
+    counts = Counter(non_background)
+
+    local_code = region_id.rsplit(".", 1)[-1]
+    assignments: list[RegionNetworkAssignment] = []
+    for network_name, n_network in counts.most_common():
+        network = networks_by_slug[network_slug(network_name)]
+        network_local_code = network.id.rsplit(".", 1)[-1]
+        confidence = n_network / n_with_network
+        membership_id = build_id(
+            EntityType.MEMBERSHIP, "human", "cole-anticevic",
+            f"{local_code}__{network_local_code}",
+        )
+        assignments.append(
+            RegionNetworkAssignment(
+                id=membership_id,
+                region_id=region_id,
+                network_id=network.id,
+                confidence=confidence,
+                method=(
+                    "distribucion_completa_de_grayordinates_sobre_la_particion_"
+                    "cole_anticevic_wsubcorgsr_netassignments_lr_excluyendo_fondo_"
+                    "sin_voto_mayoritario_unico_estructura_funcionalmente_distribuida"
+                ),
+                n_region_vertices=n_total,
+                n_majority_vertices=n_network,
+            )
+        )
+    return assignments
