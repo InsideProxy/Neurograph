@@ -128,10 +128,28 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   `betweenness_centrality()` (riesgo 14): interpretaba el peso de cada
   conexión como una distancia en vez de como fuerza, invirtiendo qué
   caminos contaban como "más cortos" — nunca detectado porque las
-  pruebas anteriores solo usaban pesos uniformes. HCP-MMP1.0 y Gordon 333
-  todavía no tienen ninguna conexión cargada: el endpoint responde igual
-  (grafo sin aristas, cada región su propia comunidad), pero no aporta
-  nada hasta que haya conectividad real que analizar en esos dos atlas.
+  pruebas anteriores solo usaban pesos uniformes. Gordon 333 todavía no
+  tiene ninguna conexión cargada: el endpoint responde igual (grafo sin
+  aristas, cada región su propia comunidad), pero no aporta nada hasta
+  que haya conectividad real que analizar ahí.
+
+  **Conectividad tracto-región sobre HCP-MMP1.0 (29/08/2026).** Tras
+  verificar contra el manual oficial de HCP S1200 que el paquete
+  "Structural Preprocessed" (descargado primero) es solo datos
+  anatómicos, no un connectome, se cargó en su lugar el connectome
+  tracto-región de Yeh FC (2022, *Nature Communications*, DOI
+  10.1038/s41467-022-32595-4): probabilidad poblacional (1065 sujetos)
+  de que cada uno de 26 tractos nombrados atraviese cada una de las 180
+  áreas de HCP-MMP1.0, por hemisferio. No es una matriz región-región;
+  decidido con la usuaria no derivarla por co-ocurrencia (sería un dato
+  inferido por NeuroGraph, no observado por el estudio) — se cargó tal
+  cual, con el tracto como entidad `Tract` propia (52 = 26 x 2
+  hemisferios) y conexiones tracto -> región (9360, sin umbral). Se
+  encontró y corrigió una discrepancia real de nomenclatura entre la
+  matriz y la tabla de abreviaturas del mismo paper ("PTAT"/"C_R" en la
+  matriz frente a "TPAT"/"C_PR" en la tabla — riesgo 15). Se añadió
+  `datasets.study_id` (migración 0006), mismo criterio que
+  `atlases.study_id`.
 - **Fase 6 — Literatura.** Ingesta de artículos, extracción estructurada,
   evidencia, referencias, Knowledge Graph.
 - **Fase 7 — Evolución.** Especies, correspondencias, homologías,

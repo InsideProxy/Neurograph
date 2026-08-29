@@ -134,6 +134,11 @@ class Dataset(Base, IdentifiedMixin, ProvenanceMixin):
     format: Mapped[str] = mapped_column(String, nullable=False)
     license: Mapped[str | None] = mapped_column(String, nullable=True)
     checksum_sha256: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Enlace estructurado a la publicación que distribuye el dataset
+    # (mismo criterio ya aplicado a `Atlas.study_id`, 28/08/2026): antes
+    # la cita solo podia vivir como texto suelto dentro de `name`, sin
+    # poder consultarse ni reutilizarse desde la entidad `Study`.
+    study_id: Mapped[str | None] = mapped_column(ForeignKey("studies.id"), nullable=True)
 
 
 class RegionNetworkMembership(Base, ProvenanceMixin):

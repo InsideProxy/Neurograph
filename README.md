@@ -90,10 +90,20 @@ tálamo como la estructura más central, coherente con la literatura. De
 paso se encontró y corrigió un error real en la centralidad de
 intermediación, que invertía conexiones fuertes y débiles (nunca
 detectado antes porque las pruebas solo usaban pesos uniformes). Total:
-21 pruebas del motor matemático, todas en verde. HCP-MMP1.0 y Gordon 333
-no tienen ninguna conexión cargada todavía, así que ahí el endpoint
-responde pero no aporta nada útil hasta que haya conectividad real que
+21 pruebas del motor matemático, todas en verde. Gordon 333 no tiene
+ninguna conexión cargada todavía, así que ahí el endpoint responde
+pero no aporta nada útil hasta que haya conectividad real que
 analizar.
+
+**Conectividad tracto-región sobre HCP-MMP1.0 (29/08/2026).** Yeh FC
+(2022, *Nature Communications*, DOI 10.1038/s41467-022-32595-4):
+probabilidad poblacional (1065 sujetos) de que cada uno de 26 tractos
+de sustancia blanca nombrados atraviese cada una de las 180 áreas de
+HCP-MMP1.0, por hemisferio. No es una conexión región-región — se
+decidió con la usuaria no inferirla — así que el tracto es su propia
+entidad `Tract` en el grafo (52 = 26 x 2 hemisferios), con conexiones
+tracto -> región (9360, sin umbral, incluido el 75,3% en probabilidad
+exactamente 0.0).
 
 ## Estructura
 
