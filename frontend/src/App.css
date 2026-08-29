@@ -7,8 +7,14 @@
 .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
 
 main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; }
-.panel { flex: 1 1 380px; min-width: 0; }
-.canvas-wrap { width: 100%; height: 420px; border: 1px solid #ddd; border-radius: 8px; }
+/* Antes 380px de base y el cerebro 3D fijo a 420px de alto: tamaño
+   heredado de cuando solo había 8 nodos de demostración (pendiente
+   señalado por la usuaria el 28/08/2026, corregido el 29/08/2026).
+   Ahora ambos paneles usan el espacio disponible de verdad: más
+   base de partida antes de que quepan dos por fila, y una altura
+   que crece con la ventana en vez de un valor fijo. */
+.panel { flex: 1 1 520px; min-width: 0; }
+.canvas-wrap { width: 100%; height: min(70vh, 760px); min-height: 420px; border: 1px solid #ddd; border-radius: 8px; }
 .canvas-error { padding: 1rem; color: #7a1f1f; background: #fdeaea; border-radius: 8px; font-size: 0.9rem; }
 
 .filter-panel, .detail-panel {

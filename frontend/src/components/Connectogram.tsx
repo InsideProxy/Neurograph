@@ -14,7 +14,7 @@
 // ahora solo se dibuja la etiqueta del nodo seleccionado o con el ratón
 // encima; el resto se identifican por color/posición y aparecen al pasar
 // por ellos.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
@@ -28,12 +28,39 @@ interface Props {
   size?: number;
 }
 
-export function Connectogram({ nodes: allNodes, connections: allConnections, size = 420 }: Props) {
+export function Connectogram({ nodes: allNodes, connections: allConnections, size: fixedSize }: Props) {
   const { selectedNodeId, selectedConnectionId, selectNode, selectConnection } =
     useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
+  // Tamaño fijo a 420px heredado de cuando solo había 8 nodos de
+  // demostración (pendiente señalado por la usuaria el 28/08/2026):
+  // el connectograma nunca crecía aunque el panel que lo contiene
+  // tuviera mucho más espacio. Corregido el 29/08/2026: se mide el
+  // ancho real del contenedor con ResizeObserver y se usa ese valor
+  // (acotado entre 320 y 720px, para que siga siendo legible tanto
+  // en una ventana pequeña como en un monitor muy ancho). `size`
+  // sigue existiendo como escape explícito -- si se pasa, gana
+  // siempre sobre la medición automática (p. ej. para pruebas).
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measuredSize, setMeasuredSize] = useState(420);
+
+  useEffect(() => {
+    if (fixedSize !== undefined) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (!width) return;
+      setMeasuredSize(Math.round(Math.max(320, Math.min(width, 720))));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fixedSize]);
+
+  const size = fixedSize ?? measuredSize;
 
   const radius = size / 2 - 40;
   const center = size / 2;
@@ -65,12 +92,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   }, [nodes, angleScale, center, radius]);
 
   return (
+    <div ref={containerRef} style={{ width: "100%" }}>
     <svg
       width={size}
       height={size}
       role="img"
       aria-label="Connectograma"
-      style={{ background: "#fff", borderRadius: 8 }}
+      style={{ background: "#fff", borderRadius: 8, display: "block", margin: "0 auto" }}
     >
       <defs>
         <marker
@@ -158,5 +186,6 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         })}
       </g>
     </svg>
+    </div>
   );
 }

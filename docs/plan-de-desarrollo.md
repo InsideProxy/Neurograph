@@ -157,11 +157,18 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
 - **Fase 8 — Neuropsicología.** Lesiones, funciones, fenotipos,
   asociaciones clínicas.
 - **Fase 9 — Visualizador avanzado.** Connectograma y cerebro 3D completos
-  y sincronizados (secciones 5.1, 5.2, 5.3). Pendiente señalado por la
-  usuaria el 28/08/2026: los paneles del connectograma y del cerebro 3D
-  son demasiado pequeños (tamaño fijo heredado de cuando solo había 8
-  nodos de demostración); ampliarlos es trabajo de diseño de interfaz,
-  pospuesto a esta fase a propósito en vez de parchearlo ahora.
+  y sincronizados (secciones 5.1, 5.2, 5.3). Tamaño de paneles corregido
+  el 29/08/2026 (adelantado, a petición de la usuaria, en vez de esperar
+  a esta fase): `#root` tenía un ancho fijo de 1126px heredado de la
+  plantilla de arranque de Vite, `.canvas-wrap` una altura fija de
+  420px, y el propio `Connectogram` un tamaño interno fijo de 420px que
+  ignoraba el espacio real del panel -- los tres, heredados de cuando
+  solo había 8 nodos de demostración. Ahora `#root` usa el ancho
+  disponible (máx. 1800px), `.canvas-wrap` crece con la ventana
+  (`min(70vh, 760px)`), y `Connectogram` mide su contenedor real con
+  `ResizeObserver` (acotado entre 320 y 720px). Queda pendiente de esta
+  fase el resto: sincronización 2D/3D completa y demás trabajo de
+  interfaz avanzado.
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 

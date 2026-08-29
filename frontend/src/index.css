@@ -46,8 +46,15 @@
 
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  /* Antes fijo a 1126px (medida heredada de la plantilla de arranque de
+     Vite, no una decisión de diseño de NeuroGraph): en cualquier
+     monitor más ancho, la mitad de la pantalla quedaba vacía y el
+     connectograma y el cerebro 3D se apretaban en una franja estrecha.
+     Corregido el 29/08/2026 (pendiente señalado por la usuaria el
+     28/08/2026): ahora usa el ancho disponible, con un límite generoso
+     para no volverse ilegible en monitores ultra-anchos. */
+  width: 100%;
+  max-width: 1800px;
   margin: 0 auto;
   text-align: center;
   border-inline: 1px solid var(--border);
