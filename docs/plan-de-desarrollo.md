@@ -169,6 +169,18 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   `ResizeObserver` (acotado entre 320 y 720px). Queda pendiente de esta
   fase el resto: sincronización 2D/3D completa y demás trabajo de
   interfaz avanzado.
+
+  **Próxima sesión (acordado con la usuaria, 29/08/2026): pasar a diseñar
+  la interfaz.** Punto de partida confirmado en esa conversación (para no
+  perder el hilo entre sesiones): NeuroGraph es un instrumento científico
+  de neuroinformática, no una demo visual — cerebro 3D con tractografía y
+  connectograma 2D sincronizados, cada elemento visual con ID científico
+  trazable hasta su estudio/método/confianza de origen, en apoyo a la
+  investigación sobre homologías cognición-cerebro entre especies. El
+  diseño de interfaz debe partir de ahí: explorar disposición y paneles
+  (posiblemente como mockup visual antes de tocar código de
+  `frontend/`), sin perder la separación exigida en la sección 21 (todo
+  objeto visual debe poder trazarse hasta su evidencia).
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
