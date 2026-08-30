@@ -128,7 +128,7 @@ Se mantienen las diez fases de la especificación, con dos añadidos:
 
 ## 7. Decisiones confirmadas por la usuaria
 
-1. **Stack de interfaz gráfica — Opción A**: web local (Tauri/Electron pendiente de Rust + Three.js + D3), corriendo como servidor Vite de desarrollo mientras tanto.
+1. **Stack de interfaz gráfica — Opción A**: web local (Tauri/Electron pendiente de Rust + Three.js + D3), corriendo como servidor Vite de desarrollo mientras tanto. **Reconfirmado explícitamente por la usuaria el 30/08/2026**, al preguntar cómo usaría el programa otra persona: sigue pendiente empaquetar NeuroGraph como aplicación de escritorio real (Tauri, ya elegido aquí sobre Electron por ser más ligero) en vez de depender de un navegador y de levantar Docker/Vite a mano -- ver el pendiente explícito al cierre de `docs/plan-de-desarrollo.md`.
 2. **Alcance de tractografía — ambos modos, a elección del usuario final.** El modelo de datos de conectividad es el mismo para los dos casos, así que no compromete la arquitectura. Se prioriza primero *importar* tractogramas ya calculados (más simple, cubre el caso de uso inmediato); *ejecutar* pipelines completos de dMRI queda como fase posterior explícita, no como parte del MVP.
 3. **Ubicación del proyecto — carpeta del ordenador de la usuaria**: `E:\Neurograph` (código) separado de `E:\NeuroData` (biblioteca de datos), en el mismo disco por elección explícita de la usuaria.
 4. **Datos de partida — sintéticos primero, ahora datos reales.** Se empezó con datos sintéticos/demo etiquetados explícitamente; a partir de la Fase 2 se están incorporando datos reales (HCP S1200 Group Average vía BALSA, catalogado; Brainnetome, en descarga).

@@ -296,6 +296,29 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
+**Empaquetado y distribución para otras personas (pendiente, señalado por
+la usuaria el 30/08/2026).** Al explicarle la arquitectura completa, surgió
+una pregunta que la especificación original ya anticipaba pero nunca se
+llegó a resolver: hoy NeuroGraph solo corre en el ordenador de la
+usuaria, levantado a mano (`docker compose up`, servidor Vite de
+desarrollo) -- no hay forma de que otra persona lo instale y lo abra sin
+repetir todos esos pasos técnicos. Dos requisitos explícitos que hay que
+abordar, no necesariamente en una fase concreta ya numerada del plan:
+
+1. Empaquetar la aplicación para distribuirla (un instalador o
+   equivalente), en vez de exigir clonar el repositorio y levantar Docker
+   a mano.
+2. Una interfaz que no dependa de abrir un navegador -- la decisión 1 de
+   `docs/analisis-arquitectura.md` ya elegía Tauri para esto desde el
+   principio (frente a Electron, por ser más ligero), pero quedó
+   "pendiente de Rust" y nunca se retomó: el frontend sigue siendo un
+   servidor Vite de desarrollo que se abre en el navegador.
+
+No se ha decidido todavía en qué momento del plan abordar esto (podría
+ir después de completar la Fase 9, o convivir con fases posteriores) --
+queda anotado aquí para no perder el hilo entre sesiones, tal como pidió
+la usuaria, sin comprometerse todavía a una fecha.
+
 Extensión futura explícita (fuera del alcance de las fases 1-10 salvo
 decisión en contra): ejecución de pipelines completos de dMRI→tractografía,
 y mapas funcionales (overlays estadísticos sobre superficie cortical).
