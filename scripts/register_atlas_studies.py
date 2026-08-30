@@ -14,6 +14,8 @@ Uso:
 """
 from __future__ import annotations
 
+import sys
+
 from backend.ontology.schema import EntityType, build_id
 
 STUDIES = [
@@ -72,6 +74,15 @@ def _escape(value: str) -> str:
 
 
 def main() -> int:
+    # Fuerza UTF-8 en stdout aunque se redirija a un archivo en Windows
+    # (bug real, encontrado el 30/08/2026: sin esto, Python usa la
+    # página de códigos del sistema -- cp1252 en el caso de la usuaria --
+    # y un carácter como el guion largo "—" se escribe como un byte que
+    # PostgreSQL luego rechaza con "invalid byte sequence for encoding
+    # \"UTF8\": 0x97" al aplicar el SQL -- ver riesgo 17 de
+    # docs/analisis-arquitectura.md). No depender de que quien ejecute el
+    # script recuerde poner $env:PYTHONUTF8=1 antes.
+    sys.stdout.reconfigure(encoding="utf-8")
     lines = [
         "-- Publicaciones que definen cada atlas ya cargado, enlazadas de",
         "-- forma estructurada (antes solo texto suelto en atlases.name).",

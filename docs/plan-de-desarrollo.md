@@ -265,11 +265,21 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   (acordada el 30/08/2026 sobre el diseño) sigue sin abordarse -- el
   panel `Hemisferios` ya existe como componente real, pero se añadió
   dentro del layout de dos columnas ya existente, no como parte de ese
-  rediseño mayor. Sigue pendiente también aplicar las migraciones 0007 y
-  0008 y re-ejecutar los cuatro scripts de registro de regiones contra
-  la base de datos real de la usuaria (backfill de `abbreviation` y de
-  `hemisphere` a la vez, mismos scripts, instrucciones ya entregadas,
-  todavía no ejecutadas por la usuaria a petición suya).
+  rediseño mayor.
+
+  **Migraciones 0007/0008 y backfill aplicados por la usuaria (30/08/2026).**
+  Las dos migraciones y los cuatro scripts de registro de regiones se
+  ejecutaron contra la base de datos real, confirmado con consultas de
+  recuento por atlas (360/360 HCP-MMP1.0, 246/246 Brainnetome, 333/333
+  Gordon 333, 18/19 subcórtex del HCP -- el 19 restante es el tronco del
+  encéfalo, sin lateralidad real, correcto que quede `NULL`) y con
+  `docker compose up -d --build api` para que la API sirva ambos campos.
+  En el proceso se encontró y corrigió un bug real (riesgo 17 de
+  `docs/analisis-arquitectura.md`): `register_gordon333.py` falló una
+  vez por un guion largo en `ATLAS_NAME` que PowerShell escribió con la
+  página de códigos del sistema en vez de UTF-8 -- corregido en los diez
+  `scripts/register_*.py` con `sys.stdout.reconfigure(encoding="utf-8")`,
+  no solo en el que falló.
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
