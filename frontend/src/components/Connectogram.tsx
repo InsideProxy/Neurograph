@@ -20,6 +20,7 @@ import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
+import { exportSvgAsJpeg } from "../logic/exportImage";
 import { NETWORK_COLORS } from "../theme/networks";
 
 interface Props {
@@ -62,6 +63,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   const size = fixedSize ?? measuredSize;
 
+  // Exportación a JPEG en color sobre fondo blanco (decisión de la
+  // usuaria, 30/08/2026): el SVG ya se dibuja sobre fondo blanco
+  // (style de más abajo), así que basta con serializarlo tal cual --
+  // ver frontend/src/logic/exportImage.ts para el porqué de componer
+  // explícitamente sobre blanco en vez de fiarse solo de ese estilo.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const handleExport = () => {
+    if (svgRef.current) {
+      exportSvgAsJpeg(svgRef.current, `neurograph-connectograma-${Date.now()}.jpg`);
+    }
+  };
+
   const radius = size / 2 - 40;
   const center = size / 2;
 
@@ -93,7 +106,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   return (
     <div ref={containerRef} style={{ width: "100%" }}>
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+      <button type="button" className="export-btn" onClick={handleExport}>
+        Exportar JPEG
+      </button>
+    </div>
     <svg
+      ref={svgRef}
       width={size}
       height={size}
       role="img"

@@ -23,6 +23,7 @@ import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
+import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { NETWORK_COLORS } from "../theme/networks";
 
 // Registro explícito de <threeLine> bajo la clave 'ThreeLine' del
@@ -134,6 +135,36 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
     canvas.addEventListener("webglcontextlost", handleLost);
     return () => canvas.removeEventListener("webglcontextlost", handleLost);
   }, [gl, onLost]);
+  return null;
+}
+
+// Puente para exportar el frame actual del canvas WebGL a JPEG en color
+// sobre fondo blanco (sección 20; decisión de la usuaria, 30/08/2026,
+// ver docs/analisis-arquitectura.md): react-three-fiber no expone
+// gl/scene/camera fuera del árbol de <Canvas>, así que este componente
+// vive dentro de él solo para guardar una función de exportación en el
+// ref que le pasa Brain3D. Leer el canvas tal cual se ve en pantalla
+// capturaría su fondo transparente (o el que tenga cuando exista un
+// tema oscuro) -- para que la imagen sirva como figura de paper, se
+// fuerza primero un frame con color de fondo blanco opaco, se lee el
+// canvas, y se restaura el fondo original para no alterar lo que ve la
+// usuaria en pantalla.
+function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null } }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    exportRef.current = () => {
+      const previousClearColor = gl.getClearColor(new THREE.Color());
+      const previousClearAlpha = gl.getClearAlpha();
+      gl.setClearColor("#ffffff", 1);
+      gl.render(scene, camera);
+      exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
+      gl.setClearColor(previousClearColor, previousClearAlpha);
+      gl.render(scene, camera);
+    };
+    return () => {
+      exportRef.current = null;
+    };
+  }, [gl, scene, camera, exportRef]);
   return null;
 }
 
@@ -257,6 +288,8 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   // Centroide de TODOS los nodos (no solo los visibles tras filtrar): así
   // el punto de giro no salta cada vez que se oculta o muestra una red.
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
+  const exportRef = useRef<(() => void) | null>(null);
+  const handleExport = () => exportRef.current?.();
 
   if (contextLost) {
     return (
@@ -269,7 +302,26 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   }
 
   return (
+    <>
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, flex: "0 0 auto" }}>
+      <button type="button" className="export-btn" onClick={handleExport}>
+        Exportar JPEG
+      </button>
+    </div>
+    {/* flex:1 + minHeight:0: canvas-wrap ahora es una columna flex (ver
+        App.css) para que este panel comparta altura con el botón de
+        arriba en vez de desbordar el contenedor de altura fija --
+        minHeight:0 es necesario porque un hijo flex por defecto no se
+        encoge por debajo de su contenido, y el <Canvas> de r3f no tiene
+        una altura de contenido intrínseca útil aquí. */}
+    <div style={{ flex: "1 1 auto", minHeight: 0 }}>
     <Canvas
+      // preserveDrawingBuffer: sin esto, no hay garantía de que el
+      // contenido siga en el búfer de dibujo en el momento de leerlo
+      // con toBlob/toDataURL (el navegador puede limpiarlo antes del
+      // siguiente frame) -- necesario para que la exportación a JPEG
+      // sea fiable en vez de "funciona a veces".
+      gl={{ preserveDrawingBuffer: true }}
       camera={{ position: [0, 0, 6], fov: 45 }}
       onCreated={({ gl }) => {
         gl.domElement.addEventListener(
@@ -283,6 +335,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
       <pointLight position={[5, 5, 5]} intensity={60} />
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
+      <ExportBridge exportRef={exportRef} />
       {nodes.map((node) => (
         <NodeMesh key={node.id} node={node} />
       ))}
@@ -307,5 +360,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
         );
       })}
     </Canvas>
+    </div>
+    </>
   );
 }

@@ -170,17 +170,37 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   fase el resto: sincronización 2D/3D completa y demás trabajo de
   interfaz avanzado.
 
-  **Próxima sesión (acordado con la usuaria, 29/08/2026): pasar a diseñar
-  la interfaz.** Punto de partida confirmado en esa conversación (para no
-  perder el hilo entre sesiones): NeuroGraph es un instrumento científico
-  de neuroinformática, no una demo visual — cerebro 3D con tractografía y
-  connectograma 2D sincronizados, cada elemento visual con ID científico
-  trazable hasta su estudio/método/confianza de origen, en apoyo a la
-  investigación sobre homologías cognición-cerebro entre especies. El
-  diseño de interfaz debe partir de ahí: explorar disposición y paneles
-  (posiblemente como mockup visual antes de tocar código de
-  `frontend/`), sin perder la separación exigida en la sección 21 (todo
-  objeto visual debe poder trazarse hasta su evidencia).
+  **Diseño de interfaz (en curso, iniciado 30/08/2026).** Punto de
+  partida confirmado con la usuaria (para no perder el hilo entre
+  sesiones): NeuroGraph es un instrumento científico de neuroinformática,
+  no una demo visual — cada elemento visual con ID científico trazable
+  hasta su estudio/método/confianza de origen, en apoyo a la
+  investigación sobre homologías cognición-cerebro entre especies. Se
+  construyó un boceto interactivo (herramienta de diseño de Claude, no
+  código de `frontend/` todavía) para decidir la disposición antes de
+  implementar. Decisión de la usuaria sobre la disposición: TRES paneles
+  visuales, no dos -- (1) connectograma circular, (2) una vista 2D de
+  hemisferios separados (se mantiene explícitamente, es útil para mostrar
+  especialización hemisférica -- ya no es un simple sustituto del 3D),
+  y (3) un panel de cerebro 3D navegable, del doble de tamaño que los
+  otros dos, que muestra en cada momento SOLO la red de conectividad del
+  nodo o la conexión seleccionados (no el grafo completo) -- una vista de
+  foco, no de conjunto. En el connectograma circular, el nombre de la
+  región ya no aparece flotando junto al nodo (se salía del recuadro con
+  180-360 regiones reales): vive en un recuadro de lectura fijo debajo
+  del diagrama. Pendiente de esta fase: implementar en código real los
+  tres paneles y la vista de foco del 3D (hoy sigue habiendo un único
+  `Brain3D` que dibuja el grafo completo).
+
+  **Exportación a JPEG (implementado en código real, 30/08/2026, no solo
+  en el boceto).** A petición explícita de la usuaria -- necesita poder
+  exportar cada visualización en color sobre fondo blanco para usarla
+  como figura de paper o de la tesis --, se implementó de verdad en
+  `frontend/src/logic/exportImage.ts` y se conectó a `Connectogram.tsx` y
+  `Brain3D.tsx` (ver decisión 11 de `docs/analisis-arquitectura.md` para
+  el detalle técnico). Cuando se construyan los paneles nuevos de
+  hemisferios y de foco 3D, deben reutilizar las mismas funciones en vez
+  de reimplementar la exportación.
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
