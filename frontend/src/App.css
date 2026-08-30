@@ -38,3 +38,16 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .detail-panel dd { margin: 0.1rem 0 0; }
 .detail-panel ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
 .detail-panel--empty { color: #777; font-style: italic; }
+/* Modo de selección múltiple (30/08/2026): leyenda exportable + listas de
+   conectividad inducida y tractos con nombre, ver DetailPanel.tsx. */
+.detail-panel h3 { font-size: 0.82rem; font-weight: 600; color: #444; margin: 0.9rem 0 0.3rem; border-top: 1px solid #e5e5e5; padding-top: 0.6rem; }
+.detail-panel__legend-header { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #666; }
+.detail-panel__empty-note { color: #777; font-size: 0.82rem; margin: 0.2rem 0 0; }
+.detail-panel__no-citation { color: #999; font-size: 0.78rem; font-style: italic; margin-top: 2px; }
+
+/* Recuadro de lectura fijo bajo el connectograma (30/08/2026): el nombre
+   de la región nunca flota junto al ratón/nodo -- vive aquí, con altura
+   mínima fija para que el resto del panel no salte al cambiar de texto. */
+.connectogram-readout { min-height: 2.4em; margin-top: 6px; padding: 6px 8px; background: #f7f7f7; border: 1px solid #eee; border-radius: 6px; font-size: 0.82rem; color: #222; }
+.connectogram-readout__placeholder { color: #888; font-style: italic; }
+.connectogram-readout__legend ul { margin: 4px 0 0; padding-left: 1.1rem; max-height: 8em; overflow-y: auto; }

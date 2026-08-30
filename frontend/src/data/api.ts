@@ -3,7 +3,7 @@
 // datos), quien llama debe caer de vuelta a los datos de demostración —
 // nunca mezclar ambos en la misma vista (sección 24: nunca presentar lo
 // real y lo ilustrativo como si fueran lo mismo).
-import type { GraphConnection, GraphNode } from "../types/domain";
+import type { GraphConnection, GraphNode, InducedTract } from "../types/domain";
 
 const API_BASE_URL = "http://127.0.0.1:8420";
 
@@ -18,6 +18,7 @@ const DISPLAY_SCALE = 1 / 40;
 interface ApiRegionNode {
   id: string;
   label: string;
+  abbreviation: string | null;
   network: string;
   position3d: [number, number, number];
   reference_space: string;
@@ -35,6 +36,7 @@ export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
   return rows.map((row) => ({
     id: row.id,
     label: row.label,
+    abbreviation: row.abbreviation,
     network: row.network,
     position3d: row.position3d.map((v) => v * DISPLAY_SCALE) as [number, number, number],
   }));
@@ -65,5 +67,58 @@ export async function fetchRealConnections(atlasId?: string): Promise<GraphConne
     type: row.type,
     weight: row.weight,
     evidenceLevel: row.evidenceLevel,
+  }));
+}
+
+
+interface ApiTractCitation {
+  id: string;
+  name: string;
+  doi: string | null;
+  year: number | null;
+}
+
+interface ApiInducedTract {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  region_ids: string[];
+  studies: ApiTractCitation[];
+}
+
+interface ApiInducedConnectivity {
+  region_ids: string[];
+  connections: ApiConnectionEdge[];
+  tracts: ApiInducedTract[];
+}
+
+// Tractos con nombre (Yeh 2022) que tocan dos o más de las regiones
+// seleccionadas, con su cita real -- ver GET /connectivity/induced y
+// decisión 13 de docs/analisis-arquitectura.md. Solo tiene sentido con
+// datos reales: en modo demostración no existe ningún tracto real que
+// consultar, así que quien llama nunca debe invocar esto con datos de
+// demostración (App.tsx lo respeta).
+export async function fetchInducedTracts(regionIds: string[]): Promise<InducedTract[]> {
+  if (regionIds.length < 2) return [];
+
+  const url = new URL("/connectivity/induced", API_BASE_URL);
+  for (const id of regionIds) url.searchParams.append("region_ids", id);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`la API respondió ${response.status}`);
+  }
+  const data: ApiInducedConnectivity = await response.json();
+  return data.tracts.map((tract) => ({
+    id: tract.id,
+    name: tract.name,
+    abbreviation: tract.abbreviation,
+    regionIds: tract.region_ids,
+    studies: tract.studies.map((study) => ({
+      id: study.id,
+      name: study.name,
+      doi: study.doi,
+      year: study.year,
+    })),
   }));
 }

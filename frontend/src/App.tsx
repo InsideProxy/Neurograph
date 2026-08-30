@@ -134,7 +134,11 @@ export default function App() {
             </div>
           </section>
         </main>
-        <DetailPanel nodes={source.nodes} connections={source.connections} />
+        <DetailPanel
+          nodes={source.nodes}
+          connections={source.connections}
+          canFetchTracts={source.kind === "real"}
+        />
       </div>
     </div>
   );

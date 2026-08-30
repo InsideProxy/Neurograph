@@ -7,6 +7,11 @@
 export interface GraphNode {
   id: string; // identificador científico estable, ej. "region.human.hcp-mmp1.area44"
   label: string;
+  // Código corto para dibujar junto al nodo (p. ej. "V1"), migración
+  // 0007 del backend. `null` cuando la ingesta de este atlas todavía no
+  // lo tiene calculado/registrado -- nunca se inventa uno a partir de
+  // `label` (sección 24).
+  abbreviation: string | null;
   network: string;
   position3d: [number, number, number];
 }
@@ -23,4 +28,25 @@ export interface GraphConnection {
   // una hipótesis nunca deben mostrarse igual. "direct" = línea continua;
   // "indirect"/"hypothetical" = línea discontinua (sección 5.1).
   evidenceLevel: EvidenceLevel;
+}
+
+// Cita real de un estudio que respalda un tracto (nunca una referencia
+// genérica ni inventada -- sección 24). `doi`/`year` pueden ser `null`
+// si el estudio real todavía no los tiene registrados.
+export interface StudyCitation {
+  id: string;
+  name: string;
+  doi: string | null;
+  year: number | null;
+}
+
+// Un tracto con nombre (Yeh 2022) que toca dos o más regiones de la
+// selección múltiple actual -- ver GET /connectivity/induced y decisión
+// 13 de docs/analisis-arquitectura.md.
+export interface InducedTract {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  regionIds: string[];
+  studies: StudyCitation[];
 }

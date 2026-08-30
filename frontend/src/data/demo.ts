@@ -7,14 +7,14 @@
 import type { GraphConnection, GraphNode } from "../types/domain";
 
 export const DEMO_NODES: GraphNode[] = [
-  { id: "region.human.demo.prefrontal", label: "Corteza Prefrontal", network: "executive", position3d: [0, 2.2, 1.2] },
-  { id: "region.human.demo.episodic_memory", label: "Memoria Episódica", network: "memory", position3d: [1.6, 0.5, -0.8] },
-  { id: "region.human.demo.attention", label: "Sistema Atencional", network: "attention", position3d: [-1.6, 0.8, 0.6] },
-  { id: "region.human.demo.limbic", label: "Sistema Límbico", network: "limbic", position3d: [0.8, -1.4, -0.6] },
-  { id: "region.human.demo.language", label: "Lenguaje", network: "language", position3d: [1.8, -0.6, 0.9] },
-  { id: "region.human.demo.executive_control", label: "Control Ejecutivo", network: "executive", position3d: [-0.4, -1.8, 1.0] },
-  { id: "region.human.demo.vision", label: "Visión", network: "sensory", position3d: [-1.6, -1.0, -0.7] },
-  { id: "region.human.demo.motor", label: "Moción y Acción", network: "motor", position3d: [-1.8, 0.4, -1.0] },
+  { id: "region.human.demo.prefrontal", label: "Corteza Prefrontal", abbreviation: "PFC", network: "executive", position3d: [0, 2.2, 1.2] },
+  { id: "region.human.demo.episodic_memory", label: "Memoria Episódica", abbreviation: "MEP", network: "memory", position3d: [1.6, 0.5, -0.8] },
+  { id: "region.human.demo.attention", label: "Sistema Atencional", abbreviation: "ATN", network: "attention", position3d: [-1.6, 0.8, 0.6] },
+  { id: "region.human.demo.limbic", label: "Sistema Límbico", abbreviation: "LMB", network: "limbic", position3d: [0.8, -1.4, -0.6] },
+  { id: "region.human.demo.language", label: "Lenguaje", abbreviation: "LNG", network: "language", position3d: [1.8, -0.6, 0.9] },
+  { id: "region.human.demo.executive_control", label: "Control Ejecutivo", abbreviation: "EC", network: "executive", position3d: [-0.4, -1.8, 1.0] },
+  { id: "region.human.demo.vision", label: "Visión", abbreviation: "VIS", network: "sensory", position3d: [-1.6, -1.0, -0.7] },
+  { id: "region.human.demo.motor", label: "Moción y Acción", abbreviation: "MOT", network: "motor", position3d: [-1.8, 0.4, -1.0] },
 ];
 
 export const DEMO_CONNECTIONS: GraphConnection[] = [

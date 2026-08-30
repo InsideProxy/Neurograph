@@ -14,7 +14,10 @@
 // rapier, etc.) que no necesitamos en este esqueleto. Por la misma razón,
 // las conexiones usan la etiqueta <threeLine> que @react-three/fiber ya
 // expone precisamente para evitar la colisión entre el <line> de three.js
-// y el <line> de SVG en el sistema de tipos de React.
+// y el <line> de SVG en el sistema de tipos de React, y las etiquetas de
+// abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
+// propia (src/logic/textSprite.ts) en vez de troika-three-text o
+// @react-three/drei <Text> -- mismo criterio.
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -23,7 +26,9 @@ import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
+import { inducedConnections } from "../logic/induced";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
+import { getLabelTexture } from "../logic/textSprite";
 import { NETWORK_COLORS } from "../theme/networks";
 
 // Registro explícito de <threeLine> bajo la clave 'ThreeLine' del
@@ -168,21 +173,50 @@ function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null
   return null;
 }
 
-function NodeMesh({ node }: { node: GraphNode }) {
-  const { selectedNodeId, selectNode } = useSelectionStore();
-  const isSelected = selectedNodeId === node.id;
+// Etiqueta de abreviatura junto al nodo (decisión de la usuaria,
+// 30/08/2026: la abreviatura debe aparecer en el propio dibujo, no solo
+// al seleccionar/pasar el ratón). `<sprite>` mira siempre a la cámara
+// por definición (billboard), así que el texto nunca queda de canto.
+// Se omite por completo cuando la región no tiene abreviatura registrada
+// todavía (atlas sin backfill de la migración 0007): nunca se inventa
+// una a partir de `label`.
+function NodeLabel({ node }: { node: GraphNode }) {
+  // useMemo va antes que cualquier retorno condicional (regla de los
+  // hooks: el orden de llamada no puede depender de datos) -- por eso
+  // el texto de repuesto "" en vez de omitir la llamada cuando no hay
+  // abreviatura; getLabelTexture("") solo se pide una vez por caché.
+  const texture = useMemo(() => getLabelTexture(node.abbreviation ?? ""), [node.abbreviation]);
+  if (!node.abbreviation) return null;
+  const position: [number, number, number] = [
+    node.position3d[0],
+    node.position3d[1] + 0.15,
+    node.position3d[2],
+  ];
   return (
-    <mesh position={node.position3d} onClick={() => selectNode(node.id)}>
-      {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
-          segmento de más cuesta 360 veces más caro que en la demo de 8
-          nodos. Sigue viéndose redondo a esta escala. */}
-      <sphereGeometry args={[isSelected ? 0.16 : 0.11, 14, 14]} />
-      <meshStandardMaterial
-        color={NETWORK_COLORS[node.network] ?? "#888"}
-        emissive={isSelected ? "#ffffff" : "#000000"}
-        emissiveIntensity={isSelected ? 0.4 : 0}
-      />
-    </mesh>
+    <sprite position={position} scale={[0.32, 0.13, 1]}>
+      <spriteMaterial map={texture} transparent depthWrite={false} sizeAttenuation />
+    </sprite>
+  );
+}
+
+function NodeMesh({ node }: { node: GraphNode }) {
+  const { selectedNodeIds, toggleNode } = useSelectionStore();
+  const isSelected = selectedNodeIds.has(node.id);
+  return (
+    <>
+      <mesh position={node.position3d} onClick={() => toggleNode(node.id)}>
+        {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
+            segmento de más cuesta 360 veces más caro que en la demo de 8
+            nodos. Sigue viéndose redondo a esta escala. */}
+        <sphereGeometry args={[isSelected ? 0.16 : 0.11, 14, 14]} />
+        <meshStandardMaterial
+          color={NETWORK_COLORS[node.network] ?? "#888"}
+          emissive={isSelected ? "#ffffff" : "#000000"}
+          emissiveIntensity={isSelected ? 0.4 : 0}
+        />
+      </mesh>
+      <NodeLabel node={node} />
+    </>
   );
 }
 
@@ -280,9 +314,15 @@ interface Props {
 }
 
 export function Brain3D({ nodes: allNodes, connections: allConnections }: Props) {
-  const { selectedNodeId, selectedConnectionId, selectConnection } = useSelectionStore();
+  const { selectedNodeIds, selectedConnectionId, selectConnection } = useSelectionStore();
   const filters = useFiltersStore();
-  const { nodes, connections } = filterGraph(allNodes, allConnections, filters);
+  const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
+  // Igual que en Connectogram.tsx: con dos o más nodos seleccionados, se
+  // dibuja solo la conectividad ENTRE ellos, no todo el grafo filtrado
+  // (decisión de la usuaria, 30/08/2026).
+  const induced = inducedConnections(filteredConnections, selectedNodeIds);
+  const connections = induced ?? filteredConnections;
+  const isInducedView = induced !== null;
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const [contextLost, setContextLost] = useState(false);
   // Centroide de TODOS los nodos (no solo los visibles tras filtrar): así
@@ -344,9 +384,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
         const b = nodeById.get(conn.target);
         if (!a || !b) return null;
         const isSelected =
+          isInducedView ||
           selectedConnectionId === conn.id ||
-          selectedNodeId === conn.source ||
-          selectedNodeId === conn.target;
+          selectedNodeIds.has(conn.source) ||
+          selectedNodeIds.has(conn.target);
         return (
           <ConnectionLine
             key={conn.id}

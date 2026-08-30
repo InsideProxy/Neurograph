@@ -203,29 +203,49 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   de reimplementar la exportación.
 
   **Implementación real de abreviaturas, selección múltiple y tractos
-  con literatura (en curso, iniciado 30/08/2026).** Petición explícita
-  de la usuaria: "es un programa de investigación, no de ilustración o
-  divulgación". Alcance completo: abreviatura en el dibujo + nombre
-  completo en el recuadro; leyenda exportable de abreviaturas; selección
-  de TODOS los nodos que el usuario quiera a la vez (clic normal
-  añade/quita, decisión de la usuaria); conectividad inducida entre los
-  seleccionados; y, si forman parte de algún tracto con nombre, su
-  literatura. Backend ya completo y verificado (ver decisiones 12 y 13
-  de `docs/analisis-arquitectura.md`): columna `abbreviation` en
+  con literatura (30/08/2026, completa salvo un pendiente explícito).**
+  Petición de la usuaria: "es un programa de investigación, no de
+  ilustración o divulgación". Backend completo y verificado (decisiones
+  12 y 13 de `docs/analisis-arquitectura.md`): columna `abbreviation` en
   `regions`/`tracts` (migración 0007) con backfill vía los propios
   scripts de registro re-ejecutados; `RegionNode.abbreviation` expuesto
-  en `GET /regions`; nuevo endpoint `GET /connectivity/induced`
-  (conexiones región-región entre la selección + tractos de Yeh 2022 que
-  tocan dos o más regiones seleccionadas, cada uno con su cita real).
-  101 tests de backend en verde (`pytest`). Pendiente de esta tarea:
-  aplicar la migración 0007 y re-ejecutar los scripts de registro contra
-  la base de datos real de la usuaria (backfill); TODO el frontend --
-  `frontend/src/state/selection.ts` a selección múltiple, tipo
-  `GraphNode.abbreviation`, abreviatura visible en `Connectogram.tsx` y
-  `Brain3D.tsx`, el panel `Hemisferios` 2D todavía no existe como
-  componente real, `DetailPanel.tsx` con modo multi-selección + leyenda
-  + tractos/literatura, y la leyenda exportable (extensión de
-  `exportImage.ts`, todavía sin diseñar).
+  en `GET /regions`; endpoint `GET /connectivity/induced` (conexiones
+  región-región entre la selección + tractos de Yeh 2022 que tocan dos o
+  más regiones seleccionadas, cada uno con su cita real). Frontend
+  completo también (decisión 14): `frontend/src/state/selection.ts` con
+  selección múltiple real (`Set<string>`, clic normal añade/quita);
+  `Connectogram.tsx` y `Brain3D.tsx` muestran solo la conectividad
+  inducida ENTRE las regiones elegidas en cuanto hay dos o más
+  seleccionadas (`frontend/src/logic/induced.ts`, calculado en el propio
+  frontend, sin petición nueva); la abreviatura se dibuja de forma
+  permanente en los dos paneles (en el 3D, con un `<sprite>` de textura
+  cacheada, `frontend/src/logic/textSprite.ts`) y el nombre completo
+  vive en un recuadro de lectura fijo bajo el connectograma, nunca
+  flotando; `DetailPanel.tsx` tiene un modo de selección múltiple con
+  leyenda exportable a JPEG (reutiliza `exportImage.ts`), la lista de
+  conectividad real entre las regiones elegidas, y los tractos con
+  nombre + su cita real (o un aviso explícito de que no hay cita
+  todavía, nunca una inventada) vía `GET /connectivity/induced` -- solo
+  con datos reales, nunca en modo demostración. 101 tests de backend en
+  verde (`pytest`); frontend verificado con `npx tsc -b` (limpio, cero
+  errores) -- `vitest`/`vite build` siguen sin poder ejecutarse en este
+  entorno (limitación de plataforma ya documentada).
+
+  Pendiente explícito, señalado como riesgo abierto en la decisión 14:
+  la usuaria todavía no ha visto ni confirmado visualmente ninguno de
+  estos cambios (no se pudo verificar con `vitest`/`vite build`); y las
+  etiquetas 3D permanentes podrían afectar al rendimiento con un atlas
+  grande (360 regiones) -- si pasa, la solución más simple es mostrar
+  las etiquetas del cerebro 3D solo en selección/hover, como ya hacía el
+  connectograma antes de esta tarea. El panel `Hemisferios` 2D del
+  diseño de tres paneles (acordado el 30/08/2026 sobre el layout) sigue
+  sin existir como componente real -- fuera del alcance de esta tarea
+  concreta, que se centró en selección múltiple + abreviaturas +
+  tractos/literatura sobre los dos paneles ya existentes. Sigue
+  pendiente también aplicar la migración 0007 y re-ejecutar los scripts
+  de registro contra la base de datos real de la usuaria (backfill,
+  instrucciones ya entregadas, todavía no ejecutadas por la usuaria a
+  petición suya).
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 
