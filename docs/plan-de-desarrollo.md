@@ -202,8 +202,9 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   hemisferios y de foco 3D, deben reutilizar las mismas funciones en vez
   de reimplementar la exportación.
 
-  **Implementación real de abreviaturas, selección múltiple y tractos
-  con literatura (30/08/2026, completa salvo un pendiente explícito).**
+  **Implementación real de abreviaturas, selección múltiple, tractos
+  con literatura y panel de hemisferios (30/08/2026, completa salvo un
+  pendiente explícito).**
   Petición de la usuaria: "es un programa de investigación, no de
   ilustración o divulgación". Backend completo y verificado (decisiones
   12 y 13 de `docs/analisis-arquitectura.md`): columna `abbreviation` en
@@ -226,10 +227,32 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   conectividad real entre las regiones elegidas, y los tractos con
   nombre + su cita real (o un aviso explícito de que no hay cita
   todavía, nunca una inventada) vía `GET /connectivity/induced` -- solo
-  con datos reales, nunca en modo demostración. 101 tests de backend en
-  verde (`pytest`); frontend verificado con `npx tsc -b` (limpio, cero
-  errores) -- `vitest`/`vite build` siguen sin poder ejecutarse en este
-  entorno (limitación de plataforma ya documentada).
+  con datos reales, nunca en modo demostración.
+
+  **Panel `Hemisferios.tsx` (decisión 15 de `docs/analisis-arquitectura.md`).**
+  Petición explícita de la usuaria de continuación a esta misma tarea:
+  "ha de ilustrar sobre todo la diferencia entre la conectividad inter
+  hemisferial e intrahemisferial". Columna `regions.hemisphere`
+  (migración 0008, mismo patrón de backfill que `abbreviation`, `NULL`
+  tanto para lo todavía no backfillado como para estructuras reales sin
+  lateralidad -- el tronco del encéfalo del subcórtex del HCP); vista
+  axial esquemática (dos elipses IZQUIERDO/DERECHO, eje anteroposterior
+  en vertical) con la posición dentro de cada elipse calculada a partir
+  de coordenadas reales (x para medial-lateral, y para anteroposterior,
+  ambas normalizadas contra el rango real de los datos cargados, nunca
+  un rango inventado); color verde/rojo para intra/inter-hemisférica
+  como codificación principal, con una estadística de recuento
+  destacada, superpuesto sobre el trazo discontinuo (evidencia no
+  directa) y la flecha (conectividad efectiva) ya obligatorios en el
+  resto de la aplicación. Añadido como tercer panel dentro del layout
+  existente de `App.tsx`, sin abordar todavía la restructuración a un
+  layout de tres paneles con cerebro 3D grande centrado en la selección.
+
+  104 tests de backend en verde (`pytest`, 3 nuevos de esta continuación:
+  dos en `test_regions.py`, uno en `test_hcp_subcortical_structures.py`);
+  frontend verificado con `npx tsc -b --force` (limpio, cero errores) --
+  `vitest`/`vite build` siguen sin poder ejecutarse en este entorno
+  (limitación de plataforma ya documentada).
 
   Pendiente explícito, señalado como riesgo abierto en la decisión 14:
   la usuaria todavía no ha visto ni confirmado visualmente ninguno de
@@ -237,15 +260,16 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   etiquetas 3D permanentes podrían afectar al rendimiento con un atlas
   grande (360 regiones) -- si pasa, la solución más simple es mostrar
   las etiquetas del cerebro 3D solo en selección/hover, como ya hacía el
-  connectograma antes de esta tarea. El panel `Hemisferios` 2D del
-  diseño de tres paneles (acordado el 30/08/2026 sobre el layout) sigue
-  sin existir como componente real -- fuera del alcance de esta tarea
-  concreta, que se centró en selección múltiple + abreviaturas +
-  tractos/literatura sobre los dos paneles ya existentes. Sigue
-  pendiente también aplicar la migración 0007 y re-ejecutar los scripts
-  de registro contra la base de datos real de la usuaria (backfill,
-  instrucciones ya entregadas, todavía no ejecutadas por la usuaria a
-  petición suya).
+  connectograma antes de esta tarea. La restructuración a un layout de
+  tres paneles con un cerebro 3D grande centrado en la selección
+  (acordada el 30/08/2026 sobre el diseño) sigue sin abordarse -- el
+  panel `Hemisferios` ya existe como componente real, pero se añadió
+  dentro del layout de dos columnas ya existente, no como parte de ese
+  rediseño mayor. Sigue pendiente también aplicar las migraciones 0007 y
+  0008 y re-ejecutar los cuatro scripts de registro de regiones contra
+  la base de datos real de la usuaria (backfill de `abbreviation` y de
+  `hemisphere` a la vez, mismos scripts, instrucciones ya entregadas,
+  todavía no ejecutadas por la usuaria a petición suya).
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 

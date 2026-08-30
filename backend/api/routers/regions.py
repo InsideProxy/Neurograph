@@ -22,6 +22,11 @@ class RegionNode(BaseModel):
     id: str
     label: str
     abbreviation: str | None
+    # "L", "R" o None -- migración 0008. None cuando la ingesta de este
+    # atlas todavía no lo tiene backfillado, o cuando la propia región no
+    # tiene lateralidad real (p. ej. el tronco del encéfalo): nunca se
+    # infiere del signo de la coordenada x (ver region_to_node).
+    hemisphere: str | None
     network: str
     position3d: tuple[float, float, float]
     reference_space: str
@@ -57,6 +62,11 @@ def region_to_node(region: Region, coordinate: Coordinate, network: Network | No
         # abreviatura (migracion 0007) -- nunca se inventa una a partir
         # del nombre completo.
         abbreviation=region.abbreviation,
+        # Igual criterio que abbreviation, pero migracion 0008: None
+        # puede significar "todavia no backfillado" o "esta region no
+        # tiene lateralidad real" -- en ningun caso se adivina a partir
+        # de la coordenada.
+        hemisphere=region.hemisphere,
         network=network_slug,
         position3d=(coordinate.x, coordinate.y, coordinate.z),
         reference_space=coordinate.reference_space,

@@ -105,6 +105,7 @@ class HcpSubcorticalRegion:
     name: str
     abbreviation: str  # = local_code(structure), p. ej. "l_amygdala"
     cifti_structure_name: str
+    hemisphere: str | None  # "L", "R" o None (tronco del encéfalo, sin lateralidad)
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,7 @@ def read_hcp_subcortical_regions() -> list[HcpSubcorticalRegion]:
             name=region_name(s),
             abbreviation=local_code(s),
             cifti_structure_name=s.cifti_structure_name,
+            hemisphere=s.hemisphere,
         )
         for s in known_structures()
     ]

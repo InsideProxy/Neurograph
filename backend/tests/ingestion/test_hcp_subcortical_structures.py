@@ -52,6 +52,20 @@ def test_atlas_and_species_ids_follow_ontology_scheme():
     assert ATLAS_ID == "atlas.human.hcp.subcortex_grayordinates"
 
 
+def test_read_hcp_subcortical_regions_carries_hemisphere_and_none_for_brainstem():
+    # Migración 0008: el campo ya existía en `SubcorticalStructure` pero
+    # se descartaba antes de llegar a `HcpSubcorticalRegion`. BrainStem
+    # es la única de las 19 estructuras sin lateralidad real -- debe
+    # seguir siendo `None`, nunca un valor inventado como "L".
+    regions = {r.id: r for r in read_hcp_subcortical_regions()}
+    left_amygdala = regions["region.human.hcp-subcortex.l_amygdala"]
+    right_amygdala = regions["region.human.hcp-subcortex.r_amygdala"]
+    brainstem = regions["region.human.hcp-subcortex.brainstem"]
+    assert left_amygdala.hemisphere == "L"
+    assert right_amygdala.hemisphere == "R"
+    assert brainstem.hemisphere is None
+
+
 _HCP_DIR = (
     Path.home() / "mnt" / "NeuroData" / "derived" / "extracted" / "hcp_s1200_groupavg"
     / "HCP_S1200_Atlas_Z4_pkXDZ"

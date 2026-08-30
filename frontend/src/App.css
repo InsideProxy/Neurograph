@@ -51,3 +51,15 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .connectogram-readout { min-height: 2.4em; margin-top: 6px; padding: 6px 8px; background: #f7f7f7; border: 1px solid #eee; border-radius: 6px; font-size: 0.82rem; color: #222; }
 .connectogram-readout__placeholder { color: #888; font-style: italic; }
 .connectogram-readout__legend ul { margin: 4px 0 0; padding-left: 1.1rem; max-height: 8em; overflow-y: auto; }
+
+/* Panel Hemisferios 2D (30/08/2026): la estadística intra/inter-hemisférica
+   es la codificación PRINCIPAL de este panel (petición explícita de la
+   usuaria), así que va destacada justo encima del esquema, no escondida
+   abajo. El recuadro de lectura fijo bajo el dibujo reutiliza el mismo
+   criterio que el connectograma: el nombre completo nunca flota junto al
+   ratón/nodo. */
+.hemisferios-summary { font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 6px; padding: 4px 2px; }
+.hemisferios-summary__note { font-weight: 400; color: #888; font-size: 0.78rem; }
+.hemisferios-unlateralized-note { color: #999; font-size: 0.76rem; font-style: italic; margin: 4px 0 0; }
+.hemisferios-readout { min-height: 2.4em; margin-top: 6px; padding: 6px 8px; background: #f7f7f7; border: 1px solid #eee; border-radius: 6px; font-size: 0.82rem; color: #222; }
+.hemisferios-readout__placeholder { color: #888; font-style: italic; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
+import { Hemisferios } from "./components/Hemisferios";
 import { FilterPanel } from "./components/FilterPanel";
 import { DetailPanel } from "./components/DetailPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -132,6 +133,10 @@ export default function App() {
                 <Brain3D nodes={source.nodes} connections={source.connections} />
               </ErrorBoundary>
             </div>
+          </section>
+          <section className="panel">
+            <h2>Hemisferios</h2>
+            <Hemisferios nodes={source.nodes} connections={source.connections} />
           </section>
         </main>
         <DetailPanel

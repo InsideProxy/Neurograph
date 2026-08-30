@@ -61,7 +61,7 @@ def main(argv: list[str]) -> int:
         ")",
         "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, version = EXCLUDED.version;",
         "",
-        "INSERT INTO regions (id, name, abbreviation, species_id, atlas_id, synonyms) VALUES",
+        "INSERT INTO regions (id, name, abbreviation, species_id, atlas_id, synonyms, hemisphere) VALUES",
     ]
 
     region_value_lines = []
@@ -69,13 +69,14 @@ def main(argv: list[str]) -> int:
         synonyms = "ARRAY['" + _escape(region.raw_label) + "']"
         region_value_lines.append(
             f"  ('{region.id}', '{_escape(region.name)}', '{_escape(region.abbreviation)}', "
-            f"'{SPECIES_ID}', '{ATLAS_ID}', {synonyms})"
+            f"'{SPECIES_ID}', '{ATLAS_ID}', {synonyms}, '{region.hemisphere}')"
         )
     lines.append(",\n".join(region_value_lines))
     lines.append(
         "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, "
         "abbreviation = EXCLUDED.abbreviation, "
-        "atlas_id = EXCLUDED.atlas_id, synonyms = EXCLUDED.synonyms;"
+        "atlas_id = EXCLUDED.atlas_id, synonyms = EXCLUDED.synonyms, "
+        "hemisphere = EXCLUDED.hemisphere;"
     )
 
     lines += [

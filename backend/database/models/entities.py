@@ -42,6 +42,19 @@ class Region(Base, IdentifiedMixin):
     # 0007. Nullable: las regiones cargadas antes de esa migración lo
     # tienen `NULL` hasta ejecutar el backfill correspondiente.
     abbreviation: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Hemisferio real de la region ("L"/"R"), migracion 0008 (petición
+    # de la usuaria, 30/08/2026: panel "Hemisferios 2D" para ilustrar la
+    # conectividad inter/intra-hemisferica). Nullable a proposito, por dos
+    # motivos distintos: (a) las filas cargadas antes de esta migracion no
+    # tienen valor todavia hasta el backfill, y (b) hay estructuras reales
+    # legitimamente NO lateralizadas (p. ej. el tronco del encefalo en el
+    # subcortex del HCP) -- NULL no es "todavia no se sabe" en ese caso,
+    # es "no aplica", y ambos casos deben poder distinguirse de un valor
+    # inventado. Se rellena siempre desde un campo ya calculado por la
+    # propia ingesta de cada atlas (nunca se infiere del signo de la
+    # coordenada x: un error de lateralidad silencioso seria mucho mas
+    # grave que dejar el campo vacio).
+    hemisphere: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class Tract(Base, IdentifiedMixin):

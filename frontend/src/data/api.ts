@@ -19,6 +19,7 @@ interface ApiRegionNode {
   id: string;
   label: string;
   abbreviation: string | null;
+  hemisphere: "L" | "R" | null;
   network: string;
   position3d: [number, number, number];
   reference_space: string;
@@ -37,6 +38,7 @@ export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
     id: row.id,
     label: row.label,
     abbreviation: row.abbreviation,
+    hemisphere: row.hemisphere,
     network: row.network,
     position3d: row.position3d.map((v) => v * DISPLAY_SCALE) as [number, number, number],
   }));

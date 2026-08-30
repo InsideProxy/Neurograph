@@ -12,6 +12,11 @@ export interface GraphNode {
   // lo tiene calculado/registrado -- nunca se inventa uno a partir de
   // `label` (sección 24).
   abbreviation: string | null;
+  // "L", "R" o null -- migración 0008 del backend. `null` puede
+  // significar "esta ingesta todavía no lo tiene backfillado" o "esta
+  // región no tiene lateralidad real" (p. ej. el tronco del encéfalo):
+  // nunca se infiere del signo de position3d[0] -- ver Hemisferios.tsx.
+  hemisphere: "L" | "R" | null;
   network: string;
   position3d: [number, number, number];
 }

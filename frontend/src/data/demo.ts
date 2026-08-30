@@ -6,15 +6,21 @@
 // llamada a SEARCH_REGION / FIND_CONNECTIONS.
 import type { GraphConnection, GraphNode } from "../types/domain";
 
+// `hemisphere` (30/08/2026, para el panel Hemisferios.tsx): estos 8 nodos
+// representan sistemas ilustrativos, no regiones anatómicas reales de un
+// solo lado -- la asignación L/R de abajo es arbitraria, elegida solo
+// para que el panel de hemisferios tenga algo variado que dibujar en modo
+// demostración. Nunca se deriva del signo de position3d[0] (ese cálculo
+// no existe en ningún sitio del código real -- ver domain.ts).
 export const DEMO_NODES: GraphNode[] = [
-  { id: "region.human.demo.prefrontal", label: "Corteza Prefrontal", abbreviation: "PFC", network: "executive", position3d: [0, 2.2, 1.2] },
-  { id: "region.human.demo.episodic_memory", label: "Memoria Episódica", abbreviation: "MEP", network: "memory", position3d: [1.6, 0.5, -0.8] },
-  { id: "region.human.demo.attention", label: "Sistema Atencional", abbreviation: "ATN", network: "attention", position3d: [-1.6, 0.8, 0.6] },
-  { id: "region.human.demo.limbic", label: "Sistema Límbico", abbreviation: "LMB", network: "limbic", position3d: [0.8, -1.4, -0.6] },
-  { id: "region.human.demo.language", label: "Lenguaje", abbreviation: "LNG", network: "language", position3d: [1.8, -0.6, 0.9] },
-  { id: "region.human.demo.executive_control", label: "Control Ejecutivo", abbreviation: "EC", network: "executive", position3d: [-0.4, -1.8, 1.0] },
-  { id: "region.human.demo.vision", label: "Visión", abbreviation: "VIS", network: "sensory", position3d: [-1.6, -1.0, -0.7] },
-  { id: "region.human.demo.motor", label: "Moción y Acción", abbreviation: "MOT", network: "motor", position3d: [-1.8, 0.4, -1.0] },
+  { id: "region.human.demo.prefrontal", label: "Corteza Prefrontal", abbreviation: "PFC", hemisphere: "L", network: "executive", position3d: [0, 2.2, 1.2] },
+  { id: "region.human.demo.episodic_memory", label: "Memoria Episódica", abbreviation: "MEP", hemisphere: "L", network: "memory", position3d: [1.6, 0.5, -0.8] },
+  { id: "region.human.demo.attention", label: "Sistema Atencional", abbreviation: "ATN", hemisphere: "R", network: "attention", position3d: [-1.6, 0.8, 0.6] },
+  { id: "region.human.demo.limbic", label: "Sistema Límbico", abbreviation: "LMB", hemisphere: "R", network: "limbic", position3d: [0.8, -1.4, -0.6] },
+  { id: "region.human.demo.language", label: "Lenguaje", abbreviation: "LNG", hemisphere: "L", network: "language", position3d: [1.8, -0.6, 0.9] },
+  { id: "region.human.demo.executive_control", label: "Control Ejecutivo", abbreviation: "EC", hemisphere: "R", network: "executive", position3d: [-0.4, -1.8, 1.0] },
+  { id: "region.human.demo.vision", label: "Visión", abbreviation: "VIS", hemisphere: "L", network: "sensory", position3d: [-1.6, -1.0, -0.7] },
+  { id: "region.human.demo.motor", label: "Moción y Acción", abbreviation: "MOT", hemisphere: "L", network: "motor", position3d: [-1.8, 0.4, -1.0] },
 ];
 
 export const DEMO_CONNECTIONS: GraphConnection[] = [
