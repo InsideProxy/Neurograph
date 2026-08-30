@@ -14,7 +14,18 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    base de partida antes de que quepan dos por fila, y una altura
    que crece con la ventana en vez de un valor fijo. */
 .panel { flex: 1 1 520px; min-width: 0; }
+/* Diseño de tres paneles (30/08/2026): connectograma + hemisferios
+   apilados en una columna propia (mismo ancho base que un panel
+   normal), junto al cerebro 3D de foco con el DOBLE de peso de reparto
+   de espacio -- "del doble de tamaño que los otros dos", decisión de la
+   usuaria. */
+.panel-column { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+.panel--focus { flex: 2 1 900px; }
 .canvas-wrap { width: 100%; height: min(70vh, 760px); min-height: 420px; border: 1px solid #ddd; border-radius: 8px; display: flex; flex-direction: column; padding: 6px; box-sizing: border-box; }
+/* Vista de foco sin nada seleccionado todavía (Brain3D.tsx): mismo
+   espacio que ocuparía el lienzo, para que el panel no salte de tamaño
+   al seleccionar algo. */
+.brain3d-focus-placeholder { width: 100%; height: min(70vh, 760px); min-height: 420px; border: 1px dashed #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; box-sizing: border-box; color: #888; font-style: italic; font-size: 0.9rem; }
 /* display:flex column (30/08/2026): el botón "Exportar JPEG" de Brain3D.tsx vive dentro de este contenedor de altura fija, por encima del lienzo -- sin flex, el <Canvas> (que ocupa 100% de alto) se sale del contenedor en vez de compartir el espacio con el botón. */
 .export-btn { font-size: 0.78rem; padding: 4px 10px; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #333; cursor: pointer; }
 .export-btn:hover { border-color: #888; background: #f5f5f5; }

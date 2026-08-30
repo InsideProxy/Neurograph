@@ -1,12 +1,24 @@
-// Visualización 2 — Cerebro 3D + tractografía (sección 5.2).
-// Implementación mínima: cada región es una esfera en su posición 3D;
-// cada conexión, una línea recta entre dos esferas (un tracto real,
-// cuando exista, sustituirá esta línea por la geometría de streamline
-// cargada del backend — sección 4.1 de docs/analisis-arquitectura.md).
-// Selección sincronizada vía el store compartido (sección 5.3). Lo
-// hipotético/indirecto se dibuja discontinuo y la conectividad efectiva
-// lleva una flecha de dirección (secciones 5.1 y 24): la codificación
-// visual debe coincidir con la del connectograma.
+// Visualización 3 (panel grande) — Cerebro 3D en vista de FOCO, no de
+// conjunto (decisión de la usuaria, 30/08/2026, diseño de interfaz de
+// tres paneles): a diferencia del connectograma y de Hemisferios.tsx
+// (que siempre dibujan todo el grafo filtrado, o la conectividad
+// inducida entre una selección múltiple), este panel dibuja EN CADA
+// MOMENTO solo la red de conectividad de lo seleccionado -- nunca el
+// grafo completo:
+//   - un nodo seleccionado -> ese nodo + sus vecinos directos + las
+//     conexiones reales entre ellos (su red de un salto);
+//   - una conexión seleccionada -> sus dos extremos + esa conexión;
+//   - dos o más nodos seleccionados -> los nodos elegidos + la
+//     conectividad real que existe ENTRE ellos (mismo criterio que
+//     Connectogram.tsx/Hemisferios.tsx, `inducedConnections`);
+//   - nada seleccionado -> ningún dibujo: un aviso explícito invitando a
+//     seleccionar algo en el connectograma o en Hemisferios, nunca el
+//     grafo completo como valor por defecto (eso sería precisamente la
+//     vista "de conjunto" que este panel existe para no ser).
+// El resto de la codificación visual (color de red, discontinuo para
+// evidencia no directa, flecha para conectividad efectiva, abreviatura
+// permanente junto al nodo) no cambia respecto a la versión anterior de
+// este componente -- solo cambia QUÉ subconjunto del grafo se dibuja.
 //
 // Nota de implementación: usamos three/examples/jsm/controls/OrbitControls
 // directamente (de forma imperativa) en vez de @react-three/drei, para no
@@ -47,14 +59,11 @@ import { NETWORK_COLORS } from "../theme/networks";
 // sin pasar nunca por ese mecanismo de recorte.
 extend({ ThreeLine: THREE.Line });
 
-// Con 8 nodos de demostración, orbitar alrededor del origen (0,0,0) daba
-// igual porque los datos ya estaban ahí centrados. Con 360 regiones
-// reales el centro real de la nube de puntos no coincide con el origen
-// (ver docs/analisis-arquitectura.md): si la cámara orbita alrededor de
-// un punto que no es donde está el cerebro, al girar el cerebro se sale
-// del encuadre — parece que "todo desaparece" aunque no haya ningún
-// error. Por eso el objetivo de la cámara se calcula a partir de los
-// nodos reales en vez de asumir el origen.
+// Centro de la vista: se calcula a partir de los nodos que de verdad
+// están en foco en cada momento (no de todo el grafo) -- así, al
+// seleccionar una región lejos del centro del cerebro, la cámara se
+// recentra sobre lo que hay que mirar en vez de dejarlo fuera de
+// encuadre.
 function computeCentroid(nodes: GraphNode[]): THREE.Vector3 {
   if (nodes.length === 0) return new THREE.Vector3(0, 0, 0);
   const sum = nodes.reduce(
@@ -108,10 +117,10 @@ function Controls({ target }: { target: THREE.Vector3 }) {
   }, [camera, gl]);
 
   // Sincronizar el objetivo de la cámara es un efecto aparte, separado
-  // de la creación: `target` cambia de identidad cada vez que cambian
-  // los nodos reales (ver computeCentroid más arriba), y no queremos
-  // destruir y recrear los controles -- perdiendo el ángulo de cámara
-  // actual del usuario -- solo porque el centroide se recalculó.
+  // de la creación: `target` cambia de identidad cada vez que cambia el
+  // foco actual (ver computeCentroid más arriba), y no queremos destruir
+  // y recrear los controles -- perdiendo el ángulo de cámara actual del
+  // usuario -- solo porque el centroide se recalculó.
   useEffect(() => {
     controlsRef.current?.target.copy(target);
     controlsRef.current?.update();
@@ -313,21 +322,68 @@ interface Props {
   connections: GraphConnection[];
 }
 
+// Calcula el subgrafo de foco actual a partir de la selección compartida
+// (sección 5.3) -- nunca el grafo completo. Devuelve `null` cuando no hay
+// nada seleccionado: eso es una situación real distinta de "selección
+// con red vacía" (p. ej. un nodo real sin ninguna conexión todavía), así
+// que quien llama debe poder distinguirlas.
+function computeFocus(
+  nodes: GraphNode[],
+  connections: GraphConnection[],
+  selectedNodeIds: Set<string>,
+  selectedConnectionId: string | null
+): { nodes: GraphNode[]; connections: GraphConnection[] } | null {
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+
+  if (selectedConnectionId) {
+    const conn = connections.find((c) => c.id === selectedConnectionId);
+    if (!conn) return null;
+    const source = nodeById.get(conn.source);
+    const target = nodeById.get(conn.target);
+    if (!source || !target) return null;
+    return { nodes: [source, target], connections: [conn] };
+  }
+
+  if (selectedNodeIds.size >= 2) {
+    const induced = inducedConnections(connections, selectedNodeIds) ?? [];
+    const focusNodes = nodes.filter((n) => selectedNodeIds.has(n.id));
+    if (focusNodes.length === 0) return null;
+    return { nodes: focusNodes, connections: induced };
+  }
+
+  if (selectedNodeIds.size === 1) {
+    const [id] = selectedNodeIds;
+    const center = nodeById.get(id);
+    if (!center) return null;
+    const related = connections.filter((c) => c.source === id || c.target === id);
+    const neighborIds = new Set<string>([id]);
+    for (const c of related) {
+      neighborIds.add(c.source);
+      neighborIds.add(c.target);
+    }
+    const focusNodes = nodes.filter((n) => neighborIds.has(n.id));
+    return { nodes: focusNodes, connections: related };
+  }
+
+  return null;
+}
+
 export function Brain3D({ nodes: allNodes, connections: allConnections }: Props) {
   const { selectedNodeIds, selectedConnectionId, selectConnection } = useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
-  // Igual que en Connectogram.tsx: con dos o más nodos seleccionados, se
-  // dibuja solo la conectividad ENTRE ellos, no todo el grafo filtrado
-  // (decisión de la usuaria, 30/08/2026).
-  const induced = inducedConnections(filteredConnections, selectedNodeIds);
-  const connections = induced ?? filteredConnections;
-  const isInducedView = induced !== null;
+
+  const focus = useMemo(
+    () => computeFocus(nodes, filteredConnections, selectedNodeIds, selectedConnectionId),
+    [nodes, filteredConnections, selectedNodeIds, selectedConnectionId]
+  );
+
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const [contextLost, setContextLost] = useState(false);
-  // Centroide de TODOS los nodos (no solo los visibles tras filtrar): así
-  // el punto de giro no salta cada vez que se oculta o muestra una red.
-  const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
+  const target = useMemo(
+    () => computeCentroid(focus?.nodes ?? []),
+    [focus]
+  );
   const exportRef = useRef<(() => void) | null>(null);
   const handleExport = () => exportRef.current?.();
 
@@ -338,6 +394,21 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
         pasa a veces con muchos objetos en pantalla en algunos equipos.
         Recarga la página. Si se repite, dime qué navegador y sistema usas.
       </p>
+    );
+  }
+
+  // Vista de foco, no de conjunto (decisión de la usuaria, 30/08/2026):
+  // sin nada seleccionado, este panel no dibuja el grafo completo -- ya
+  // lo hacen el connectograma y Hemisferios. Invita a seleccionar algo
+  // en cualquiera de los otros dos en vez de mostrar un lienzo vacío sin
+  // explicación.
+  if (!focus) {
+    return (
+      <div className="brain3d-focus-placeholder">
+        Selecciona una región (o una conexión) en el connectograma o en
+        el esquema de hemisferios para ver aquí, en 3D, su red de
+        conectividad.
+      </div>
     );
   }
 
@@ -376,15 +447,20 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
       <ExportBridge exportRef={exportRef} />
-      {nodes.map((node) => (
+      {focus.nodes.map((node) => (
         <NodeMesh key={node.id} node={node} />
       ))}
-      {connections.map((conn) => {
+      {focus.connections.map((conn) => {
         const a = nodeById.get(conn.source);
         const b = nodeById.get(conn.target);
         if (!a || !b) return null;
+        // Todo lo que aparece en la vista de foco está, por construcción,
+        // "seleccionado" en algún sentido (toca al nodo elegido, es la
+        // conexión elegida, o une a dos nodos de la selección múltiple) --
+        // por eso basta con reutilizar las mismas condiciones que ya
+        // existían, sin una bandera aparte para el caso de selección
+        // múltiple.
         const isSelected =
-          isInducedView ||
           selectedConnectionId === conn.id ||
           selectedNodeIds.has(conn.source) ||
           selectedNodeIds.has(conn.target);

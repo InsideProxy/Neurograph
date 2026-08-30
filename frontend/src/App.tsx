@@ -114,12 +114,23 @@ export default function App() {
       <div className="layout">
         <FilterPanel />
         <main>
-          <section className="panel">
-            <h2>Connectograma</h2>
-            <Connectogram nodes={source.nodes} connections={source.connections} />
-          </section>
-          <section className="panel">
-            <h2>Cerebro 3D</h2>
+          {/* Diseño de tres paneles (decisión de la usuaria, 30/08/2026):
+              connectograma y hemisferios apilados en una misma columna,
+              junto a un cerebro 3D del doble de tamaño que muestra SOLO
+              la red de foco actual (Brain3D.tsx), nunca el grafo
+              completo -- eso ya lo hacen los otros dos. */}
+          <div className="panel-column">
+            <section className="panel">
+              <h2>Connectograma</h2>
+              <Connectogram nodes={source.nodes} connections={source.connections} />
+            </section>
+            <section className="panel">
+              <h2>Hemisferios</h2>
+              <Hemisferios nodes={source.nodes} connections={source.connections} />
+            </section>
+          </div>
+          <section className="panel panel--focus">
+            <h2>Cerebro 3D — foco de la selección</h2>
             <div className="canvas-wrap">
               <ErrorBoundary
                 fallback={
@@ -133,10 +144,6 @@ export default function App() {
                 <Brain3D nodes={source.nodes} connections={source.connections} />
               </ErrorBoundary>
             </div>
-          </section>
-          <section className="panel">
-            <h2>Hemisferios</h2>
-            <Hemisferios nodes={source.nodes} connections={source.connections} />
           </section>
         </main>
         <DetailPanel

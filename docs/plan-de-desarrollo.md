@@ -188,9 +188,22 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   foco, no de conjunto. En el connectograma circular, el nombre de la
   región ya no aparece flotando junto al nodo (se salía del recuadro con
   180-360 regiones reales): vive en un recuadro de lectura fijo debajo
-  del diagrama. Pendiente de esta fase: implementar en código real los
-  tres paneles y la vista de foco del 3D (hoy sigue habiendo un único
-  `Brain3D` que dibuja el grafo completo).
+  del diagrama.
+
+  **Los tres paneles y la vista de foco del 3D, completos en código real
+  (30/08/2026, decisión 16 de `docs/analisis-arquitectura.md`).**
+  `Brain3D.tsx` reescrito: ya no dibuja el grafo filtrado completo, sino
+  solo el subgrafo que decide una función pura nueva (`computeFocus`) a
+  partir de la selección compartida -- la red de un salto de un nodo
+  seleccionado, los dos extremos de una conexión seleccionada, o la
+  conectividad real entre una selección múltiple; sin nada seleccionado,
+  un aviso explícito en vez del grafo completo (esa vista "de conjunto"
+  ya la cubren el connectograma y Hemisferios). Layout de `App.tsx`:
+  connectograma + Hemisferios apilados en una columna propia, junto al
+  cerebro 3D con el doble de peso de reparto de espacio. 104 pruebas de
+  backend en verde (sin cambios de backend en esta tarea); `npx tsc -b
+  --force` limpio. Mismo riesgo abierto que el resto de esta sesión de
+  diseño: sin confirmar visualmente por la usuaria todavía.
 
   **Exportación a JPEG (implementado en código real, 30/08/2026, no solo
   en el boceto).** A petición explícita de la usuaria -- necesita poder
