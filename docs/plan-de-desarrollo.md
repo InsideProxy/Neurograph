@@ -201,6 +201,31 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   el detalle técnico). Cuando se construyan los paneles nuevos de
   hemisferios y de foco 3D, deben reutilizar las mismas funciones en vez
   de reimplementar la exportación.
+
+  **Implementación real de abreviaturas, selección múltiple y tractos
+  con literatura (en curso, iniciado 30/08/2026).** Petición explícita
+  de la usuaria: "es un programa de investigación, no de ilustración o
+  divulgación". Alcance completo: abreviatura en el dibujo + nombre
+  completo en el recuadro; leyenda exportable de abreviaturas; selección
+  de TODOS los nodos que el usuario quiera a la vez (clic normal
+  añade/quita, decisión de la usuaria); conectividad inducida entre los
+  seleccionados; y, si forman parte de algún tracto con nombre, su
+  literatura. Backend ya completo y verificado (ver decisiones 12 y 13
+  de `docs/analisis-arquitectura.md`): columna `abbreviation` en
+  `regions`/`tracts` (migración 0007) con backfill vía los propios
+  scripts de registro re-ejecutados; `RegionNode.abbreviation` expuesto
+  en `GET /regions`; nuevo endpoint `GET /connectivity/induced`
+  (conexiones región-región entre la selección + tractos de Yeh 2022 que
+  tocan dos o más regiones seleccionadas, cada uno con su cita real).
+  101 tests de backend en verde (`pytest`). Pendiente de esta tarea:
+  aplicar la migración 0007 y re-ejecutar los scripts de registro contra
+  la base de datos real de la usuaria (backfill); TODO el frontend --
+  `frontend/src/state/selection.ts` a selección múltiple, tipo
+  `GraphNode.abbreviation`, abreviatura visible en `Connectogram.tsx` y
+  `Brain3D.tsx`, el panel `Hemisferios` 2D todavía no existe como
+  componente real, `DetailPanel.tsx` con modo multi-selección + leyenda
+  + tractos/literatura, y la leyenda exportable (extensión de
+  `exportImage.ts`, todavía sin diseñar).
 - **Fase 10 — IA.** AIProvider, Claude, otros proveedores, MCP, query
   planner.
 

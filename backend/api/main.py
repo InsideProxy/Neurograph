@@ -7,7 +7,10 @@ medio (sección 22).
 
 Fase 0/1: solo un endpoint de estado. Fase 3: `GET /regions` (versión
 mínima de SEARCH_REGION). Fase 4: `GET /connections`
-(FIND_CONNECTIONS). Fase 5: `GET /graph-metrics`, que conecta el
+(FIND_CONNECTIONS). `GET /connectivity/induced` (30/08/2026) responde a
+la selección múltiple de la interfaz: conexiones inducidas entre varias
+regiones a la vez y, si las hay, los tractos con nombre que las
+conectan (con su cita real). Fase 5: `GET /graph-metrics`, que conecta el
 motor matemático de `backend/core/graph/` a las regiones y
 conexiones reales (BUILD_CONNECTOME empieza aquí a devolver algo
 más que la lista de aristas). El resto de operaciones de la sección
@@ -21,6 +24,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routers.connections import router as connections_router
+from backend.api.routers.connectivity import router as connectivity_router
 from backend.api.routers.graph_metrics import router as graph_metrics_router
 from backend.api.routers.regions import router as regions_router
 from backend.config.settings import get_settings
@@ -51,6 +55,7 @@ app.add_middleware(
 
 app.include_router(regions_router)
 app.include_router(connections_router)
+app.include_router(connectivity_router)
 app.include_router(graph_metrics_router)
 
 

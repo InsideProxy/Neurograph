@@ -58,6 +58,7 @@ class BrainnetomeRegionDef:
 class BrainnetomeRegion:
     id: str
     name: str
+    abbreviation: str  # = local_code, p. ej. "L_SFG_7_1"
     raw_bilateral_code: str
     label_id: int
     hemisphere: str
@@ -120,6 +121,7 @@ def regions_from_definitions(definitions: list[BrainnetomeRegionDef]) -> list[Br
         BrainnetomeRegion(
             id=build_id(EntityType.REGION, "human", "brainnetome", d.local_code),
             name=d.name,
+            abbreviation=d.local_code,
             raw_bilateral_code=d.raw_bilateral_code,
             label_id=d.label_id,
             hemisphere=d.hemisphere,

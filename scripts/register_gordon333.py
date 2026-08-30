@@ -73,16 +73,17 @@ def main(argv: list[str]) -> int:
         ")",
         "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;",
         "",
-        "INSERT INTO regions (id, name, species_id, atlas_id, synonyms) VALUES",
+        "INSERT INTO regions (id, name, abbreviation, species_id, atlas_id, synonyms) VALUES",
     ]
     region_value_lines = [
-        f"  ('{r.id}', '{_escape(r.name)}', '{SPECIES_ID}', '{ATLAS_ID}', "
-        f"ARRAY['{_escape(r.raw_label)}'])"
+        f"  ('{r.id}', '{_escape(r.name)}', '{_escape(r.abbreviation)}', '{SPECIES_ID}', "
+        f"'{ATLAS_ID}', ARRAY['{_escape(r.raw_label)}'])"
         for r in regions
     ]
     lines.append(",\n".join(region_value_lines))
     lines.append(
         "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, "
+        "abbreviation = EXCLUDED.abbreviation, "
         "atlas_id = EXCLUDED.atlas_id, synonyms = EXCLUDED.synonyms;"
     )
 

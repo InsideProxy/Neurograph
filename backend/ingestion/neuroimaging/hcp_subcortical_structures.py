@@ -103,6 +103,7 @@ def region_name(structure: SubcorticalStructure) -> str:
 class HcpSubcorticalRegion:
     id: str
     name: str
+    abbreviation: str  # = local_code(structure), p. ej. "l_amygdala"
     cifti_structure_name: str
 
 
@@ -121,6 +122,7 @@ def read_hcp_subcortical_regions() -> list[HcpSubcorticalRegion]:
         HcpSubcorticalRegion(
             id=build_id(EntityType.REGION, "human", "hcp-subcortex", local_code(s)),
             name=region_name(s),
+            abbreviation=local_code(s),
             cifti_structure_name=s.cifti_structure_name,
         )
         for s in known_structures()

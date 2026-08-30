@@ -87,6 +87,7 @@ def region_name(parsed: ParsedCorticalLabel) -> str:
 class GordonRegion:
     id: str
     name: str
+    abbreviation: str  # = local_code(raw_label), p. ej. "l_default_12"
     raw_label: str
     hemisphere: str
 
@@ -147,6 +148,7 @@ def regions_from_labels(labels: list[CiftiLabel]) -> list[GordonRegion]:
             GordonRegion(
                 id=region_id,
                 name=region_name(parsed),
+                abbreviation=local_code(label.name),
                 raw_label=label.name,
                 hemisphere=parsed.hemisphere,
             )

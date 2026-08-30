@@ -53,6 +53,7 @@ _CORTEX_STRUCTURE = {
 class MmpRegion:
     id: str
     name: str
+    abbreviation: str  # p. ej. "V1", "44", "9-46d" -- sin el hemisferio
     raw_label: str
     hemisphere: str  # "L" o "R"
 
@@ -93,7 +94,13 @@ def regions_from_labels(labels: list[CiftiLabel]) -> list[MmpRegion]:
         region_id = build_id(EntityType.REGION, "human", "hcp-mmp1", local_code)
         name = f"{area_code} (hemisferio {_HEMISPHERE_NAMES[hemisphere]})"
         regions.append(
-            MmpRegion(id=region_id, name=name, raw_label=label.name, hemisphere=hemisphere)
+            MmpRegion(
+                id=region_id,
+                name=name,
+                abbreviation=area_code,
+                raw_label=label.name,
+                hemisphere=hemisphere,
+            )
         )
     return regions
 

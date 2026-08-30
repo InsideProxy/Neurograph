@@ -21,6 +21,7 @@ router = APIRouter(prefix="/regions", tags=["regions"])
 class RegionNode(BaseModel):
     id: str
     label: str
+    abbreviation: str | None
     network: str
     position3d: tuple[float, float, float]
     reference_space: str
@@ -52,6 +53,10 @@ def region_to_node(region: Region, coordinate: Coordinate, network: Network | No
     return RegionNode(
         id=region.id,
         label=region.name,
+        # None cuando la ingesta de este atlas todavia no calcula/registra
+        # abreviatura (migracion 0007) -- nunca se inventa una a partir
+        # del nombre completo.
+        abbreviation=region.abbreviation,
         network=network_slug,
         position3d=(coordinate.x, coordinate.y, coordinate.z),
         reference_space=coordinate.reference_space,

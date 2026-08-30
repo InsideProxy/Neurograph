@@ -36,11 +36,21 @@ class Region(Base, IdentifiedMixin):
     species_id: Mapped[str] = mapped_column(ForeignKey("species.id"))
     atlas_id: Mapped[str | None] = mapped_column(ForeignKey("atlases.id"), nullable=True)
     synonyms: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    # Código corto para dibujar junto al nodo en las visualizaciones (p.
+    # ej. "V1", "44", "L_SFG_7_1"), distinto de `name` (el nombre
+    # completo que se muestra en el recuadro de detalle) -- migración
+    # 0007. Nullable: las regiones cargadas antes de esa migración lo
+    # tienen `NULL` hasta ejecutar el backfill correspondiente.
+    abbreviation: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class Tract(Base, IdentifiedMixin):
     __tablename__ = "tracts"
     species_id: Mapped[str] = mapped_column(ForeignKey("species.id"))
+    # Mismo criterio que Region.abbreviation (migración 0007): el código
+    # corto del tracto (p. ej. "AF", "CST"), ya calculado por la ingesta
+    # de Yeh (2022) pero antes descartado tras construir el id.
+    abbreviation: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class Network(Base, IdentifiedMixin):

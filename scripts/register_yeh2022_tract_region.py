@@ -121,12 +121,17 @@ def main(argv: list[str]) -> int:
     lines.append("")
 
     lines.append("-- 52 entidades Tract (26 tractos x 2 hemisferios).")
-    lines.append("INSERT INTO tracts (id, name, species_id) VALUES")
+    lines.append("INSERT INTO tracts (id, name, abbreviation, species_id) VALUES")
     tract_values = [
-        f"  ('{t.id}', '{_escape(t.name)}', '{SPECIES_ID}')" for t in tracts
+        f"  ('{t.id}', '{_escape(t.name)}', "
+        f"'{_escape(f'{t.hemisphere}_{t.header_code}')}', '{SPECIES_ID}')"
+        for t in tracts
     ]
     lines.append(",\n".join(tract_values))
-    lines.append("ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;")
+    lines.append(
+        "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, "
+        "abbreviation = EXCLUDED.abbreviation;"
+    )
     lines.append("")
 
     lines.append(
