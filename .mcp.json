@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "neurograph": {
+      "type": "stdio",
+      "command": "E:\\Neurograph\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "backend.mcp.server"
+      ],
+      "env": {
+        "NEUROGRAPH_DATABASE__PASSWORD": "neurograph_dev"
+      }
+    }
+  }
+}

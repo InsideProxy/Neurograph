@@ -19,7 +19,11 @@ dependencies = [
     "networkx>=3.3",
     "scikit-learn>=1.5",
     "pyyaml>=6.0",
-    "mcp>=1.0",
+    # Fase 10 (31/08/2026): implementación real en backend/mcp/server.py
+    # verificada contra la 1.27.0 (FastMCP) -- se acota por debajo de la
+    # 2.x porque esa versión mayor no se ha probado todavía contra este
+    # código (nunca se afirma que algo funciona sin haberlo comprobado).
+    "mcp>=1.0,<2.0",
     "openpyxl>=3.1",
 ]
 

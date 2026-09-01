@@ -3,74 +3,26 @@ Cada región real que se devuelve viene siempre acompañada de su
 coordenada y del espacio de referencia en el que está expresada — nunca
 una posición desnuda sin saber en qué sistema vive (sección 2.7 / riesgo
 5 de docs/analisis-arquitectura.md).
+
+La consulta real y la traducción pura viven en
+`backend/api/services/regions_service.py` desde la Fase 10 (31/08/2026):
+este módulo solo reexporta `RegionNode`/`region_to_node` (para no romper
+`backend/tests/api/test_regions.py`, que los importa desde aquí) y
+define el endpoint HTTP, que delega en el servicio -- la herramienta MCP
+`search_region` (`backend/mcp/server.py`) llama a la misma función.
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.database.models.entities import Coordinate, Network, Region, RegionNetworkMembership
+from backend.api.services import regions_service
+from backend.api.services.regions_service import RegionNode, region_to_node
 from backend.database.session import get_db
-from backend.ontology.schema import parse_id
 
 router = APIRouter(prefix="/regions", tags=["regions"])
 
-
-class RegionNode(BaseModel):
-    id: str
-    label: str
-    abbreviation: str | None
-    # "L", "R" o None -- migración 0008. None cuando la ingesta de este
-    # atlas todavía no lo tiene backfillado, o cuando la propia región no
-    # tiene lateralidad real (p. ej. el tronco del encéfalo): nunca se
-    # infiere del signo de la coordenada x (ver region_to_node).
-    hemisphere: str | None
-    network: str
-    position3d: tuple[float, float, float]
-    reference_space: str
-
-
-def region_to_node(region: Region, coordinate: Coordinate, network: Network | None) -> RegionNode:
-    """Traducción pura (sin base de datos) de una `Region` + su
-    `Coordinate` (+ opcionalmente su `Network`, vía
-    `region_network_memberships`) a la forma que consume el frontend.
-    Separada del endpoint para poder probarla sin una base de datos real.
-
-    "unclassified" es un valor explícito para "todavía no hay una
-    pertenencia a red calculada para esta región" (p. ej. otros atlas sin
-    clasificación Cole-Anticevic todavía) — nunca se inventa una red.
-
-    El slug incluye la fuente de la red (`<fuente>.<código_local>`, p. ej.
-    `cole-anticevic.default`), no solo el código local: varias
-    parcelaciones tienen redes con el mismo nombre pero distinto método
-    (Cole-Anticevic y Gordon 333 tienen las dos una red "Default"). Usar
-    solo el código local colapsaría dos redes distintas en una misma
-    clave de color/leyenda en el frontend sin ningún aviso — ver riesgo
-    13 de docs/analisis-arquitectura.md.
-    """
-    if network is None:
-        network_slug = "unclassified"
-    else:
-        parsed = parse_id(network.id)
-        network_slug = f"{parsed['source']}.{parsed['local_code']}"
-    return RegionNode(
-        id=region.id,
-        label=region.name,
-        # None cuando la ingesta de este atlas todavia no calcula/registra
-        # abreviatura (migracion 0007) -- nunca se inventa una a partir
-        # del nombre completo.
-        abbreviation=region.abbreviation,
-        # Igual criterio que abbreviation, pero migracion 0008: None
-        # puede significar "todavia no backfillado" o "esta region no
-        # tiene lateralidad real" -- en ningun caso se adivina a partir
-        # de la coordenada.
-        hemisphere=region.hemisphere,
-        network=network_slug,
-        position3d=(coordinate.x, coordinate.y, coordinate.z),
-        reference_space=coordinate.reference_space,
-    )
+__all__ = ["RegionNode", "list_regions", "region_to_node", "router"]
 
 
 @router.get("", response_model=list[RegionNode])
@@ -81,13 +33,4 @@ def list_regions(atlas_id: str | None = None, db: Session = Depends(get_db)) -> 
     funcional es opcional (LEFT JOIN): una región sin pertenencia
     calculada todavía se devuelve igual, marcada "unclassified".
     """
-    query = (
-        select(Region, Coordinate, Network)
-        .join(Coordinate, Coordinate.entity_id == Region.id)
-        .outerjoin(RegionNetworkMembership, RegionNetworkMembership.region_id == Region.id)
-        .outerjoin(Network, Network.id == RegionNetworkMembership.network_id)
-    )
-    if atlas_id is not None:
-        query = query.where(Region.atlas_id == atlas_id)
-    rows = db.execute(query).all()
-    return [region_to_node(region, coordinate, network) for region, coordinate, network in rows]
+    return regions_service.list_regions(db, atlas_id)

@@ -19,6 +19,18 @@ export interface GraphNode {
   hemisphere: "L" | "R" | null;
   network: string;
   position3d: [number, number, number];
+  // Espacio de referencia real de `position3d` (sección 2.7 / riesgo 5 de
+  // docs/analisis-arquitectura.md), p. ej. "fsLR_32k_S1200_groupavg_
+  // midthickness_MSMAll" o "MNI152_FSL_2mm" -- nunca inventado ni supuesto,
+  // siempre el valor real que ya devuelve `coordinate.reference_space` en
+  // el backend (backend/api/routers/regions.py). `null` en los datos de
+  // demostración (sección 24: son sintéticos, no viven en ningún espacio
+  // de referencia real -- por eso Brain3D.tsx nunca les superpone una
+  // malla anatómica real, decisión 22 del 30/08/2026). Se usa para elegir
+  // -- nunca adivinar -- qué malla de fondo del cerebro 3D corresponde a
+  // cada atlas, dado que HCP-MMP1.0/Gordon 333 y Brainnetome/subcórtex
+  // del HCP viven en dos espacios genuinamente distintos.
+  referenceSpace: string | null;
 }
 
 export type EvidenceLevel = "direct" | "indirect" | "hypothetical";

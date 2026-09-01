@@ -17,6 +17,7 @@ from sqlalchemy import engine_from_config, pool
 from backend.database.models.base import Base
 from backend.database.models import entities  # noqa: F401  (registra las tablas)
 from backend.database.models import library  # noqa: F401
+from backend.mcp import audit  # noqa: F401  (mcp_call_log, Fase 10)
 from backend.config.settings import get_settings
 
 config = context.config

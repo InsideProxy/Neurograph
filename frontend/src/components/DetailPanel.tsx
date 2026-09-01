@@ -18,17 +18,37 @@
 // la petición por completo en vez de mostrar un resultado vacío que
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS, NETWORK_COLORS, NETWORK_LABELS } from "../theme/networks";
+import {
+  CONNECTION_TYPE_LABELS,
+  EVIDENCE_LEVEL_LABELS,
+  NETWORK_COLORS,
+  NETWORK_LABELS,
+  NEUTRAL_COLOR,
+} from "../theme/networks";
 import { useSelectionStore } from "../state/selection";
 import { fetchInducedTracts } from "../data/api";
 import { inducedConnections } from "../logic/induced";
 import { exportSvgAsJpeg } from "../logic/exportImage";
+import { abbreviationAddsInformation } from "../logic/regionLabel";
 import type { GraphConnection, GraphNode, InducedTract } from "../types/domain";
 
 interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
   canFetchTracts?: boolean;
+}
+
+// Mismo criterio que Connectogram.tsx/Hemisferios.tsx (fix del
+// 30/08/2026): en HCP-MMP1.0 el nombre completo ya empieza por la
+// abreviatura, así que anteponerla aquí repetía la misma información dos
+// veces ("V1 — V1 (hemisferio izquierdo)"). Ver logic/regionLabel.ts.
+// Devuelve texto plano (no JSX) porque los cinco usos de este patrón en
+// este archivo concatenan directamente dentro de <dd>/<h2>/texto de
+// lista, sin necesitar la abreviatura en negrita por separado.
+function regionDisplayText(node: GraphNode | undefined, fallbackId: string): string {
+  if (!node) return fallbackId;
+  if (!abbreviationAddsInformation(node)) return node.label;
+  return `${node.abbreviation} — ${node.label}`;
 }
 
 function ConnectionRow({ conn, otherLabel }: { conn: GraphConnection; otherLabel: string }) {
@@ -148,9 +168,9 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           <dt>ID</dt>
           <dd><code>{connection.id}</code></dd>
           <dt>Origen</dt>
-          <dd>{source?.abbreviation ? `${source.abbreviation} — ` : ""}{source?.label ?? connection.source}</dd>
+          <dd>{regionDisplayText(source, connection.source)}</dd>
           <dt>Destino</dt>
-          <dd>{target?.abbreviation ? `${target.abbreviation} — ` : ""}{target?.label ?? connection.target}</dd>
+          <dd>{regionDisplayText(target, connection.target)}</dd>
           <dt>Tipo</dt>
           <dd>{CONNECTION_TYPE_LABELS[connection.type]}</dd>
           <dt>Peso</dt>
@@ -167,7 +187,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
     const related = connections.filter((c) => c.source === node.id || c.target === node.id);
     return (
       <aside className="detail-panel">
-        <h2>{node.abbreviation ? `${node.abbreviation} — ` : ""}{node.label}</h2>
+        <h2>{regionDisplayText(node, node.id)}</h2>
         <dl>
           <dt>ID científico</dt>
           <dd><code>{node.id}</code></dd>
@@ -179,7 +199,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
               {related.map((c) => {
                 const otherId = c.source === node.id ? c.target : c.source;
                 const other = nodeById.get(otherId);
-                const otherLabel = other?.abbreviation ? `${other.abbreviation} — ${other.label}` : otherId;
+                const otherLabel = regionDisplayText(other, otherId);
                 return <ConnectionRow key={c.id} conn={c} otherLabel={otherLabel} />;
               })}
             </ul>
@@ -203,20 +223,40 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           Exportar leyenda JPEG
         </button>
       </div>
+      {/* Mismo criterio que Connectogram.tsx/Hemisferios.tsx (decisión
+          18, 30/08/2026): sin fondo inline en el propio <svg> (vive en
+          App.css como `.legend-svg`, solo pantalla) para que
+          exportSvgAsJpeg pueda seguir componiendo esta leyenda -- también
+          exportable -- sobre blanco explícito sin que un fondo oscuro
+          clonado lo tape. El círculo de red mantiene su color real sin
+          tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible
+          sobre los dos fondos. */}
       <svg
         ref={legendSvgRef}
         width={260}
         height={legendHeight}
         role="img"
         aria-label="Leyenda de regiones seleccionadas"
-        style={{ background: "#fff", border: "1px solid #eee", borderRadius: 4 }}
+        className="legend-svg"
       >
         {selectedNodesList.map((node, i) => (
           <g key={node.id} transform={`translate(10, ${20 + i * legendLineHeight})`}>
-            <circle r={5} cy={-4} fill={NETWORK_COLORS[node.network] ?? "#888"} />
-            <text x={14} fontSize={11} fill="#222">
-              <tspan fontWeight={700}>{node.abbreviation ?? "?"}</tspan>
-              {" — " + node.label}
+            <circle
+              r={5}
+              cy={-4}
+              fill={NETWORK_COLORS[node.network] ?? "#888"}
+              stroke={NEUTRAL_COLOR}
+              strokeWidth={1}
+            />
+            <text x={14} fontSize={11} fill={NEUTRAL_COLOR}>
+              {abbreviationAddsInformation(node) ? (
+                <>
+                  <tspan fontWeight={700}>{node.abbreviation}</tspan>
+                  {" — " + node.label}
+                </>
+              ) : (
+                node.label
+              )}
             </text>
           </g>
         ))}
@@ -228,8 +268,15 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           {induced.map((c) => {
             const source = nodeById.get(c.source);
             const target = nodeById.get(c.target);
-            const sourceLabel = source?.abbreviation ?? c.source;
-            const targetLabel = target?.abbreviation ?? c.target;
+            // Abreviatura + nombre completo (30/08/2026, aclaración de la
+            // usuaria tras la decisión 19: "en la leyenda ha de aparecer la
+            // abreviatura y a continuación el nombre completo... no solo la
+            // abreviatura") -- este listado de conectividad inducida usaba
+            // solo la abreviatura, mismo bug que se corrigió en otros
+            // cuatro sitios de este archivo pero se quedó sin aplicar aquí.
+            // Mismo `regionDisplayText` que ya usa el resto del panel.
+            const sourceLabel = regionDisplayText(source, c.source);
+            const targetLabel = regionDisplayText(target, c.target);
             return (
               <li key={c.id}>
                 {sourceLabel} → {targetLabel} — {CONNECTION_TYPE_LABELS[c.type]}, peso {c.weight}, {EVIDENCE_LEVEL_LABELS[c.evidenceLevel]}

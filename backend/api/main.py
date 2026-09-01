@@ -13,10 +13,17 @@ regiones a la vez y, si las hay, los tractos con nombre que las
 conectan (con su cita real). Fase 5: `GET /graph-metrics`, que conecta el
 motor matemático de `backend/core/graph/` a las regiones y
 conexiones reales (BUILD_CONNECTOME empieza aquí a devolver algo
-más que la lista de aristas). El resto de operaciones de la sección
-15 (RENDER_BRAIN, ...) se irán añadiendo fase a fase, cada una
-respaldada por su módulo correspondiente en backend/core/ y su
+más que la lista de aristas). `GET /tracts` (Fase 10, 31/08/2026):
+versión mínima de SEARCH_TRACT, antes solo disponible de forma
+incidental dentro de `/connectivity/induced`. El resto de operaciones de
+la sección 15 (RENDER_BRAIN, ...) se irán añadiendo fase a fase, cada
+una respaldada por su módulo correspondiente en backend/core/ y su
 propio router en backend/api/routers/, nunca improvisadas aquí.
+
+Desde la Fase 10, cada endpoint delega en
+`backend/api/services/*_service.py`: las herramientas MCP
+(`backend/mcp/server.py`) llaman a esos mismos servicios, nunca a una
+lógica paralela (ver docstring de `backend/mcp/server.py`).
 """
 from __future__ import annotations
 
@@ -27,6 +34,7 @@ from backend.api.routers.connections import router as connections_router
 from backend.api.routers.connectivity import router as connectivity_router
 from backend.api.routers.graph_metrics import router as graph_metrics_router
 from backend.api.routers.regions import router as regions_router
+from backend.api.routers.tracts import router as tracts_router
 from backend.config.settings import get_settings
 
 app = FastAPI(
@@ -57,6 +65,7 @@ app.include_router(regions_router)
 app.include_router(connections_router)
 app.include_router(connectivity_router)
 app.include_router(graph_metrics_router)
+app.include_router(tracts_router)
 
 
 @app.get("/health")

@@ -11,6 +11,26 @@ vez de al contenedor `postgres`.
 from backend.config.settings import Settings
 
 
+def test_env_file_is_actually_loaded(tmp_path, monkeypatch):
+    # Bug real descubierto el 31/08/2026 (decisión 31): sin `env_file`
+    # fijado explícitamente en `SettingsConfigDict`, pydantic-settings NO
+    # lee ningún `.env`, pese a que el docstring del módulo y
+    # `.env.example` daban por hecho que sí desde la Fase 0 -- un `.env`
+    # real en la raíz del repositorio no tenía ningún efecto. Se
+    # construye aquí un `Settings` propio apuntando a un `.env` temporal
+    # (nunca al de la propia usuaria) para no depender de si existe un
+    # `.env` real en este entorno de pruebas.
+    env_file = tmp_path / ".env"
+    env_file.write_text("NEUROGRAPH_DATABASE__PASSWORD=clave_de_prueba\n", encoding="utf-8")
+    monkeypatch.delenv("NEUROGRAPH_DATABASE__PASSWORD", raising=False)
+
+    class SettingsWithTempEnvFile(Settings):
+        model_config = Settings.model_config | {"env_file": env_file}
+
+    settings = SettingsWithTempEnvFile()
+    assert settings.database.password == "clave_de_prueba"
+
+
 def test_env_var_overrides_yaml_default(monkeypatch):
     # default.yaml declara database.host: localhost — igual que el valor
     # por defecto del propio campo, así que este caso es precisamente el

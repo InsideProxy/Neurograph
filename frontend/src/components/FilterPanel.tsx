@@ -15,7 +15,18 @@ export function FilterPanel() {
     toggleNetwork,
     toggleConnectionType,
     setMinWeight,
+    setHiddenNetworks,
   } = useFiltersStore();
+
+  const networkKeys = Object.keys(NETWORK_LABELS);
+
+  // "Marcar todas"/"desmarcar todas" (petición de la usuaria, 30/08/2026,
+  // corregido el mismo día: la primera versión afectaba también a "Tipo
+  // de conectividad" -- la usuaria pidió explícitamente que NO lo haga).
+  // Solo actúan sobre la lista de redes, por eso viven dentro de su
+  // propio fieldset en vez de arriba del todo del panel.
+  const markAllNetworks = () => setHiddenNetworks(new Set());
+  const unmarkAllNetworks = () => setHiddenNetworks(new Set(networkKeys));
 
   return (
     <aside className="filter-panel">
@@ -23,7 +34,15 @@ export function FilterPanel() {
 
       <fieldset>
         <legend>Redes</legend>
-        {Object.keys(NETWORK_LABELS).map((network) => (
+        <div className="filter-panel__bulk-actions">
+          <button type="button" className="filter-panel__bulk-btn" onClick={markAllNetworks}>
+            Marcar todas
+          </button>
+          <button type="button" className="filter-panel__bulk-btn" onClick={unmarkAllNetworks}>
+            Desmarcar todas
+          </button>
+        </div>
+        {networkKeys.map((network) => (
           <label key={network} className="filter-row">
             <input
               type="checkbox"

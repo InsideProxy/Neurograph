@@ -105,3 +105,34 @@ export const EVIDENCE_LEVEL_LABELS: Record<string, string> = {
   indirect: "Inferencia indirecta",
   hypothetical: "Hipótesis",
 };
+
+// Colores "intermedios" para todo lo que dibujan directamente
+// Connectogram.tsx / Hemisferios.tsx / Brain3D.tsx / DetailPanel.tsx
+// (líneas, contornos de nodo, texto, flechas) -- decisión 18 de
+// docs/analisis-arquitectura.md, 30/08/2026. La app tiene ahora un tema
+// oscuro real (frontend/src/index.css) pero la exportación a JPEG sigue
+// forzando SIEMPRE fondo blanco explícito (decisión 11,
+// frontend/src/logic/exportImage.ts) sin importar el tema en pantalla
+// -- así que cualquier color que se dibuja dentro de un SVG o un canvas
+// exportable tiene que leerse con contraste suficiente sobre los DOS
+// fondos a la vez, no solo sobre uno. Elegidos maximizando el contraste
+// WCAG más bajo de los dos (contra blanco puro #ffffff y contra el
+// fondo oscuro real de los paneles, --panel-bg = #1d1e26) con un script
+// de búsqueda exhaustiva sobre luminancia relativa, no a ojo: los
+// cuatro llegan a un contraste >=3.85:1 contra ambos fondos (script y
+// resultado documentados en la propia decisión 18).
+//
+// IMPORTANTE: los NETWORK_COLORS de arriba NUNCA se tocan por este
+// motivo -- son datos extraídos de cada atlas real (ver comentario del
+// propio NETWORK_COLORS), no una elección de diseño, y alterarlos sería
+// fabricar un color que el atlas de origen no dice. Cuando un color de
+// red real es un extremo (p. ej. "#000000" de gordon333.salience, o
+// "#ffffcc" de gordon333.parietooccip) que desaparecería contra uno de
+// los dos fondos, la solución es un halo/contorno neutro alrededor del
+// nodo con NEUTRAL_COLOR (ver el trazo del nodo en
+// Connectogram.tsx/Hemisferios.tsx y el mesh de contorno en
+// Brain3D.tsx) -- nunca cambiar el color real.
+export const NEUTRAL_COLOR = "#837f90";
+export const ACCENT_SELECTED_COLOR = "#ac61d1";
+export const INTRA_HEMISPHERE_COLOR = "#2a925e";
+export const INTER_HEMISPHERE_COLOR = "#cf596d";

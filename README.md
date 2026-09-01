@@ -160,12 +160,42 @@ amarillo — nunca los mezcla.
 solo usar la aplicación, el paso 1 ya es suficiente):
 
 ```bash
-cd backend
-python -m venv .venv
+python -m venv .venv             # desde la raíz del repositorio, NUNCA
+                                  # desde dentro de backend/ -- pyproject.toml
+                                  # vive en la raíz, no en backend/
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest
 ```
+
+**4. Conectar un cliente MCP real** (p. ej. Claude Desktop) al servidor
+de `backend/mcp/server.py` -- necesita el paso 1 (Postgres arrancado) y el
+paso 3 (entorno virtual con `pip install -e ".[dev]"` ya hecho):
+
+Edita `%APPDATA%\Claude\claude_desktop_config.json` (Windows; en macOS es
+`~/Library/Application Support/Claude/claude_desktop_config.json`) y
+añade una entrada bajo `mcpServers`, usando el `python.exe` del propio
+entorno virtual (nunca `python` a secas: así no depende de qué `PATH`
+tenga el proceso que lo arranca) y la contraseña real de tu Postgres
+(la misma que pusiste en `.env`) por variable de entorno explícita, para
+no depender de si `.env` se carga o no:
+
+```json
+{
+  "mcpServers": {
+    "neurograph": {
+      "command": "E:\\Neurograph\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "backend.mcp.server"],
+      "env": {
+        "NEUROGRAPH_DATABASE__PASSWORD": "tu-contraseña-real-de-postgres"
+      }
+    }
+  }
+}
+```
+
+Guarda, cierra Claude Desktop del todo y vuelve a abrirlo. Si el servidor
+no aparece, revisa `%APPDATA%\Claude\logs\mcp-server-neurograph.log`.
 
 ## Principios que gobiernan el diseño
 

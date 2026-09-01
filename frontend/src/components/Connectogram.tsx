@@ -22,7 +22,29 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { exportSvgAsJpeg } from "../logic/exportImage";
-import { NETWORK_COLORS, CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
+import { abbreviationAddsInformation } from "../logic/regionLabel";
+import {
+  NETWORK_COLORS,
+  CONNECTION_TYPE_LABELS,
+  EVIDENCE_LEVEL_LABELS,
+  NEUTRAL_COLOR,
+  ACCENT_SELECTED_COLOR,
+} from "../theme/networks";
+
+// Recuadro de lectura (30/08/2026, corrige un problema real reportado
+// por la usuaria): antes siempre se mostraba "abreviatura — nombre",
+// pero para HCP-MMP1.0 el "nombre" es literalmente la misma abreviatura
+// con el hemisferio al lado (ver logic/regionLabel.ts) -- se veía como
+// si la abreviatura apareciera dos veces. Se omite el prefijo solo
+// cuando de verdad no aporta nada nuevo.
+function RegionReadoutText({ node }: { node: GraphNode }) {
+  if (!abbreviationAddsInformation(node)) return <>{node.label}</>;
+  return (
+    <>
+      <strong>{node.abbreviation}</strong> — {node.label}
+    </>
+  );
+}
 
 interface Props {
   nodes: GraphNode[];
@@ -76,10 +98,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const size = fixedSize ?? measuredSize;
 
   // Exportación a JPEG en color sobre fondo blanco (decisión de la
-  // usuaria, 30/08/2026): el SVG ya se dibuja sobre fondo blanco
-  // (style de más abajo), así que basta con serializarlo tal cual --
-  // ver frontend/src/logic/exportImage.ts para el porqué de componer
-  // explícitamente sobre blanco en vez de fiarse solo de ese estilo.
+  // usuaria, 30/08/2026): el propio <svg> ya no lleva ningún fondo
+  // inline (decisión 18, 30/08/2026 -- vive en App.css como `.viz-svg`,
+  // solo para pantalla), así que basta con serializarlo tal cual --
+  // exportImage.ts compone el resultado sobre un blanco explícito sin
+  // depender de que el SVG traiga fondo propio.
   const svgRef = useRef<SVGSVGElement>(null);
   const handleExport = () => {
     if (svgRef.current) {
@@ -142,7 +165,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   if (hoveredNode) {
     readout = (
       <span>
-        <strong>{hoveredNode.abbreviation ?? "(sin abreviatura)"}</strong> — {hoveredNode.label}
+        <RegionReadoutText node={hoveredNode} />
       </span>
     );
   } else if (selectedConnection) {
@@ -150,9 +173,17 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     const target = nodeById.get(selectedConnection.target);
     readout = (
       <span>
-        <strong>{source?.abbreviation ?? selectedConnection.source}</strong>
+        {/* Abreviatura + nombre completo (30/08/2026, aclaración de la
+            usuaria tras la decisión 19: "en la leyenda ha de aparecer la
+            abreviatura y a continuación el nombre completo... no solo la
+            abreviatura") -- la decisión 19 corrigió esto para un único nodo
+            seleccionado, pero se quedó sin aplicar aquí, en el
+            origen/destino de una CONEXIÓN seleccionada, que seguía
+            mostrando solo la abreviatura. Mismo `RegionReadoutText` que ya
+            usa el resto del panel. */}
+        {source ? <RegionReadoutText node={source} /> : <strong>{selectedConnection.source}</strong>}
         {" → "}
-        <strong>{target?.abbreviation ?? selectedConnection.target}</strong>
+        {target ? <RegionReadoutText node={target} /> : <strong>{selectedConnection.target}</strong>}
         {" · "}
         {CONNECTION_TYPE_LABELS[selectedConnection.type]}
         {" · "}
@@ -163,7 +194,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     const node = selectedNodesList[0];
     readout = (
       <span>
-        <strong>{node.abbreviation ?? "(sin abreviatura)"}</strong> — {node.label}
+        <RegionReadoutText node={node} />
       </span>
     );
   } else if (selectedNodesList.length > 1) {
@@ -176,7 +207,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         <ul>
           {selectedNodesList.map((node) => (
             <li key={node.id}>
-              <strong>{node.abbreviation ?? "(sin abreviatura)"}</strong> — {node.label}
+              <RegionReadoutText node={node} />
             </li>
           ))}
         </ul>
@@ -199,9 +230,16 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       height={size}
       role="img"
       aria-label="Connectograma"
-      style={{ background: "#fff", borderRadius: 8, display: "block", margin: "0 auto" }}
+      className="viz-svg"
+      style={{ borderRadius: 8, display: "block", margin: "0 auto" }}
     >
       <defs>
+        {/* Dos marcadores en vez de uno (decisión 18, 30/08/2026): antes
+            la flecha era siempre "#222", invisible sobre el fondo oscuro
+            en cuanto la conexión no estaba seleccionada. Cada marcador
+            usa el mismo color "intermedio" (legible sobre oscuro Y sobre
+            el blanco forzado de la exportación) que la línea a la que
+            acompaña -- ver theme/networks.ts. */}
         <marker
           id="connectogram-arrow"
           viewBox="0 0 10 10"
@@ -211,7 +249,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#222" />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={NEUTRAL_COLOR} />
+        </marker>
+        <marker
+          id="connectogram-arrow-selected"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={ACCENT_SELECTED_COLOR} />
         </marker>
       </defs>
       <g>
@@ -234,11 +283,15 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               key={conn.id}
               d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
               fill="none"
-              stroke={isSelected ? "#222" : "#b8b8b8"}
-              strokeOpacity={isSelected ? 0.9 : 0.35}
+              stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+              strokeOpacity={isSelected ? 0.95 : 0.55}
               strokeWidth={Math.max(1, conn.weight * 6)}
               strokeDasharray={isDashed ? "6 4" : undefined}
-              markerEnd={isDirected ? "url(#connectogram-arrow)" : undefined}
+              markerEnd={
+                isDirected
+                  ? `url(#connectogram-arrow${isSelected ? "-selected" : ""})`
+                  : undefined
+              }
               style={{ cursor: "pointer" }}
               onClick={() => selectConnection(conn.id)}
             />
@@ -251,32 +304,62 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           if (!pos) return null;
           const isSelected = selectedNodeIds.has(node.id);
           const isHovered = hoveredNodeId === node.id;
+          const currentNodeRadius = isSelected || isHovered ? nodeRadius + 3 : nodeRadius;
+
+          // Etiqueta SIEMPRE por fuera del círculo (30/08/2026, corrige un
+          // problema real reportado por la usuaria: con el desplazamiento
+          // horizontal fijo de antes, un nodo cerca de la parte de arriba
+          // o de abajo del círculo -- donde `pos.x` está cerca de `center`
+          // -- apenas se movía, y la etiqueta quedaba prácticamente encima
+          // del propio nodo). Todos los nodos están a la misma distancia
+          // `radius` del centro por construcción (ver `positions` más
+          // arriba), así que (pos.x-center, pos.y-center)/radius es
+          // directamente el vector unitario que apunta del centro hacia
+          // el nodo -- desplazar la etiqueta en esa misma dirección la
+          // deja siempre radialmente hacia fuera, sea cual sea el ángulo.
+          const ux = (pos.x - center) / radius;
+          const uy = (pos.y - center) / radius;
+          const labelOffset = currentNodeRadius + 7;
+          const labelX = pos.x + ux * labelOffset;
+          const labelY = pos.y + uy * labelOffset;
+          // Cerca de arriba/abajo (ux pequeño) centrado; a los lados,
+          // alineado para que el texto crezca hacia fuera del círculo, no
+          // hacia dentro.
+          const textAnchor = ux > 0.3 ? "start" : ux < -0.3 ? "end" : "middle";
+
           return (
-            <g
-              key={node.id}
-              transform={`translate(${pos.x}, ${pos.y})`}
-              onMouseEnter={() => setHoveredNodeId(node.id)}
-              onMouseLeave={() => setHoveredNodeId((current) => (current === node.id ? null : current))}
-            >
-              <circle
-                r={isSelected || isHovered ? nodeRadius + 3 : nodeRadius}
-                fill={NETWORK_COLORS[node.network] ?? "#888"}
-                stroke={isSelected ? "#111" : "none"}
-                strokeWidth={2}
-                style={{ cursor: "pointer" }}
-                onClick={() => toggleNode(node.id)}
-              />
+            <g key={node.id}>
+              <g
+                transform={`translate(${pos.x}, ${pos.y})`}
+                onMouseEnter={() => setHoveredNodeId(node.id)}
+                onMouseLeave={() => setHoveredNodeId((current) => (current === node.id ? null : current))}
+              >
+                {/* El relleno es SIEMPRE el color de red real (no se toca,
+                    ver theme/networks.ts), pero el trazo ya no es "none"
+                    para el caso no seleccionado (decisión 18, 30/08/2026):
+                    algunos colores reales son extremos (p. ej. "#000000"
+                    de gordon333.salience) y desaparecerían contra el fondo
+                    oscuro sin un contorno propio. NEUTRAL_COLOR es legible
+                    sobre oscuro y sobre el blanco de la exportación por
+                    igual. */}
+                <circle
+                  r={currentNodeRadius}
+                  fill={NETWORK_COLORS[node.network] ?? "#888"}
+                  stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+                  strokeWidth={isSelected ? 2.5 : 1}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => toggleNode(node.id)}
+                />
+              </g>
               {node.abbreviation && (
                 <text
-                  x={pos.x > center ? 8 : -8}
-                  textAnchor={pos.x > center ? "start" : "end"}
-                  dy={3}
+                  x={labelX}
+                  y={labelY}
+                  textAnchor={textAnchor}
+                  dominantBaseline="central"
                   fontSize={isSelected || isHovered ? labelFontSize + 1.5 : labelFontSize}
-                  fontWeight={isSelected || isHovered ? 700 : 500}
-                  fill="#222"
-                  stroke="#fff"
-                  strokeWidth={2}
-                  paintOrder="stroke"
+                  fontWeight={isSelected || isHovered ? 700 : 600}
+                  fill={NEUTRAL_COLOR}
                   style={{ pointerEvents: "none" }}
                 >
                   {node.abbreviation}

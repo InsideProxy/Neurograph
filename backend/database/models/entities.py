@@ -7,7 +7,7 @@ neuropsicología) según lo previsto en el plan de desarrollo.
 """
 from __future__ import annotations
 
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -78,6 +78,18 @@ class Study(Base, IdentifiedMixin):
     __tablename__ = "studies"
     doi: Mapped[str | None] = mapped_column(String, nullable=True)
     year: Mapped[int | None] = mapped_column(nullable=True)
+    # Descomposición estructurada de la cita (migración 0009, inicio de
+    # la Fase 6 -- Literatura, 30/08/2026): `name` sigue siendo la cita
+    # completa ya usada hasta ahora (p. ej. "Glasser MF, Coalson TS...
+    # Nature, 536(7615), 171-178", decisiones 6/9) -- estos tres campos
+    # no la sustituyen, permiten consultar por separado (autor, revista,
+    # resumen). Nullable: los 5 `Study` ya cargados quedan sin estos
+    # datos hasta que alguien los verifique y los rellene explícitamente
+    # (mismo patrón de backfill que `abbreviation`/`hemisphere` en
+    # `Region`), nunca inventados aquí.
+    authors: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    journal: Mapped[str | None] = mapped_column(String, nullable=True)
+    abstract: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Evidence(Base, IdentifiedMixin):
@@ -87,6 +99,15 @@ class Evidence(Base, IdentifiedMixin):
     # correlation | association | lesion_evidence | causal_evidence |
     # experimental_evidence | clinical_evidence  (sección 12)
     detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Migración 0009 (inicio de la Fase 6 -- Literatura, 30/08/2026): la
+    # tabla `evidence` no tenía ninguna fila real todavía, así que estos
+    # dos campos se exigen desde el primer día (NOT NULL, sin backfill
+    # pendiente) -- ver `backend/ingestion/literature/evidence.py` para
+    # la disciplina completa (nunca aplicar a la base de datos real una
+    # fila con extraction_method="ai_assisted" sin revisión humana antes,
+    # mismo principio que la decisión 17).
+    quote: Mapped[str] = mapped_column(Text, nullable=False)
+    extraction_method: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class Connection(Base, ProvenanceMixin):

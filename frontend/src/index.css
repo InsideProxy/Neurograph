@@ -1,15 +1,38 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  /* Tema oscuro real (30/08/2026, decisión 18 de
+     docs/analisis-arquitectura.md): hasta ahora el tema oscuro estaba
+     deliberadamente deshabilitado (ver historial de este archivo) porque
+     el connectograma dibujaba su SVG sobre fondo blanco fijo y su texto
+     en color oscuro fijo -- confirmado el 28/08/2026 con las 360
+     regiones reales que eso se volvía ilegible en cuanto el sistema
+     forzaba 'dark'. La usuaria pidió ahora, explícitamente, lo
+     contrario: la app en fondo oscuro con colores claros, y la
+     exportación a JPEG siempre en oscuro sobre blanco (ya así desde la
+     decisión 11 -- frontend/src/logic/exportImage.ts fuerza blanco
+     explícito sin importar el tema en pantalla). La pieza que faltaba no
+     era "elegir un fondo oscuro" sino elegir los colores de las líneas,
+     nodos y texto que SÍ se exportan (Connectogram.tsx, Hemisferios.tsx,
+     Brain3D.tsx, DetailPanel.tsx) de forma que se lean con contraste
+     suficiente sobre los dos fondos a la vez -- ver
+     frontend/src/theme/networks.ts para esos colores "intermedios",
+     calculados por contraste WCAG real (script ad hoc), no a ojo. Los
+     colores de esta hoja (chrome de la interfaz: cabecera, badges,
+     botones, paneles de texto) solo tienen que verse bien en el tema
+     oscuro, porque el chrome nunca se exporta -- solo el contenido de
+     los tres paneles visuales y la leyenda del panel de detalle. */
+  --text: #c7c5d0;
+  --text-h: #f3f2f7;
+  --text-muted: #9995a8;
+  --bg: #15161c;
+  --panel-bg: #1d1e26;
+  --border: #34343e;
+  --code-bg: #23242c;
+  --accent: #ac61d1;
+  --accent-bg: rgba(172, 97, 209, 0.15);
+  --accent-border: rgba(172, 97, 209, 0.5);
+  --social-bg: rgba(35, 36, 44, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -17,16 +40,11 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  /* NeuroGraph no tiene (todavía) un tema oscuro propio: badges,
-     paneles y el SVG del connectograma están pensados para fondo
-     claro con texto oscuro. Dejar 'light dark' aquí hacía que, en
-     cualquier ordenador con el sistema en modo oscuro, el fondo
-     pasara a #16171d (ver la media query de abajo) mientras el texto
-     del connectograma seguía siendo oscuro (#333) — casi invisible.
-     Confirmado el 28/08/2026 con las 360 regiones reales: se veía
-     como ruido de píxeles en vez de etiquetas. Fijado a 'light' hasta
-     que se diseñe un tema oscuro de verdad para toda la app. */
-  color-scheme: light;
+  /* 'dark' explícito, no 'light dark': ya no dependemos de que el
+     navegador adivine -- el tema oscuro es ahora un diseño real de
+     NeuroGraph, con sus propios colores para controles nativos
+     (scrollbars, checkboxes...), no una improvisación del sistema. */
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -38,11 +56,6 @@
     font-size: 16px;
   }
 }
-
-/* Tema oscuro deshabilitado deliberadamente (ver comentario en
-   color-scheme más arriba): la app aún no tiene un diseño para
-   fondo oscuro, así que forzar 'light' es más seguro que dejar
-   que el navegador cambie los colores por su cuenta. */
 
 
 #root {

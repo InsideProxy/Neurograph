@@ -18,6 +18,20 @@ pasado al constructor siempre gana — ver riesgo 9 en
 docs/analisis-arquitectura.md, descubierto el 28/08/2026 al no poder la
 API dentro de Docker conectar con `NEUROGRAPH_DATABASE__HOST=postgres`
 (seguía intentando `localhost`, el valor de `default.yaml`).
+
+El archivo `.env` se lee de una ruta absoluta (`ENV_FILE_PATH`, la raíz
+del repositorio calculada desde este propio archivo), nunca de una ruta
+relativa al directorio de trabajo del proceso que arranca: comprobado el
+31/08/2026 (decisión 31) que, sin fijar `env_file` explícitamente en
+`SettingsConfigDict`, `pydantic-settings` NO carga ningún `.env` pese a
+que este docstring y `.env.example` llevaban desde la Fase 0 dando por
+hecho que sí -- un `.env` real en la raíz del repositorio no tenía efecto
+alguno. Se detectó al investigar cómo conectar `backend/mcp/server.py`
+(Fase 10) a un cliente MCP real: ese proceso lo arranca el cliente MCP
+(p. ej. Claude Desktop) con un directorio de trabajo que no es
+necesariamente la raíz del repositorio, así que una ruta relativa como
+`env_file=".env"` habría dependido de quién lo arranque -- de ahí la ruta
+absoluta.
 """
 from __future__ import annotations
 
@@ -33,6 +47,8 @@ from pydantic_settings import (
 )
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "default.yaml"
+# Raíz del repositorio: backend/config/settings.py -> backend/config -> backend -> raíz.
+ENV_FILE_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class LibrarySettings(BaseModel):
@@ -84,7 +100,12 @@ class _YamlConfigSettingsSource(PydanticBaseSettingsSource):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="NEUROGRAPH_", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(
+        env_prefix="NEUROGRAPH_",
+        env_nested_delimiter="__",
+        env_file=ENV_FILE_PATH,
+        env_file_encoding="utf-8",
+    )
 
     library: LibrarySettings = LibrarySettings()
     database: DatabaseSettings = DatabaseSettings()
@@ -109,7 +130,7 @@ class Settings(BaseSettings):
         )
 
     @classmethod
-    def load(cls) -> "Settings":
+    def load(cls) -> Settings:
         """Mantenido por compatibilidad con el resto del código (que
         llama a `Settings.load()`); ahora es equivalente a `Settings()`,
         porque el YAML ya se lee como una fuente más a través de

@@ -12,8 +12,14 @@ const API_BASE_URL = "http://127.0.0.1:8420";
 // vista está calibrada para el rango pequeño de los datos de demostración
 // (~-2 a 2). No es una transformación científica: la coordenada real, sin
 // escalar, sigue siendo la que se guarda en la base de datos — esto solo
-// afecta a dónde se dibuja el punto en pantalla.
-const DISPLAY_SCALE = 1 / 40;
+// afecta a dónde se dibuja el punto en pantalla. Exportado (30/08/2026,
+// decisión 22) porque Brain3D.tsx tiene que aplicar EXACTAMENTE este mismo
+// factor a la malla de fondo del cerebro 3D -- la malla se genera en
+// milímetros reales sin escalar (scripts/generate_brain_meshes.py), así
+// que si algún día este valor cambia aquí, la malla tiene que moverse con
+// él automáticamente, nunca quedarse con una copia separada que se
+// desincronice en silencio.
+export const DISPLAY_SCALE = 1 / 40;
 
 interface ApiRegionNode {
   id: string;
@@ -41,6 +47,7 @@ export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
     hemisphere: row.hemisphere,
     network: row.network,
     position3d: row.position3d.map((v) => v * DISPLAY_SCALE) as [number, number, number],
+    referenceSpace: row.reference_space,
   }));
 }
 

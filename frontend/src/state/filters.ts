@@ -14,6 +14,13 @@ export interface FiltersState {
   toggleNetwork: (network: string) => void;
   toggleConnectionType: (type: ConnectionType) => void;
   setMinWeight: (weight: number) => void;
+  // Añadidos el 30/08/2026 (petición de la usuaria: "marcar todas"/
+  // "desmarcar todas" en el panel de filtros). Reciben la lista completa
+  // de claves posibles (redes o tipos de conexión) en vez de vaciar/
+  // llenar un Set "en abstracto", para que FilterPanel no tenga que
+  // duplicar aquí su propia noción de qué claves existen.
+  setHiddenNetworks: (networks: Set<string>) => void;
+  setHiddenConnectionTypes: (types: Set<ConnectionType>) => void;
 }
 
 // minWeight empieza en 0.3, no en 0: con matrices de conectividad real
@@ -44,4 +51,6 @@ export const useFiltersStore = create<FiltersState>((set) => ({
       return { hiddenConnectionTypes: next };
     }),
   setMinWeight: (weight) => set({ minWeight: weight }),
+  setHiddenNetworks: (networks) => set({ hiddenNetworks: new Set(networks) }),
+  setHiddenConnectionTypes: (types) => set({ hiddenConnectionTypes: new Set(types) }),
 }));
