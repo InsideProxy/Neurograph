@@ -8,6 +8,13 @@ intérprete, nunca su motor científico — ver
 `docs/analisis-arquitectura.md` para el razonamiento completo y las
 decisiones tomadas.
 
+<img width="1046" height="657" alt="image" src="https://github.com/user-attachments/assets/a3e95195-5064-474f-bfaf-5fae878cd3a2" />
+
+<img width="1349" height="866" alt="image" src="https://github.com/user-attachments/assets/d133299a-e3f2-41a0-ba80-619c86aff0f1" />
+
+<img width="1359" height="786" alt="image" src="https://github.com/user-attachments/assets/992c16b9-b619-4079-969f-e5c357a86b7a" />
+
+
 ## Estado del proyecto
 
 **Fase 0 — Entorno (hecho).** Repositorio, estructura de módulos, base de
