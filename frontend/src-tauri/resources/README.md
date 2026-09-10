@@ -43,6 +43,16 @@ Pasos:
    `pg_ctl.exe`, `createdb.exe` y `psql.exe` dentro de `bin/`, pero esos
    binarios necesitan `lib/` y `share/` al lado para funcionar (son
    dependencias suyas, no del proyecto) — cópialos también, no solo `bin/`.
+5. **Borra estas cuatro carpetas después de copiar** (hallazgo real,
+   decisión 71, 10/09/2026: el primer `npm run tauri build` real falló por
+   superar el límite de 2GB de NSIS/MSI, y estas cuatro sumaban 715MB sin
+   aportar nada en tiempo de ejecución):
+   - `pgAdmin 4/` (686MB -- aplicación gráfica de administración, esta app
+     nunca abre ninguna interfaz de administración de bases de datos)
+   - `StackBuilder/` (gestor de extensiones adicionales de EDB, sin uso aquí)
+   - `doc/` (documentación de PostgreSQL, no hace falta en tiempo de ejecución)
+   - `include/` (cabeceras C para compilar extensiones contra libpq/postgres,
+     no para ejecutar el servidor ya compilado)
 
 ## `resources/migrations/`
 

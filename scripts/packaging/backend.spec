@@ -97,6 +97,33 @@ a = Analysis(
         "PyQt6",
         "PySide2",
         "PySide6",
+        # SEGUNDO HALLAZGO DEL MISMO TIPO (decisión 70, 10/09/2026): el
+        # primer intento real de `npm run tauri build` falló al generar
+        # el instalador NSIS porque el paquete del backend arrastraba
+        # entera la extensión de Jupyter Lab "Anaconda Assistant"
+        # (share/jupyter/labextensions/...), con nombres de archivo
+        # minificados tan largos que superan el límite de ruta de
+        # Windows (260 caracteres) y rompen `makensis`. Ninguna
+        # dependencia declarada en pyproject.toml usa Jupyter -- viene
+        # del propio entorno de Python usado para construir (con toda
+        # probabilidad de base Anaconda, mismo origen que el hallazgo de
+        # Qt de la decisión 56), nunca de este proyecto. Se excluye el
+        # árbol completo relacionado con Jupyter, no solo el archivo
+        # puntual que hizo fallar la construcción.
+        "jupyter",
+        "jupyter_core",
+        "jupyter_client",
+        "jupyter_server",
+        "jupyterlab",
+        "jupyterlab_server",
+        "notebook",
+        "nbclassic",
+        "nbconvert",
+        "nbformat",
+        "ipykernel",
+        "ipywidgets",
+        "IPython",
+        "qtconsole",
     ],
     noarchive=False,
 )
