@@ -41,6 +41,16 @@ class EntityType(str, Enum):
     # (el patrón de identificador no permite "_" en este primer tramo):
     # el par especie/fuente ya deja claro que es "región-red".
     MEMBERSHIP = "membership"
+    # Un gen es una entidad científica real (como Region/Tract), no un
+    # dato derivado -- migración 0013, esquema para expresión génica del
+    # Allen Human Brain Atlas, diseñado sin cargar ningún dato real
+    # todavía (decisión de la usuaria, 02/09/2026).
+    GENE = "gene"
+    # Valor de expresión de un gen agregado sobre una región de un atlas
+    # ya existente: SÍ es un dato derivado (como Membership), nunca una
+    # afirmación directa del atlas de origen -- exige method/donor_count
+    # obligatorios en el modelo (riesgo 4), nunca opcionales.
+    EXPRESSION = "expression"
 
 
 _ID_PATTERN = re.compile(r"^[a-z]+\.[a-z0-9_]+\.[a-z0-9_\-\.]+\.[a-z0-9_\-]+$")

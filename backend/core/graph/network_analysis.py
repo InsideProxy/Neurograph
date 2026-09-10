@@ -77,6 +77,31 @@ def shortest_paths(graph: nx.Graph, source: str) -> dict[str, float]:
     return nx.single_source_dijkstra_path_length(inverted, source, weight="distance")
 
 
+def shortest_path(graph: nx.Graph, source: str, target: str) -> tuple[list[str], float] | None:
+    """Camino más corto real entre dos nodos concretos -- la lista de ids
+    en orden y su distancia total -- con el mismo criterio de inversión
+    de peso que `shortest_paths`/`betweenness_centrality` (un peso mayor
+    es una conexión más fuerte, no un coste mayor).
+
+    None cuando `source`/`target` no están en el grafo, o cuando no
+    existe ningún camino real entre ambos (p. ej. dos componentes
+    desconectadas): nunca se inventa un camino ni se devuelve una lista
+    vacía ambigua en su lugar.
+    """
+    if source not in graph or target not in graph:
+        return None
+    inverted = graph.copy()
+    for _, _, data in inverted.edges(data=True):
+        weight = data.get("weight", 1.0)
+        data["distance"] = 1.0 / weight if weight > 0 else float("inf")
+    try:
+        path = nx.dijkstra_path(inverted, source, target, weight="distance")
+        length = nx.dijkstra_path_length(inverted, source, target, weight="distance")
+    except nx.NetworkXNoPath:
+        return None
+    return path, length
+
+
 def participation_coefficient(
     graph: nx.Graph, community_assignment: dict[str, int]
 ) -> dict[str, float]:

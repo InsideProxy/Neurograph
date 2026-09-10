@@ -42,6 +42,30 @@ def test_atlas_and_species_ids_follow_ontology_scheme():
     assert ATLAS_ID == "atlas.human.hcp.mmp1_0"
 
 
+def test_regions_from_labels_uses_verified_long_name_not_raw_code():
+    # Peticion explicita de la usuaria (02/09/2026): la leyenda debe
+    # mostrar el nombre anatomico real, no el codigo crudo del CIFTI.
+    labels = [CiftiLabel(1, "L_V1_ROI", (0, 0, 0, 1))]
+    regions = regions_from_labels(labels)
+    assert regions[0].name == "Primary Visual Cortex (hemisferio izquierdo)"
+    assert regions[0].abbreviation == "V1"
+
+
+def test_regions_from_labels_rejects_area_code_without_verified_long_name():
+    labels = [CiftiLabel(1, "L_NoExiste_ROI", (0, 0, 0, 1))]
+    with pytest.raises(ValueError):
+        regions_from_labels(labels)
+
+
+def test_region_long_names_has_180_unique_verified_entries():
+    from backend.ingestion.neuroimaging.hcp_mmp1 import REGION_LONG_NAMES
+
+    assert len(REGION_LONG_NAMES) == 180
+    # ningun nombre repetido entre codigos de area distintos (si lo
+    # hubiera, la leyenda volveria a mostrar el mismo texto dos veces).
+    assert len(set(REGION_LONG_NAMES.values())) == 180
+
+
 _REAL_DLABEL_PATH = (
     Path.home() / "mnt" / "NeuroData" / "derived" / "extracted" / "hcp_s1200_groupavg"
     / "HCP_S1200_Atlas_Z4_pkXDZ"
@@ -62,6 +86,14 @@ def test_read_mmp1_regions_against_real_hcp_file():
     assert len({r.id for r in regions}) == 360  # todos los ids son únicos
     assert sum(1 for r in regions if r.hemisphere == "L") == 180
     assert sum(1 for r in regions if r.hemisphere == "R") == 180
+
+
+    # Peticion explicita de la usuaria (02/09/2026): "que la leyenda
+    # repita dos veces una abreviatura no tiene sentido" -- con nombres
+    # anatomicos reales y unicos por codigo de area, las 360 regiones
+    # (180 codigos x 2 hemisferios) no pueden compartir el mismo name.
+    names = [r.name for r in regions]
+    assert len(names) == len(set(names))
 
 
 def test_representative_point_returns_a_real_point_not_the_centroid():

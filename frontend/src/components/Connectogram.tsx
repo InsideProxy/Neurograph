@@ -21,6 +21,7 @@ import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
+import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import {
@@ -69,6 +70,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const induced = inducedConnections(filteredConnections, selectedNodeIds);
   const connections = induced ?? filteredConnections;
   const isInducedView = induced !== null;
+
+  // Tope de seguridad (01/09/2026, ver logic/renderSafety.ts para el
+  // diagnóstico real completo): con un conectoma real denso y el peso
+  // mínimo bajo, `connections` puede llegar a decenas de miles -- dibujar
+  // un <path> con su propio manejador de clic por cada una crashea el
+  // WebView. Por encima del tope no se dibuja NINGUNA conexión (nunca un
+  // subconjunto truncado al azar, que daría una imagen falsamente
+  // completa); se avisa en su lugar. Los nodos se siguen dibujando
+  // siempre -- su cantidad está acotada por el tamaño del atlas, nunca
+  // por el peso mínimo, así que no representan el mismo riesgo.
+  const tooManyConnections = connections.length > MAX_RENDERED_CONNECTIONS;
+  const visibleConnections = tooManyConnections ? [] : connections;
 
   // Tamaño fijo a 420px heredado de cuando solo había 8 nodos de
   // demostración (pendiente señalado por la usuaria el 28/08/2026):
@@ -224,6 +237,15 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         Exportar JPEG
       </button>
     </div>
+    {tooManyConnections && (
+      <p className="connectogram-toomany-warning">
+        Hay {connections.length} conexiones con los filtros actuales —
+        demasiadas para dibujar sin arriesgar que la aplicación se
+        congele, así que no se dibuja ninguna (los nodos sí se muestran).
+        Sube el "peso mínimo" o oculta más redes en el panel de Filtros
+        para reducir la cantidad.
+      </p>
+    )}
     <svg
       ref={svgRef}
       width={size}
@@ -264,7 +286,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         </marker>
       </defs>
       <g>
-        {connections.map((conn) => {
+        {visibleConnections.map((conn) => {
           const a = positions.get(conn.source);
           const b = positions.get(conn.target);
           if (!a || !b) return null;

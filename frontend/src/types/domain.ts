@@ -67,3 +67,69 @@ export interface InducedTract {
   regionIds: string[];
   studies: StudyCitation[];
 }
+
+// Tracto real CON geometría 3D cargada (ORG-800FC-100HCP, 41 tractos --
+// nunca los 52 de Yeh 2022, que no tienen geometría). Sección de
+// tractografía, decisión 61 de docs/analisis-arquitectura.md: vista
+// propia, nunca mezclada con las regiones de otros atlas (espacio de
+// referencia propio del atlas, no MNI152).
+export interface TractSummary {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  // Recuento real de streamlines del tracto ANTES de reducir a un
+  // número dibujable -- nunca se oculta, mismo criterio que
+  // MAX_RENDERED_CONNECTIONS (decisión 42).
+  streamlineCountReal: number;
+  streamlineCountShown: number;
+  studies: StudyCitation[];
+  // Espacio de referencia real de la geometría (migración 0014,
+  // decisión 63) -- nunca MNI152 ni el de ningún otro atlas de
+  // NeuroGraph. Determina qué malla de fondo anatómica, si alguna,
+  // se muestra en Tractography3D.tsx (REFERENCE_SPACE_MESH).
+  referenceSpace: string;
+}
+
+export type Point3D = [number, number, number];
+
+// Geometría real de un único tracto -- se pide solo cuando la usuaria
+// lo marca en la lista de selección, nunca los 41 a la vez.
+export interface TractGeometry {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  streamlineCountReal: number;
+  streamlineCountShown: number;
+  streamlines: Point3D[][];
+  referenceSpace: string;
+}
+
+// Cuarta pestaña de tractografía (decisión 66, 09/09/2026): nodo
+// derivado de una etiqueta real y con nombre verificado del wmparc de
+// ORG-800FC-100HCP (176 nodos reales) -- vive en el mismo espacio de
+// referencia propio de la tractografía (nunca MNI152), nunca mezclado
+// con GraphNode/Coordinate. `x`/`y`/`z` son el centroide real de esa
+// etiqueta, un dato DERIVADO (ver backend, HybridNodeOut).
+export interface HybridNode {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  referenceSpace: string;
+}
+
+// Arista real entre dos HybridNode marcados: al menos una streamline
+// real de ORG-800FC-100HCP tiene sus dos extremos dentro de esos dos
+// nodos. Mismo principio de transparencia real/mostrado que
+// TractGeometry -- streamlineCountReal nunca se oculta aunque
+// `streamlines` solo traiga una muestra determinista reducida.
+export interface HybridEdge {
+  nodeAId: string;
+  nodeBId: string;
+  tractCodes: string[];
+  streamlineCountReal: number;
+  streamlineCountShown: number;
+  streamlines: Point3D[][];
+  referenceSpace: string;
+}

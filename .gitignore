@@ -26,3 +26,25 @@ Thumbs.db
 # Datos científicos (nunca deben vivir en el repo de código;
 # viven en la biblioteca SSD, ver docs/portabilidad.md)
 /data/
+
+# Recursos empaquetados para el ejecutable de escritorio (Tauri): binarios
+# de Postgres, copia de las migraciones, el volcado de datos y la salida
+# de PyInstaller -- nunca código, se generan/copian localmente siguiendo
+# frontend/src-tauri/resources/README.md.
+frontend/src-tauri/resources/postgres/
+frontend/src-tauri/resources/migrations/
+frontend/src-tauri/resources/backend/
+frontend/src-tauri/resources/neurograph_snapshot.sql
+
+# Volcados de datos completos generados en la raíz (demasiado grandes
+# para el control de versiones -- GitHub rechaza cualquier archivo de
+# más de 100MB; se regeneran con generate_hybrid_tractography_nodes.py
+# / export_snapshot_embedded.ps1, nunca son la fuente de verdad)
+/migration_0015_data.sql
+/neurograph_snapshot.sql
+
+# Caché de compilación de PyInstaller (además de dist/, ya excluido)
+build/
+
+# Carpeta de limpieza temporal, nunca contenido real del repositorio
+_to_delete/

@@ -25,6 +25,15 @@ dependencies = [
     # código (nunca se afirma que algo funciona sin haberlo comprobado).
     "mcp>=1.0,<2.0",
     "openpyxl>=3.1",
+    # Fase 10 (31/08/2026, decisión 36): render_network/render_brain y la
+    # comparación entre especies devuelven imágenes PNG reales (petición
+    # explícita de la usuaria, no un descriptor JSON) -- backend/visualization/
+    # estaba vacío hasta ahora. matplotlib con backend "Agg" (sin
+    # servidor gráfico, ver backend/visualization/colors.py) es
+    # suficiente para connectogramas circulares y proyecciones 2D de
+    # coordenadas reales; no hace falta VTK/PyVista/Three.js server-side
+    # para esto -- verificado contra la 3.10.9.
+    "matplotlib>=3.8",
 ]
 
 [project.optional-dependencies]

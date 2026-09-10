@@ -66,18 +66,45 @@ def _summarize_result(result: Any) -> dict:
     longitud real y los primeros 5 elementos reales (su id, si lo
     tienen, o su representación); para un único modelo Pydantic, sus
     campos tal cual (son ya pequeños: una fila de métricas, no una lista
-    de regiones)."""
+    de regiones); para una imagen (`render_network`/`render_brain`,
+    Fase 10, 31/08/2026, decisión 36), su tipo MIME real y la longitud
+    real de sus datos en base64 -- nunca los propios bytes de la imagen,
+    que no tienen cabida en una columna JSONB y además duplicarían sin
+    motivo un dato binario que se puede regenerar en cualquier momento a
+    partir de los mismos datos reales. `base64_length` es la longitud de
+    la cadena codificada, no el tamaño real del PNG (algo mayor en bytes
+    crudos) -- una etiqueta exacta sobre lo que de verdad se mide, no una
+    aproximación sin nombrar. Una lista de imágenes (`compare_species_
+    images`, que devuelve las tres imágenes a la vez) recibe el mismo
+    tratamiento elemento a elemento, nunca los bytes crudos de ninguna
+    de las tres."""
+    if hasattr(result, "to_image_content"):
+        image_content = result.to_image_content()
+        return {"type": "image", "mime_type": image_content.mimeType, "base64_length": len(image_content.data)}
     if isinstance(result, list):
         preview = []
         for item in result[:5]:
-            if isinstance(item, BaseModel):
+            if hasattr(item, "to_image_content"):
+                item_content = item.to_image_content()
+                preview.append(
+                    {"type": "image", "mime_type": item_content.mimeType, "base64_length": len(item_content.data)}
+                )
+            elif isinstance(item, BaseModel):
                 data = item.model_dump(mode="json")
                 preview.append(data.get("id") or data.get("name") or data)
             else:
                 preview.append(item)
         return {"count": len(result), "preview": preview}
     if isinstance(result, BaseModel):
-        return result.model_dump(mode="json")
+        data = result.model_dump(mode="json")
+        if isinstance(data.get("sql"), str):
+            # El SQL propuesto (`propose_dataset_ingestion`, decisión 46)
+            # puede ser largo para un atlas de cientos de regiones -- se
+            # guarda su longitud real, nunca el texto completo, mismo
+            # criterio que ya aplica arriba a los bytes de una imagen.
+            sql_length = len(data["sql"])
+            data = {**data, "sql": None, "sql_length": sql_length}
+        return data
     return {"value": result}
 
 

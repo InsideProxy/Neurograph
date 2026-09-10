@@ -33,18 +33,20 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { Canvas, extend, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
+import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { getLabelTexture } from "../logic/textSprite";
-import { NETWORK_COLORS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR } from "../theme/networks";
-import { DISPLAY_SCALE } from "../data/api";
+import { NETWORK_COLORS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOMOLOGY_HIGHLIGHT_COLOR } from "../theme/networks";
+import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
+import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { ReferenceMesh } from "./ReferenceMesh";
 
 // Fondo de la escena en pantalla (decisión 18, 30/08/2026): mismo valor
 // que --panel-bg en frontend/src/index.css. three.js no puede leer
@@ -102,42 +104,13 @@ function resolveMeshUrl(nodes: GraphNode[]): string | null {
   return REFERENCE_SPACE_MESH[space] ?? null;
 }
 
-// Material translúcido único para ambas mallas (30/08/2026): deliberadamente
-// el mismo tratamiento visual para la superficie fsLR y la isosuperficie de
-// MNI152, para no sugerir con el estilo que una es más "real" o más precisa
-// que la otra -- las dos son, cada una en su propio espacio de referencia,
-// la mejor malla real disponible. `depthWrite={false}` evita que la propia
-// malla, al ser translúcida y no vaciarse en un orden predecible respecto a
-// sí misma, tape partes de sí misma de forma extraña; `depthTest` (por
-// defecto `true`) sigue activo, así que los nodos opacos delante de la
-// malla la siguen ocultando correctamente. `raycast={() => null}` la saca
-// por completo de la detección de clics: nunca debe robarle el clic a un
-// nodo o a una conexión.
-function BrainMesh({ url }: { url: string }) {
-  const gltf = useLoader(GLTFLoader, url);
-  const scene = useMemo(() => {
-    const cloned = gltf.scene.clone(true);
-    cloned.traverse((obj) => {
-      if (obj instanceof THREE.Mesh) {
-        obj.material = new THREE.MeshStandardMaterial({
-          color: NEUTRAL_COLOR,
-          transparent: true,
-          opacity: 0.14,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        });
-        obj.raycast = () => null;
-      }
-    });
-    return cloned;
-  }, [gltf]);
-  return (
-    <group scale={DISPLAY_SCALE}>
-      <primitive object={scene} />
-    </group>
-  );
-}
-
+// El material translúcido único (30/08/2026, deliberadamente el mismo
+// para las dos mallas de este componente: ninguna debe parecer más
+// "real" que la otra) y el resto del tratamiento de la malla de fondo
+// -- `depthWrite={false}`, `raycast={() => null}` -- ahora viven en
+// `./ReferenceMesh.tsx` (extraído el 08/09/2026, decisión 63, al
+// añadir la tercera malla de Tractography3D.tsx: mismo componente,
+// nunca una copia que pudiera desincronizarse).
 // Registro explícito de <threeLine> bajo la clave 'ThreeLine' del
 // catálogo de react-three-fiber (en vez de confiar en que r3f le quite
 // el prefijo "three" automáticamente). Confirmado el 28/08/2026: en esta
@@ -350,7 +323,19 @@ function NodeLabel({ node }: { node: GraphNode }) {
   );
 }
 
-function NodeMesh({ node }: { node: GraphNode }) {
+function NodeMesh({
+  node,
+  isHomologyHighlighted,
+}: {
+  node: GraphNode;
+  // Homología real hacia la especie de comparación elegida (02/09/2026,
+  // ver HomologyComparisonControl más abajo): SIEMPRE calculado a partir
+  // de filas `Homology` ya cargadas (GET /homologies?species_id=...,
+  // decisión 34) -- nunca una lista de regiones inventada. `false` por
+  // defecto (ninguna especie de comparación elegida, o esta región en
+  // concreto no tiene ninguna fila de homología real hacia ella).
+  isHomologyHighlighted: boolean;
+}) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
   const isSelected = selectedNodeIds.has(node.id);
   // Radio reducido dos veces (30/08/2026, ronda de ajustes tras revisión
@@ -359,6 +344,16 @@ function NodeMesh({ node }: { node: GraphNode }) {
   // nodo, tanto para distinguir nodos vecinos entre sí como para separar
   // visualmente la esfera de su etiqueta (ver NodeLabel).
   const baseRadius = isSelected ? 0.09 : 0.06;
+  // Vista en dos colores por homología real (02/09/2026, petición de la
+  // usuaria tras cerrar el resto del inventario pendiente): el color de
+  // red real (NETWORK_COLORS) es la codificación por defecto de SIEMPRE,
+  // igual que en Connectogram.tsx/Hemisferios.tsx -- este resaltado solo
+  // lo SUSTITUYE, nunca lo combina ni lo atenúa, para que las dos
+  // señales (red funcional real / homología real) nunca se mezclen en
+  // un tercer color ambiguo que no sea ninguna de las dos.
+  const fillColor = isHomologyHighlighted
+    ? HOMOLOGY_HIGHLIGHT_COLOR
+    : NETWORK_COLORS[node.network] ?? "#888";
   return (
     <>
       {/* Halo de contorno neutro (decisión 18, 30/08/2026) -- equivalente
@@ -391,7 +386,7 @@ function NodeMesh({ node }: { node: GraphNode }) {
             nodos. Sigue viéndose redondo a esta escala. */}
         <sphereGeometry args={[baseRadius, 14, 14]} />
         <meshStandardMaterial
-          color={NETWORK_COLORS[node.network] ?? "#888"}
+          color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
         />
@@ -493,6 +488,89 @@ function ConnectionLine({
   );
 }
 
+// Estado de carga de la lista de especies reales (mismo patrón que
+// SpeciesComparisonPanel.tsx -- unión discriminada, nunca un booleano
+// "loading" suelto que no distinga "cargando" de "vacío por error").
+type SpeciesListState =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "loaded"; items: SpeciesListItem[] };
+
+// Estado de la homología real hacia la especie de comparación elegida.
+// "idle" (ninguna especie elegida todavía) es un estado real aparte de
+// "loaded con cero resultados" (especie elegida, pero sin ninguna fila
+// de homología real que la toque) -- las dos situaciones deben poder
+// distinguirse en el mensaje que ve la usuaria.
+type HomologyState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "loaded"; ids: Set<string>; matchCount: number };
+
+// Conjunto vacío estable (misma identidad en cada render) para el caso
+// "sin homología resaltada todavía" -- evita crear un `Set` nuevo en
+// cada render de Brain3D cuando `HomologyState` no está en "loaded".
+const EMPTY_HOMOLOGY_IDS: Set<string> = new Set();
+
+// Control de "resaltar por homología real hacia..." (02/09/2026,
+// petición de la usuaria: "vista 3D en dos colores", resuelta como una
+// capacidad general -- ver el comentario junto a HOMOLOGY_HIGHLIGHT_COLOR
+// en theme/networks.ts para el porqué -- en vez de una lista fija de
+// regiones inventada). Vive fuera del `if (!focus)`/`return` principal
+// de Brain3D para que el control se muestre y mantenga su selección
+// tanto si hay algo seleccionado en el connectograma como si no --
+// mismo criterio que un filtro, no que la propia vista de foco.
+function HomologyComparisonControl({
+  speciesList,
+  comparisonSpeciesId,
+  onChangeComparisonSpeciesId,
+  homology,
+}: {
+  speciesList: SpeciesListState;
+  comparisonSpeciesId: string;
+  onChangeComparisonSpeciesId: (id: string) => void;
+  homology: HomologyState;
+}) {
+  return (
+    <div className="brain3d-homology">
+      <label>
+        Resaltar homología real hacia:{" "}
+        <select
+          value={comparisonSpeciesId}
+          onChange={(e) => onChangeComparisonSpeciesId(e.target.value)}
+          disabled={speciesList.kind !== "loaded"}
+        >
+          <option value="">(ninguna)</option>
+          {speciesList.kind === "loaded" &&
+            speciesList.items.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.scientificName}
+              </option>
+            ))}
+        </select>
+      </label>
+      {speciesList.kind === "error" && (
+        <span className="brain3d-homology__status brain3d-homology__status--error">
+          No se pudo cargar la lista de especies reales.
+        </span>
+      )}
+      {homology.kind === "loading" && (
+        <span className="brain3d-homology__status">Buscando homología real…</span>
+      )}
+      {homology.kind === "error" && (
+        <span className="brain3d-homology__status brain3d-homology__status--error">{homology.message}</span>
+      )}
+      {homology.kind === "loaded" && (
+        <span className="brain3d-homology__status">
+          {homology.matchCount === 0
+            ? "Sin homología real cargada hacia esta especie todavía."
+            : `${homology.ids.size} región(es) con homología real hacia esta especie -- resaltadas en naranja.`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
@@ -554,6 +632,17 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
     [nodes, filteredConnections, selectedNodeIds, selectedConnectionId]
   );
 
+  // Tope de seguridad (01/09/2026, mismo criterio y mismo diagnóstico real
+  // que Connectogram.tsx/Hemisferios.tsx -- ver logic/renderSafety.ts). El
+  // riesgo aquí es menor por construcción (`computeFocus` ya acota las
+  // conexiones a las que tocan la selección, y el botón "Ver en 3D" de
+  // FilterPanel.tsx selecciona una red completa, no el grafo entero), pero
+  // una red real con muchas regiones puede seguir induciendo miles de
+  // conexiones -- se aplica el mismo tope por seguridad, nunca un
+  // subconjunto truncado al azar.
+  const tooManyFocusConnections = (focus?.connections.length ?? 0) > MAX_RENDERED_CONNECTIONS;
+  const visibleFocusConnections = tooManyFocusConnections ? [] : (focus?.connections ?? []);
+
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   // A partir de TODOS los nodos del atlas actual (nunca solo los filtrados
   // ni solo los del foco actual): la malla de fondo representa el espacio
@@ -584,6 +673,75 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   const exportRef = useRef<(() => void) | null>(null);
   const handleExport = () => exportRef.current?.();
 
+  // Lista de especies reales para el selector de comparación (mismo
+  // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
+  // sola vez al montar, nunca por cada cambio de selección/foco.
+  const [speciesList, setSpeciesList] = useState<SpeciesListState>({ kind: "loading" });
+  useEffect(() => {
+    let cancelled = false;
+    fetchSpeciesList()
+      .then((items) => {
+        if (!cancelled) setSpeciesList({ kind: "loaded", items });
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "error desconocido";
+          setSpeciesList({ kind: "error", message });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Homología real hacia la especie de comparación elegida (02/09/2026).
+  // Se conserva aunque cambie la selección del connectograma (no vive
+  // dentro de `focus`) para no obligar a la usuaria a volver a elegir
+  // especie cada vez que selecciona otra región.
+  const [comparisonSpeciesId, setComparisonSpeciesId] = useState("");
+  const [homology, setHomology] = useState<HomologyState>({ kind: "idle" });
+  // Volver a "idle" al deseleccionar la especie de comparación se hace
+  // aquí, desde el propio evento que lo causa -- no dentro del efecto de
+  // abajo (que solo debe sincronizar con la API externa cuando SÍ hay
+  // especie elegida) -- mismo criterio que sugiere el aviso real de
+  // oxlint react(set-state-in-effect): "derive the value during render,
+  // initialize state directly, or update it from the event that caused
+  // the change".
+  const handleChangeComparisonSpeciesId = (id: string) => {
+    setComparisonSpeciesId(id);
+    if (!id) setHomology({ kind: "idle" });
+  };
+  useEffect(() => {
+    if (!comparisonSpeciesId) return;
+    let cancelled = false;
+    setHomology({ kind: "loading" });
+    fetchHomologiesForSpecies(comparisonSpeciesId)
+      .then((matches) => {
+        if (!cancelled) {
+          setHomology({ kind: "loaded", ids: homologyRegionIds(matches), matchCount: matches.length });
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "error desconocido";
+          setHomology({ kind: "error", message });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [comparisonSpeciesId]);
+  const homologyNodeIds = homology.kind === "loaded" ? homology.ids : EMPTY_HOMOLOGY_IDS;
+
+  const homologyControl = (
+    <HomologyComparisonControl
+      speciesList={speciesList}
+      comparisonSpeciesId={comparisonSpeciesId}
+      onChangeComparisonSpeciesId={handleChangeComparisonSpeciesId}
+      homology={homology}
+    />
+  );
+
   if (contextLost) {
     return (
       <p className="canvas-error">
@@ -601,21 +759,33 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   // explicación.
   if (!focus) {
     return (
-      <div className="brain3d-focus-placeholder">
-        Selecciona una región (o una conexión) en el connectograma o en
-        el esquema de hemisferios para ver aquí, en 3D, su red de
-        conectividad.
-      </div>
+      <>
+        {homologyControl}
+        <div className="brain3d-focus-placeholder">
+          Selecciona una región (o una conexión) en el connectograma o en
+          el esquema de hemisferios para ver aquí, en 3D, su red de
+          conectividad.
+        </div>
+      </>
     );
   }
 
   return (
     <>
-    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, flex: "0 0 auto" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flex: "0 0 auto", flexWrap: "wrap", gap: 8 }}>
+      {homologyControl}
       <button type="button" className="export-btn" onClick={handleExport}>
         Exportar JPEG
       </button>
     </div>
+    {tooManyFocusConnections && (
+      <p className="connectogram-toomany-warning">
+        Hay {focus.connections.length} conexiones reales entre los nodos
+        seleccionados — demasiadas para dibujar aquí sin riesgo. Se
+        muestran los nodos, pero ninguna línea. Reduce la selección o
+        sube el "peso mínimo" en el panel de Filtros.
+      </p>
+    )}
     {/* flex:1 + minHeight:0: canvas-wrap ahora es una columna flex (ver
         App.css) para que este panel comparta altura con el botón de
         arriba en vez de desbordar el contenedor de altura fija --
@@ -662,7 +832,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
       <ContextLossWatcher onLost={() => setContextLost(true)} />
       <ExportBridge exportRef={exportRef} />
       {/* Malla de fondo (30/08/2026, petición de la usuaria) -- ver
-          REFERENCE_SPACE_MESH/resolveMeshUrl/BrainMesh más arriba. Envuelta
+          REFERENCE_SPACE_MESH/resolveMeshUrl más arriba y ReferenceMesh.tsx. Envuelta
           en su propio ErrorBoundary (nunca el mismo que usa App.tsx para
           todo el panel): si el .glb no carga por lo que sea, el cerebro 3D
           sigue mostrando nodos y conexiones con normalidad, solo sin fondo
@@ -673,14 +843,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
       {meshUrl && (
         <ErrorBoundary fallback={null}>
           <Suspense fallback={null}>
-            <BrainMesh url={meshUrl} />
+            <ReferenceMesh url={meshUrl} />
           </Suspense>
         </ErrorBoundary>
       )}
       {focus.nodes.map((node) => (
-        <NodeMesh key={node.id} node={node} />
+        <NodeMesh key={node.id} node={node} isHomologyHighlighted={homologyNodeIds.has(node.id)} />
       ))}
-      {focus.connections.map((conn) => {
+      {visibleFocusConnections.map((conn) => {
         const a = nodeById.get(conn.source);
         const b = nodeById.get(conn.target);
         if (!a || !b) return null;

@@ -162,6 +162,27 @@ def spectrum_view(metrics: GraphMetrics) -> SpectrumResult:
     )
 
 
+def load_atlas_regions_and_connections(
+    db: Session, atlas_id: str, connection_type: str
+) -> tuple[list[str], list[Connection]]:
+    """Ids de región + conexiones reales de un atlas para `connection_type`,
+    sin aplicar todavía ningún umbral de peso (eso lo decide cada función
+    que consuma el resultado, vía `min_weight`). Consulta compartida entre
+    `list_graph_metrics` y `paths_service.find_path` -- nunca se repite
+    esta consulta en más de un sitio (sección 15: nunca reimplementar
+    lógica ya existente)."""
+    region_ids = list(db.execute(select(Region.id).where(Region.atlas_id == atlas_id)).scalars().all())
+    connection_rows = list(
+        db.execute(
+            select(Connection).where(
+                Connection.type == connection_type,
+                Connection.source_id.in_(select(Region.id).where(Region.atlas_id == atlas_id)),
+            )
+        ).scalars().all()
+    )
+    return region_ids, connection_rows
+
+
 def list_graph_metrics(
     db: Session,
     atlas_id: str,
@@ -172,16 +193,7 @@ def list_graph_metrics(
     reales de un atlas. `atlas_id` es obligatorio (nunca se calcula
     sobre "todo", que mezclaría regiones de parcelaciones distintas que
     ocupan el mismo espacio físico dos veces)."""
-    region_ids = list(db.execute(select(Region.id).where(Region.atlas_id == atlas_id)).scalars().all())
-
-    connection_rows = list(
-        db.execute(
-            select(Connection).where(
-                Connection.type == connection_type,
-                Connection.source_id.in_(select(Region.id).where(Region.atlas_id == atlas_id)),
-            )
-        ).scalars().all()
-    )
+    region_ids, connection_rows = load_atlas_regions_and_connections(db, atlas_id, connection_type)
 
     return compute_graph_metrics(
         region_ids=region_ids,

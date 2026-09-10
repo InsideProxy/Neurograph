@@ -7,6 +7,7 @@ from backend.core.graph.network_analysis import (
     detect_communities,
     modularity,
     participation_coefficient,
+    shortest_path,
     shortest_paths,
 )
 
@@ -97,3 +98,45 @@ def test_shortest_paths_from_source():
     assert distances["A"] == 0.0
     assert distances["B"] == pytest.approx(1.0)
     assert distances["C"] == pytest.approx(2.0)
+
+
+def test_shortest_path_returns_the_actual_path_and_distance():
+    graph = build_graph(
+        ["A", "B", "C"],
+        [Edge("A", "B", 1.0), Edge("B", "C", 1.0)],
+    )
+    result = shortest_path(graph, "A", "C")
+    assert result is not None
+    path, distance = result
+    assert path == ["A", "B", "C"]
+    assert distance == pytest.approx(2.0)
+
+
+def test_shortest_path_favors_the_strong_weight_path():
+    # Mismo caso de libro de texto que test_betweenness_centrality_favors_
+    # the_strong_weight_path: entre A y C hay un camino fuerte (A-B-C,
+    # peso 10) y uno débil (A-D-C, peso 0.1) -- el camino real más corto
+    # es el fuerte, no el que tiene menos "distancia" si se pasara el
+    # peso tal cual.
+    graph = build_graph(
+        ["A", "B", "C", "D"],
+        [
+            Edge("A", "B", 10.0), Edge("B", "C", 10.0),
+            Edge("A", "D", 0.1), Edge("D", "C", 0.1),
+        ],
+    )
+    path, _ = shortest_path(graph, "A", "C")
+    assert path == ["A", "B", "C"]
+
+
+def test_shortest_path_is_none_when_nodes_are_disconnected():
+    graph = build_graph(
+        ["A", "B", "C", "D"],
+        [Edge("A", "B", 1.0), Edge("C", "D", 1.0)],
+    )
+    assert shortest_path(graph, "A", "D") is None
+
+
+def test_shortest_path_is_none_when_a_node_does_not_exist():
+    graph = build_graph(["A", "B"], [Edge("A", "B", 1.0)])
+    assert shortest_path(graph, "A", "no-existe") is None

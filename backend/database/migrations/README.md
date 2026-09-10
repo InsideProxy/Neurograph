@@ -38,3 +38,23 @@ verdad — la fuente de verdad son los archivos en `versions/`. Si cambias
 los modelos en `backend/database/models/`, la migración siguiente se crea
 con `alembic revision --autogenerate -m "descripción"` desde un entorno
 con conexión a la base de datos.
+
+## Forma recomendada: `scripts/apply_sql.ps1`
+
+Los dos comandos de arriba (`docker cp` + `docker exec ... psql -f`) se
+pueden ejecutar de una sola vez con `scripts/apply_sql.ps1` — mismo
+procedimiento exacto por dentro (incluida la copia con `docker cp` para
+no corromper acentos/ñ, nunca una tubería de PowerShell), solo que en un
+único comando en vez de dos, con comprobaciones y mensajes de error
+claros:
+
+```powershell
+.\scripts\apply_sql.ps1 -Archivo .\backend\database\migrations\generated\0001_initial_schema.sql
+```
+
+Sirve tanto para migraciones de esquema como para cualquier
+`salida_*.sql` generado por un `scripts/register_*.py`. No sustituye tu
+revisión del archivo — si quieres ver el SQL antes de aplicarlo, ábrelo
+tú misma (`notepad .\archivo.sql`) antes de ejecutar el script; el script
+solo automatiza la mecánica de aplicarlo una vez que ya decidiste
+hacerlo, nunca decide por ti qué aplicar.

@@ -136,3 +136,22 @@ export const NEUTRAL_COLOR = "#837f90";
 export const ACCENT_SELECTED_COLOR = "#ac61d1";
 export const INTRA_HEMISPHERE_COLOR = "#2a925e";
 export const INTER_HEMISPHERE_COLOR = "#cf596d";
+// Segundo color para el resaltado por homología real (Brain3D.tsx,
+// 02/09/2026): cuando la usuaria elige una especie de comparación, las
+// regiones con al menos una fila `Homology` real ya cargada hacia esa
+// especie (backend `GET /homologies?species_id=...`, decisión 34) se
+// pintan con este color en vez del NETWORK_COLORS real de su nodo --
+// nunca al revés (nunca se inventa una lista de regiones "de circuito
+// procedimental": ver la decisión de la usuaria, 02/09/2026, tras
+// comprobar que no existe tal conjunto en los datos reales, solo la
+// homología real cargada en la decisión 40, hoy limitada al complejo
+// SMA). Elegido con el mismo método que NEUTRAL_COLOR/ACCENT_SELECTED_
+// COLOR/INTRA_HEMISPHERE_COLOR/INTER_HEMISPHERE_COLOR de arriba (búsqueda
+// por luminancia relativa sobre HSL, maximizando el contraste WCAG más
+// bajo de los dos fondos reales de la app): #da500b llega a 4.09:1 contra
+// blanco puro y 4.05:1 contra --panel-bg (#1d1e26), y su tono (naranja,
+// hue~20) no coincide con ningún otro color "intermedio" ya usado aquí
+// (violeta de ACCENT_SELECTED_COLOR, verde de INTRA_HEMISPHERE_COLOR,
+// rosa de INTER_HEMISPHERE_COLOR) para que las cuatro señales nunca se
+// confundan entre sí.
+export const HOMOLOGY_HIGHLIGHT_COLOR = "#da500b";

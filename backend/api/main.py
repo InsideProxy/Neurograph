@@ -15,7 +15,11 @@ motor matemático de `backend/core/graph/` a las regiones y
 conexiones reales (BUILD_CONNECTOME empieza aquí a devolver algo
 más que la lista de aristas). `GET /tracts` (Fase 10, 31/08/2026):
 versión mínima de SEARCH_TRACT, antes solo disponible de forma
-incidental dentro de `/connectivity/induced`. El resto de operaciones de
+incidental dentro de `/connectivity/induced`. `GET /tractography/nodes`
+y `GET /tractography/edges` (decisión 66, 09/09/2026): cuarta pestaña
+de tractografía, nodos derivados del wmparc de ORG-800FC-100HCP y las
+aristas reales (streamlines) que conectan los nodos marcados. El resto
+de operaciones de
 la sección 15 (RENDER_BRAIN, ...) se irán añadiendo fase a fase, cada
 una respaldada por su módulo correspondiente en backend/core/ y su
 propio router en backend/api/routers/, nunca improvisadas aquí.
@@ -33,7 +37,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routers.connections import router as connections_router
 from backend.api.routers.connectivity import router as connectivity_router
 from backend.api.routers.graph_metrics import router as graph_metrics_router
+from backend.api.routers.homologies import router as homologies_router
+from backend.api.routers.hybrid_tractography import router as hybrid_tractography_router
+from backend.api.routers.paths import router as paths_router
 from backend.api.routers.regions import router as regions_router
+from backend.api.routers.render import router as render_router
+from backend.api.routers.species import router as species_router
+from backend.api.routers.species_render import router as species_render_router
 from backend.api.routers.tracts import router as tracts_router
 from backend.config.settings import get_settings
 
@@ -66,6 +76,12 @@ app.include_router(connections_router)
 app.include_router(connectivity_router)
 app.include_router(graph_metrics_router)
 app.include_router(tracts_router)
+app.include_router(hybrid_tractography_router)
+app.include_router(paths_router)
+app.include_router(homologies_router)
+app.include_router(species_router)
+app.include_router(render_router)
+app.include_router(species_render_router)
 
 
 @app.get("/health")

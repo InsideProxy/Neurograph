@@ -77,19 +77,41 @@ def region_to_node(region: Region, coordinate: Coordinate, network: Network | No
     )
 
 
-def list_regions(db: Session, atlas_id: str | None = None) -> list[RegionNode]:
-    """Regiones con coordenada registrada (una región sin coordenada no
-    se puede colocar en el cerebro 3D, así que se excluye en vez de
-    mandarse con una posición inventada). La red funcional es opcional
-    (LEFT JOIN): una región sin pertenencia calculada todavía se
-    devuelve igual, marcada "unclassified" por `region_to_node`."""
-    query = (
+def _region_node_query():
+    """Consulta base compartida por `list_regions` y `list_regions_by_ids`
+    (Fase 10, 31/08/2026, decisión 37): Region + Coordinate (join real,
+    una región sin coordenada no se puede colocar en ninguna vista, así
+    que se excluye en vez de mandarse con una posición inventada) + Network
+    (LEFT JOIN opcional -- una región sin pertenencia calculada todavía se
+    devuelve igual, marcada "unclassified" por `region_to_node`). Separada
+    para que ninguna de las dos funciones reimplemente el mismo join."""
+    return (
         select(Region, Coordinate, Network)
         .join(Coordinate, Coordinate.entity_id == Region.id)
         .outerjoin(RegionNetworkMembership, RegionNetworkMembership.region_id == Region.id)
         .outerjoin(Network, Network.id == RegionNetworkMembership.network_id)
     )
+
+
+def list_regions(db: Session, atlas_id: str | None = None) -> list[RegionNode]:
+    """Regiones con coordenada registrada. `atlas_id` filtra a un atlas
+    concreto; sin él, todas las regiones cargadas."""
+    query = _region_node_query()
     if atlas_id is not None:
         query = query.where(Region.atlas_id == atlas_id)
+    rows = db.execute(query).all()
+    return [region_to_node(region, coordinate, network) for region, coordinate, network in rows]
+
+
+def list_regions_by_ids(db: Session, region_ids: list[str]) -> list[RegionNode]:
+    """Regiones reales por id explícito, sin importar a qué atlas
+    pertenezcan (Fase 10, 31/08/2026, decisión 37: usada por la
+    comparación visual entre especies, donde el conjunto de regiones a
+    dibujar no es "todo un atlas" sino un subconjunto concreto -- las
+    que participan en alguna homología real con otra especie). Vacío si
+    `region_ids` está vacío, sin consultar nada."""
+    if not region_ids:
+        return []
+    query = _region_node_query().where(Region.id.in_(region_ids))
     rows = db.execute(query).all()
     return [region_to_node(region, coordinate, network) for region, coordinate, network in rows]

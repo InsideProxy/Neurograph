@@ -208,3 +208,16 @@ no aparece, revisa `%APPDATA%\Claude\logs\mcp-server-neurograph.log`.
 - La IA nunca inventa conexiones, homologías ni evidencia (sección 1).
 
 Ver `docs/analisis-arquitectura.md` para el detalle completo.
+
+## Licencia
+
+NeuroGraph (código, documentación, esquema de base de datos y activos
+visuales) es de Juan Boza ("Proxy") — Instituto Dédalus, y se distribuye
+bajo **Creative Commons Reconocimiento-CompartirIgual 4.0 Internacional
+(CC BY-SA 4.0)** — ver el archivo [`LICENSE`](./LICENSE) para el texto
+completo y el resumen en lenguaje llano.
+
+Esto NO cubre los datos científicos de terceros que NeuroGraph consulta
+o carga (atlas, tractografía, estudios publicados) — cada uno conserva
+la licencia/términos de su propia fuente original, citada en
+`docs/analisis-arquitectura.md` junto a cada dataset.

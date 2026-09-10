@@ -5,6 +5,9 @@ import { Hemisferios } from "./components/Hemisferios";
 import { FilterPanel } from "./components/FilterPanel";
 import { DetailPanel } from "./components/DetailPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { SpeciesComparisonPanel } from "./components/SpeciesComparisonPanel";
+import { Tractography3D } from "./components/Tractography3D";
+import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchRealConnections, fetchRealNodes } from "./data/api";
 import type { GraphConnection, GraphNode } from "./types/domain";
@@ -44,7 +47,17 @@ const ATLASES: AtlasOption[] = [
   { id: "atlas.human.hcp.subcortex_grayordinates", label: "Subcórtex HCP — 19 regiones (amígdala, tálamo, cerebelo...)" },
 ];
 
+// Vista activa (decisión 38, 01/09/2026): "un atlas" es la vista
+// original (connectograma + hemisferios + cerebro 3D de UNA especie a
+// la vez); "comparar especies" es el nuevo panel que muestra las tres
+// imágenes reales de `GET /render/species/*` dentro de la propia
+// ventana. Nunca se mezclan en la misma pantalla -- son dos preguntas
+// distintas (sección 24: nunca presentar cosas de naturaleza distinta
+// como si fueran una sola vista).
+type View = "atlas" | "species" | "tractography" | "tractography-nodes";
+
 export default function App() {
+  const [view, setView] = useState<View>("atlas");
   const [selectedAtlasId, setSelectedAtlasId] = useState(ATLASES[0].id);
   const [source, setSource] = useState<DataSource>({ kind: "loading" });
 
@@ -87,11 +100,107 @@ export default function App() {
     </label>
   );
 
+  const viewToggle = (
+    <nav className="view-toggle">
+      <button
+        type="button"
+        className={view === "atlas" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
+        onClick={() => setView("atlas")}
+      >
+        Un atlas
+      </button>
+      <button
+        type="button"
+        className={view === "species" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
+        onClick={() => setView("species")}
+      >
+        Comparar especies
+      </button>
+      <button
+        type="button"
+        className={view === "tractography" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
+        onClick={() => setView("tractography")}
+      >
+        Tractografía 3D
+      </button>
+      <button
+        type="button"
+        className={view === "tractography-nodes" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
+        onClick={() => setView("tractography-nodes")}
+      >
+        Nodos de tractografía
+      </button>
+    </nav>
+  );
+
+  if (view === "species") {
+    return (
+      <div className="app">
+        <header>
+          <h1>NeuroGraph — vista de desarrollo</h1>
+          {viewToggle}
+        </header>
+        <div className="layout">
+          <section className="panel species-panel-wrap">
+            <h2>Comparación real entre especies</h2>
+            <SpeciesComparisonPanel />
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "tractography") {
+    return (
+      <div className="app">
+        <header>
+          <h1>NeuroGraph — vista de desarrollo</h1>
+          {viewToggle}
+        </header>
+        <ErrorBoundary
+          fallback={
+            <p className="canvas-error">
+              No se pudo mostrar la tractografía 3D (error inesperado).
+              Recarga la página; si se repite, abre la consola del
+              navegador (F12 → Console) y dime qué aparece ahí.
+            </p>
+          }
+        >
+          <Tractography3D />
+        </ErrorBoundary>
+      </div>
+    );
+  }
+
+  if (view === "tractography-nodes") {
+    return (
+      <div className="app">
+        <header>
+          <h1>NeuroGraph — vista de desarrollo</h1>
+          {viewToggle}
+        </header>
+        <ErrorBoundary
+          fallback={
+            <p className="canvas-error">
+              No se pudieron mostrar los nodos de tractografía (error
+              inesperado). Recarga la página; si se repite, abre la
+              consola del navegador (F12 → Console) y dime qué aparece
+              ahí.
+            </p>
+          }
+        >
+          <TractographyNodes3D />
+        </ErrorBoundary>
+      </div>
+    );
+  }
+
   if (source.kind === "loading") {
     return (
       <div className="app">
         <header>
           <h1>NeuroGraph — vista de desarrollo</h1>
+          {viewToggle}
           {atlasSelector}
           <p className="demo-badge">Cargando…</p>
         </header>
@@ -108,11 +217,12 @@ export default function App() {
     <div className="app">
       <header>
         <h1>NeuroGraph — vista de desarrollo</h1>
+        {viewToggle}
         {atlasSelector}
         <p className={source.kind === "real" ? "real-badge" : "demo-badge"}>{badge}</p>
       </header>
       <div className="layout">
-        <FilterPanel />
+        <FilterPanel nodes={source.nodes} />
         <main>
           {/* Diseño de tres paneles (decisión de la usuaria, 30/08/2026):
               connectograma y hemisferios apilados en una misma columna,

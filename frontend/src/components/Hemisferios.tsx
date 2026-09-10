@@ -54,6 +54,7 @@ import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
+import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import {
@@ -184,8 +185,51 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
   const connections = induced ?? filteredConnections;
   const isInducedView = induced !== null;
 
+  // Tope de seguridad (01/09/2026, mismo criterio y mismo diagnóstico
+  // real que Connectogram.tsx -- ver logic/renderSafety.ts). Las
+  // estadísticas intra/inter de más abajo se calculan igualmente sobre
+  // `connections` completo (un recuento es barato, no crea elementos
+  // DOM); solo el DIBUJO de las líneas se acota.
+  const tooManyConnections = connections.length > MAX_RENDERED_CONNECTIONS;
+  const visibleConnections = tooManyConnections ? [] : connections;
+
   const lateralized = useMemo(() => nodes.filter((n) => n.hemisphere !== null), [nodes]);
   const unlateralizedCount = nodes.length - lateralized.length;
+
+  // Botón "Ocultar no seleccionados" (petición de la usuaria, 02/09/2026):
+  // reduce el esquema a solo los puntos que forman la selección actual --
+  // los nodos elegidos directamente, o los dos extremos de una conexión
+  // seleccionada. Es puramente de VISUALIZACIÓN (oculta puntos ya
+  // posicionados, no recalcula el rango real de coordenadas que define la
+  // geometría del esquema -- eso seguiría distorsionando la proporción de
+  // la elipse cada vez que cambiara la selección, que no es lo que se ha
+  // pedido), y nunca sustituye a los filtros de red/peso del panel de
+  // Filtros: si no hay ninguna selección, el botón queda deshabilitado en
+  // vez de no hacer nada en silencio.
+  const [hideUnselected, setHideUnselected] = useState(false);
+
+  const selectionNodeIds = useMemo(() => {
+    if (selectedNodeIds.size > 0) return selectedNodeIds;
+    if (selectedConnectionId) {
+      const conn =
+        connections.find((c) => c.id === selectedConnectionId) ??
+        filteredConnections.find((c) => c.id === selectedConnectionId);
+      if (conn) return new Set([conn.source, conn.target]);
+    }
+    return null;
+  }, [selectedNodeIds, selectedConnectionId, connections, filteredConnections]);
+
+  const hasSelectionToHide = selectionNodeIds !== null && selectionNodeIds.size > 0;
+  const hidingActive = hideUnselected && hasSelectionToHide;
+
+  const visibleLateralized = hidingActive
+    ? lateralized.filter((n) => selectionNodeIds!.has(n.id))
+    : lateralized;
+  const renderedConnections = hidingActive
+    ? visibleConnections.filter(
+        (c) => selectionNodeIds!.has(c.source) && selectionNodeIds!.has(c.target)
+      )
+    : visibleConnections;
 
   // Radio de nodo y tamaño de letra escalados por cuántos nodos hay que
   // dibujar (mismo criterio que Connectogram.tsx) -- con la abreviatura
@@ -347,7 +391,22 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
 
   return (
     <div ref={containerRef} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 4 }}>
+        <button
+          type="button"
+          className={`export-btn${hidingActive ? " export-btn--active" : ""}`}
+          disabled={!hasSelectionToHide}
+          title={
+            hasSelectionToHide
+              ? hidingActive
+                ? "Volver a mostrar todos los puntos"
+                : "Mostrar únicamente los puntos seleccionados"
+              : "Selecciona uno o varios nodos, o una conexión, para poder ocultar el resto"
+          }
+          onClick={() => setHideUnselected((v) => !v)}
+        >
+          {hidingActive ? "Mostrar todos" : "Ocultar no seleccionados"}
+        </button>
         <button type="button" className="export-btn" onClick={handleExport}>
           Exportar JPEG
         </button>
@@ -363,6 +422,17 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
           </span>
         )}
       </div>
+
+      {tooManyConnections && (
+        <p className="connectogram-toomany-warning">
+          Hay {connections.length} conexiones con los filtros actuales —
+          demasiadas para dibujar sin arriesgar que la aplicación se
+          congele, así que no se dibuja ninguna (los nodos sí se
+          muestran, y las estadísticas de arriba sí las cuentan todas).
+          Sube el "peso mínimo" o oculta más redes en el panel de
+          Filtros para reducir la cantidad.
+        </p>
+      )}
 
       <svg
         ref={svgRef}
@@ -435,7 +505,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
         <ellipse cx={RIGHT_CX} cy={ELLIPSE_CY} rx={ELLIPSE_RX} ry={ELLIPSE_RY} fill="none" stroke={NEUTRAL_COLOR} />
 
         <g>
-          {connections.map((conn) => {
+          {renderedConnections.map((conn) => {
             const a = positions.get(conn.source);
             const b = positions.get(conn.target);
             if (!a || !b) return null;
@@ -482,7 +552,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
         </g>
 
         <g>
-          {lateralized.map((node) => {
+          {visibleLateralized.map((node) => {
             const pos = positions.get(node.id);
             if (!pos) return null;
             const isSelected = selectedNodeIds.has(node.id);

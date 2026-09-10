@@ -1,15 +1,32 @@
 """Afirmaciones de evidencia extraídas de un estudio (secciones 6, 12 y
-24; inicio de la Fase 6 -- Literatura, 30/08/2026).
+24; inicio de la Fase 6 -- Literatura, 30/08/2026; enlace a entidad
+concreta añadido 02/09/2026).
 
 Cada `Evidence` vive siempre atada a la cita textual real que la respalda
-(`quote`) y a cómo se obtuvo (`extraction_method`, migración 0009) --
-nunca una afirmación sin ninguna de las dos cosas: sin `quote` no es
-verificable, y sin saber si la transcribió una persona o la propuso un
-pipeline de NLP/IA no se le puede aplicar el mismo criterio de confianza
-que al resto del proyecto (sección 24, nunca mezclar lo observado con lo
-inferido sin decirlo). La tabla `evidence` no tenía ninguna fila real
-todavía cuando se añadieron estas dos columnas, así que se exigen desde
-el primer día (`NOT NULL`, sin backfill pendiente) -- ver migración 0009.
+(`quote`), a cómo se obtuvo (`extraction_method`, migración 0009) y ahora
+también a la entidad concreta del grafo que respalda (`entity_id`,
+migración 0011) -- nunca una afirmación sin las tres cosas: sin `quote`
+no es verificable, sin saber si la transcribió una persona o la propuso
+un pipeline de NLP/IA no se le puede aplicar el mismo criterio de
+confianza que al resto del proyecto (sección 24, nunca mezclar lo
+observado con lo inferido sin decirlo), y sin `entity_id` la evidencia
+queda flotando sin conectarse a ninguna región/red/conexión real del
+grafo -- justo el hueco que tenía el esquema hasta esta decisión. La
+tabla `evidence` no tenía ninguna fila real todavía cuando se añadieron
+estos tres campos, así que se exigen desde el primer día (`NOT NULL`, sin
+backfill pendiente) -- ver migraciones 0009 y 0011.
+
+`entity_id` no tiene `ForeignKey` propia: puede apuntar a `regions.id`,
+`networks.id` o `connections.id` -- tres tablas distintas, ninguna FK de
+Postgres cubre eso sola. Mismo criterio ya aplicado a
+`Connection.source_id`/`target_id` (decisión 13): a qué tabla pertenece
+un `entity_id` concreto se resuelve siempre consultando cada tabla
+candidata, nunca asumiendo un prefijo del identificador como si fuera
+parte del contrato de datos. Este módulo no resuelve ni valida esa
+pertenencia -- es una función pura sin conexión a base de datos, mismo
+patrón que `study_metadata.py` -- eso queda para la capa de servicio que
+construya quien vaya a proponer evidencia real (todavía no existe
+ninguna, ver más abajo).
 
 Disciplina no negociable, mismo principio ya establecido en la decisión
 17 (ingesta de atlas nuevos asistida por IA): una fila con
@@ -22,7 +39,9 @@ el resto de scripts de este proyecto (revisión manual + `docker cp` +
 pipeline de extracción automática (dirección de diseño confirmada por la
 usuaria el 30/08/2026, ver decisión 20 de docs/analisis-arquitectura.md),
 pero ningún código de este repositorio lo escribe todavía -- esta tarea
-es solo el esquema, sin cargar ni proponer ningún artículo real.
+sigue siendo solo el esquema (ahora con el enlace a entidad incluido),
+sin cargar ni proponer ningún artículo real (decisión de la usuaria,
+02/09/2026: construir primero solo la infraestructura).
 """
 from __future__ import annotations
 
@@ -54,6 +73,14 @@ class EvidenceRecord:
     name: str
     study_id: str
     kind: str
+    # Región, red o conexión concreta del grafo que esta evidencia
+    # respalda (migración 0011) -- el propio id real de esa fila
+    # (`regions.id`, `networks.id` o `connections.id`), nunca un valor
+    # inventado ni un texto libre. Este dataclass no comprueba a qué
+    # tabla pertenece (no tiene conexión a base de datos, ver el
+    # docstring del módulo): solo exige que no esté vacío, igual que
+    # `study_id`.
+    entity_id: str
     quote: str
     extraction_method: str
     detail: dict | None = None
@@ -65,6 +92,11 @@ class EvidenceRecord:
             raise ValueError("EvidenceRecord.name no puede estar vacío")
         if not self.study_id:
             raise ValueError("EvidenceRecord.study_id no puede estar vacío")
+        if not self.entity_id:
+            raise ValueError(
+                "EvidenceRecord.entity_id no puede estar vacío -- una evidencia sin la "
+                "región/red/conexión concreta a la que respalda no está enlazada al grafo"
+            )
         if self.kind not in EVIDENCE_KINDS:
             raise ValueError(
                 f"kind {self.kind!r} no reconocido -- debe ser uno de {sorted(EVIDENCE_KINDS)}"
@@ -98,15 +130,16 @@ def evidence_insert_sql(evidence: EvidenceRecord) -> str:
         else f"'{_escape(json.dumps(evidence.detail))}'::jsonb"
     )
     return (
-        "INSERT INTO evidence (id, name, study_id, kind, quote, extraction_method, detail) VALUES (\n"
+        "INSERT INTO evidence (id, name, study_id, kind, entity_id, quote, extraction_method, detail) VALUES (\n"
         f"  '{_escape(evidence.id)}', '{_escape(evidence.name)}', '{_escape(evidence.study_id)}',\n"
-        f"  '{_escape(evidence.kind)}', '{_escape(evidence.quote)}', "
-        f"'{_escape(evidence.extraction_method)}', {detail_sql}\n"
+        f"  '{_escape(evidence.kind)}', '{_escape(evidence.entity_id)}', '{_escape(evidence.quote)}',\n"
+        f"  '{_escape(evidence.extraction_method)}', {detail_sql}\n"
         ")\n"
         "ON CONFLICT (id) DO UPDATE SET\n"
         "  name = EXCLUDED.name,\n"
         "  study_id = EXCLUDED.study_id,\n"
         "  kind = EXCLUDED.kind,\n"
+        "  entity_id = EXCLUDED.entity_id,\n"
         "  quote = EXCLUDED.quote,\n"
         "  extraction_method = EXCLUDED.extraction_method,\n"
         "  detail = EXCLUDED.detail;\n"

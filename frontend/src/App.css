@@ -9,6 +9,15 @@
 .atlas-selector { display: block; margin: 0.4rem 0; font-size: 0.9rem; }
 .atlas-selector select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 
+/* Selector "Un atlas" / "Comparar especies" (decisión 38, 01/09/2026):
+   mismo estilo de botón secundario que .export-btn / .filter-panel__bulk-btn,
+   con un estado activo marcado con el color de acento en vez de un
+   tercer estilo de botón nuevo. */
+.view-toggle { display: flex; gap: 6px; margin: 0.5rem 0; }
+.view-toggle__btn { font-size: 0.85rem; padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
+.view-toggle__btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
+.view-toggle__btn--active { border-color: var(--accent-border); background: var(--accent-bg); color: var(--text-h); font-weight: 600; }
+
 .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
 
 main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; }
@@ -31,10 +40,31 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    espacio que ocuparía el lienzo, para que el panel no salte de tamaño
    al seleccionar algo. */
 .brain3d-focus-placeholder { width: 100%; height: min(70vh, 760px); min-height: 420px; border: 1px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; box-sizing: border-box; color: var(--text-muted); font-style: italic; font-size: 0.9rem; background: var(--panel-bg); }
+/* Control de "resaltar por homología real hacia..." de Brain3D.tsx
+   (02/09/2026) -- mismo tratamiento visual que .species-panel__selectors
+   select, para que los dos selectores de especie de la app (este y el
+   de SpeciesComparisonPanel.tsx) se vean consistentes entre sí. */
+.brain3d-homology { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.82rem; }
+.brain3d-homology select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.brain3d-homology__status { color: var(--text-muted); font-style: italic; }
+.brain3d-homology__status--error { color: #ff9b9b; font-style: normal; }
 /* display:flex column (30/08/2026): el botón "Exportar JPEG" de Brain3D.tsx vive dentro de este contenedor de altura fija, por encima del lienzo -- sin flex, el <Canvas> (que ocupa 100% de alto) se sale del contenedor en vez de compartir el espacio con el botón. */
 .export-btn { font-size: 0.78rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
 .export-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
+.export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.export-btn:disabled:hover { border-color: var(--border); background: var(--panel-bg); }
+/* Botón "Ocultar no seleccionados" del esquema de hemisferios (02/09/2026,
+   petición de la usuaria): mismo tratamiento de estado activo que
+   .view-toggle__btn--active, reutilizado aquí en vez de un tercer patrón
+   de botón nuevo. */
+.export-btn--active { border-color: var(--accent-border); background: var(--accent-bg); color: var(--text-h); font-weight: 600; }
 .canvas-error { padding: 1rem; color: #ff9b9b; background: rgba(255, 90, 90, 0.12); border-radius: 8px; font-size: 0.9rem; }
+
+/* Aviso de "demasiadas conexiones para dibujar" (01/09/2026, ver
+   logic/renderSafety.ts) -- mismo tratamiento visual que .canvas-error
+   (alerta, no error fatal: el resto del panel sigue funcionando), clase
+   propia porque no vive dentro de un <canvas> como Brain3D. */
+.connectogram-toomany-warning { margin: 4px 0 8px; padding: 0.6rem 0.8rem; color: #ff9b9b; background: rgba(255, 90, 90, 0.12); border-radius: 8px; font-size: 0.78rem; line-height: 1.35; }
 
 /* Texto más compacto en los dos paneles laterales (30/08/2026, ronda de
    ajustes tras revisión visual: "reducir el espacio de interlineado...,
@@ -68,6 +98,24 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filter-panel__bulk-actions { display: flex; gap: 8px; margin: 0.4rem 0 0.6rem; }
 .filter-panel__bulk-btn { font-size: 0.76rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
 .filter-panel__bulk-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
+
+/* Botón "Ver en 3D" por red (01/09/2026, petición de la usuaria: no
+   había forma de seleccionar una red entera de una vez, solo nodo a
+   nodo). El panel mide solo 220px, así que la fila de cada red pasa a
+   envolver (`flex-wrap`) en vez de forzar el botón siempre en la misma
+   línea que una etiqueta larga -- con nombres como "Frontoparietal
+   (Cole-Anticevic)" el botón cae a su propia línea sin romper el ancho
+   fijo del panel. */
+.filter-row--network { justify-content: space-between; flex-wrap: wrap; cursor: default; }
+.filter-row--network label { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1 1 auto; min-width: 0; }
+.filter-panel__select-network-btn { font-size: 0.68rem; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text-muted); cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
+.filter-panel__select-network-btn:hover { border-color: var(--text-muted); background: var(--code-bg); color: var(--text); }
+.filter-row__actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.filter-panel__selection-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 0.6rem; font-size: 0.76rem; color: var(--text-muted); }
+.filter-panel__bulk-btn:disabled { opacity: 0.5; cursor: default; }
+.filter-panel__bulk-btn:disabled:hover { border-color: var(--border); background: var(--panel-bg); }
+.filter-panel__weight-help { margin: 0.4rem 0 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+.tractography-panel__count { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
 .detail-panel dl { margin: 0.5rem 0 0; }
 .detail-panel dt { font-weight: 600; margin-top: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
@@ -113,3 +161,24 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .hemisferios-unlateralized-note { color: var(--text-muted); font-size: 0.76rem; font-style: italic; margin: 4px 0 0; }
 .hemisferios-readout { min-height: 2.4em; margin-top: 6px; padding: 6px 8px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.82rem; color: var(--text); }
 .hemisferios-readout__placeholder { color: var(--text-muted); font-style: italic; }
+
+/* Panel "Comparar especies" (decisión 38, 01/09/2026): las tres imágenes
+   reales de GET /render/species/* dentro de la propia ventana, en vez de
+   pegar tres URLs a mano en el navegador. .species-panel-wrap reutiliza
+   el mismo ancho de columna que .panel (ver más arriba). */
+.species-panel-wrap { text-align: left; }
+/* Texto explicativo de como leer las tres imagenes de comparacion entre
+   especies (07/09/2026, peticion de la usuaria: las imagenes ya llevan
+   su propia leyenda dibujada dentro, pero el panel en si no explicaba
+   como leerlas juntas). Tono neutro, nunca de aviso/error -- distinto
+   a .connectogram-toomany-warning. */
+.species-panel__help { margin: 0 0 1rem; padding: 0.75rem 1rem; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; }
+.species-panel__help strong { color: var(--text); }
+.species-panel__selectors { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.9rem; }
+.species-panel__selectors select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.species-panel__status { color: var(--text-muted); font-style: italic; padding: 0.5rem 0; }
+.species-panel__status--error { color: #ff9b9b; font-style: normal; }
+.species-panel__images { display: flex; flex-direction: column; gap: 1.5rem; }
+.species-panel__figure { margin: 0; padding: 0.75rem; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; }
+.species-panel__figure figcaption { font-weight: 600; color: var(--text-h); margin-bottom: 0.5rem; font-size: 0.9rem; }
+.species-panel__figure img { max-width: 100%; height: auto; border-radius: 4px; background: #ffffff; }

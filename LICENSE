@@ -1,0 +1,35 @@
+NeuroGraph
+Copyright (c) 2026 Juan Boza ("Proxy") — Instituto Dédalus
+
+Esta obra (todo el contenido de este repositorio: código fuente del
+backend y del frontend, esquema y migraciones de base de datos,
+documentación, scripts, y activos visuales como mallas y logotipo,
+salvo que un archivo concreto indique otra cosa) está sujeta a la
+licencia:
+
+Creative Commons Reconocimiento-CompartirIgual 4.0 Internacional
+(CC BY-SA 4.0)
+
+Texto legal completo y vinculante:
+https://creativecommons.org/licenses/by-sa/4.0/legalcode.es
+
+Resumen en lenguaje llano (esto NO sustituye al texto legal de arriba):
+
+Se permite copiar, modificar, distribuir y hacer uso comercial de esta
+obra o de trabajos derivados de ella, siempre que se cumplan estas dos
+condiciones:
+
+1. Reconocimiento — debe darse crédito de forma razonable a Juan Boza
+   ("Proxy") / Instituto Dédalus como autoría original, indicar si se
+   hicieron cambios, y enlazar a esta licencia.
+2. CompartirIgual — si se modifica, transforma o crea una obra derivada
+   a partir de esta, esa obra derivada debe distribuirse bajo esta misma
+   licencia (CC BY-SA 4.0) o una compatible.
+
+No se otorga ninguna garantía; la obra se ofrece "tal cual".
+
+Nota técnica: Creative Commons desaconseja explícitamente el uso de sus
+licencias para código de software (no cubren bien aspectos como
+patentes o compatibilidad con otras licencias de software). Se aplica
+aquí de todos modos, como elección explícita de la autora, con pleno
+conocimiento de esa recomendación.

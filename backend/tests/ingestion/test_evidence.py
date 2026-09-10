@@ -14,6 +14,7 @@ def _valid_kwargs(**overrides):
         name="Ejemplo de afirmación",
         study_id="study.human.example.foo_2026",
         kind="correlation",
+        entity_id="region.human.brainnetome.a1_1",
         quote="La región X mostró una correlación significativa con Y (p<0.01).",
         extraction_method="manual_transcription",
     )
@@ -83,3 +84,36 @@ def test_evidence_insert_sql_escapes_single_quotes_in_quote():
     record = EvidenceRecord(**_valid_kwargs(quote="It's a significant effect (p<0.01)."))
     sql = evidence_insert_sql(record)
     assert "It''s a significant effect" in sql
+
+
+def test_evidence_record_rejects_empty_entity_id():
+    # Migración 0011: una evidencia sin la región/red/conexión concreta a
+    # la que respalda no está enlazada al grafo -- mismo nivel de rigor
+    # que exigir `quote` (sección 24).
+    with pytest.raises(ValueError):
+        EvidenceRecord(**_valid_kwargs(entity_id=""))
+
+
+def test_evidence_record_accepts_entity_id_pointing_at_a_region_network_or_connection():
+    # El dataclass no valida a qué tabla pertenece `entity_id` (no tiene
+    # conexión a base de datos, ver el docstring del módulo) -- solo que
+    # no esté vacío. Se prueban los tres tipos de entidad que la usuaria
+    # aprobó explícitamente (02/09/2026: "una región, red o conexión
+    # concreta del grafo"), no como validación de pertenencia real sino
+    # para dejar constancia de que el campo no está restringido a un
+    # único tipo de identificador.
+    for entity_id in (
+        "region.human.brainnetome.a1_1",
+        "network.human.cole_anticevic.default",
+        "connection.human.yeh2022.af_l_v1_v2",
+    ):
+        record = EvidenceRecord(**_valid_kwargs(entity_id=entity_id))
+        assert record.entity_id == entity_id
+
+
+def test_evidence_insert_sql_includes_entity_id():
+    record = EvidenceRecord(**_valid_kwargs(entity_id="region.human.brainnetome.a1_1"))
+    sql = evidence_insert_sql(record)
+    assert "region.human.brainnetome.a1_1" in sql
+    assert "entity_id" in sql
+    assert "entity_id = EXCLUDED.entity_id" in sql

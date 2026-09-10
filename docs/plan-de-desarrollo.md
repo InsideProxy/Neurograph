@@ -280,6 +280,17 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   Pendiente, no iniciado: comparación interespecífica más allá de estas
   54 homologías puntuales (p. ej. una vista dedicada en el frontend), y
   cualquier otro par de especies/atlas que la usuaria quiera añadir.
+
+  **Vista dedicada en el frontend, completada 01/09/2026 (decisión 39 de
+  `docs/analisis-arquitectura.md`, detalle completo ahí).** El pendiente
+  señalado justo arriba ("una vista dedicada en el frontend") ya está
+  implementado: panel "Comparar especies" dentro de la propia ventana de
+  NeuroGraph, con las tres imágenes reales de `GET /render/species/*`
+  (connectograma de homología + dos esquemas por especie, ahora
+  coloreados por par homólogo real en vez de por hemisferio -- ver
+  decisión 39). Sigue limitado a las 54 homologías reales ya cargadas
+  (Cheng et al. 2021, IPL) -- ningún par de especies/atlas nuevo se ha
+  añadido en esta tarea.
 - **Fase 8 — Neuropsicología (aparcada por falta de datos reales,
   31/08/2026 -- decisión 31 de `docs/analisis-arquitectura.md`).**
   Lesiones, funciones, fenotipos, asociaciones clínicas. Investigado el
@@ -692,10 +703,195 @@ señalados en `docs/analisis-arquitectura.md` (sección 5).
   el proceso). Nueva prueba de regresión más las 3 ya existentes, suite
   completa 104 en verde + 13 omitidas, `ruff check` sin avisos.
 
-  Pendiente explícito: conectar el servidor a un cliente MCP de verdad
-  (p. ej. Claude Desktop) para la primera prueba con datos reales
-  (siguiente paso, con las instrucciones ya dadas a la usuaria); decidir
-  cuándo abordar las 6 herramientas restantes.
+  **Primera conexión real a un cliente MCP, completada y verificada,
+  31/08/2026 (decisión 32 de `docs/analisis-arquitectura.md`, detalle
+  completo ahí).** Tres incidentes reales por el camino, cada uno
+  diagnosticado con evidencia antes de corregir: (1) intentar añadir
+  `mcpServers` al `claude_desktop_config.json` interno de la app rompió
+  temporalmente la carga de sus ajustes -- revertido, y descubierto que
+  la vía real y segura es un `.mcp.json` a nivel de proyecto (raíz del
+  repositorio, recogido por la pestaña "Code"); (2) el entorno virtual
+  real de la usuaria tenía instalado `mcp` 2.x pese al pin `<2.0` de
+  `pyproject.toml` -- corregido reinstalando (`pip install -e ".[dev]"`,
+  ahora `1.29.1`); (3) un primer intento de conexión dio
+  `CONNECTION_CLOSED` por arranque en frío de las librerías científicas
+  pesadas -- resuelto reconectando con `/mcp`, sin cambio de código.
+  Verificación final con la herramienta MCP real (no un rodeo por
+  Python directo): `search_region` sobre `atlas.human.hcp.mmp1_0`
+  devolvió las 360 regiones reales con su red funcional y coordenada.
+
+  **`find_path` implementado, 31/08/2026 (decisión 33 de
+  `docs/analisis-arquitectura.md`, detalle completo ahí).** Primera de
+  las 6 herramientas pendientes, elegida por no depender de datos ni
+  infraestructura nuevos. Nueva `shortest_path(graph, source, target)`
+  en `backend/core/graph/network_analysis.py` (mismo criterio de
+  inversión de peso que `betweenness_centrality`/`shortest_paths`, `None`
+  cuando no hay camino real, nunca uno aproximado); nueva capa de
+  servicio `backend/api/services/paths_service.py` (función pura
+  `compute_path` + `find_path` con base de datos, reutilizando la
+  consulta ya compartida con `graph_metrics_service`); nuevo endpoint
+  `GET /path` y nueva herramienta MCP `find_path`, llamando a la misma
+  capa de servicio que el endpoint. 10 pruebas nuevas, suite completa
+  114 en verde + 13 omitidas, `ruff check` limpio.
+
+  **`find_homologues` implementado, 31/08/2026 (decisión 34 de
+  `docs/analisis-arquitectura.md`, detalle completo ahí).** Segunda de
+  las 6 herramientas pendientes: expone las 54 filas `Homology` reales
+  ya cargadas (decisión 29) como búsqueda, con la región y la especie
+  real de cada extremo y su cita real (vacía cuando el dataset de origen
+  no tiene estudio enlazado). Nueva `backend/api/services/
+  homology_service.py` (función pura `compute_homology_matches` + `find_
+  homologues` con base de datos), nuevo endpoint `GET /homologies`,
+  nueva herramienta MCP `find_homologues` con filtros opcionales
+  `region_id`/`species_id`. 5 pruebas nuevas, suite completa 119 en
+  verde + 13 omitidas, `ruff check` limpio.
+
+  **`compare_species` implementado, 31/08/2026 (decisión 35 de
+  `docs/analisis-arquitectura.md`, detalle completo ahí).** Tercera de
+  las 6 herramientas pendientes: decisión de la usuaria "ambos
+  combinados" -- resumen cuantitativo real (regiones cargadas por
+  especie, cuántas participan en homología con la otra especie del par,
+  recuento por `status`) Y la lista completa de homologías compartidas,
+  reutilizando `homology_service.find_homologues`. Nunca compara
+  "topología" entre especies: solo el humano tiene conectividad
+  estructural real cargada. Nueva `backend/api/services/
+  species_service.py`, nuevo endpoint `GET /species/compare`, nueva
+  herramienta MCP `compare_species` (lanza error si alguna especie no
+  existe). 6 pruebas nuevas, suite completa 124 en verde + 13 omitidas,
+  `ruff check` limpio.
+
+  **Pipeline de renderizado + `render_network`/`render_brain`
+  implementados, 31/08/2026 (decisión 36 de
+  `docs/analisis-arquitectura.md`, detalle completo ahí).** Cuarta y
+  quinta herramientas: decisión de la usuaria, imagen PNG real (no un
+  descriptor de escena). Nueva dependencia matplotlib (backend "Agg").
+  Nuevo `backend/visualization/` (`colors.py`, `network_render.py`,
+  `brain_render.py`, sin tocar la base de datos, mismo principio que
+  `backend/core/`); nueva `backend/api/services/render_service.py`
+  (reutiliza `regions_service`/`graph_metrics_service`, ninguna consulta
+  nueva); nuevos endpoints `GET /render/network`/`GET /render/brain`
+  (devuelven PNG real, no el sobre JSON del resto de la API); nuevas
+  herramientas MCP `render_network`/`render_brain`. Ajuste necesario en
+  `backend/mcp/audit.py` para que la auditoría de estas dos herramientas
+  no fallara en silencio al intentar resumir una imagen. 18 pruebas
+  nuevas, suite completa 136 en verde + 13 omitidas, `ruff check`
+  limpio; verificación visual adicional de dos imágenes de ejemplo.
+
+  **Comparación visual entre especies implementada, 31/08/2026 (decisión
+  37 de `docs/analisis-arquitectura.md`, detalle completo ahí) -- sexta
+  y última herramienta de este bloque.** Tres imágenes reales en una
+  sola llamada MCP (`compare_species_images`, `list[Image]`) o tres
+  endpoints HTTP separados (`GET /render/species/*`): un connectograma
+  circular de homología (regiones reales de las dos especies, tres
+  colores -- exclusiva de A, exclusiva de B, homóloga -- con leyenda) y
+  dos esquemas interhemisféricos (uno por especie, coloreados por
+  hemisferio real, solo sus regiones homólogas con la otra). Nunca
+  superpone las dos especies en un único cerebro 3D. Dos bugs reales de
+  integración con el SDK de MCP encontrados y corregidos:
+  `PydanticSchemaGenericError` al registrar una herramienta con
+  `list[Image]` de retorno (corregido con `structured_output=False`) y
+  un fallo silencioso de auditoría al resumir una lista de imágenes
+  (corregido en `backend/mcp/audit.py`). 14 pruebas nuevas, suite
+  completa 145 en verde + 13 omitidas, `ruff check` limpio; verificación
+  visual con el caso real más parecido al de la usuaria (`Pan
+  troglodytes` vs. `Homo sapiens`, proporciones reales por atlas).
+
+  **Con esto quedan completas las seis herramientas MCP pedidas el
+  31/08/2026** ("vamos con las seis herramientas", alcance "todo lo que
+  tenga datos reales, incluyendo diseñar render_brain/render_network").
+  Pendiente explícito: `render_lesion` (bloqueada por falta de datos de
+  Fase 8, decisión 31, fuera del alcance de este bloque); la ingesta de
+  repositorios nuevos propuesta por IA (decisión 17) sigue sin código.
+
+  **Rediseño de los esquemas por especie + panel real en el frontend,
+  01/09/2026 (decisión 39 de `docs/analisis-arquitectura.md`, detalle
+  completo ahí).** Al usar por primera vez `compare_species_images` con
+  un caso real (macaco vs. humano, IPL), la usuaria reportó con
+  precisión el problema: el connectograma (imagen 1) funcionaba bien,
+  pero los dos esquemas por hemisferio (imágenes 2 y 3) no dejaban ver
+  ningún circuito compartido entre especies -- coloreaban por hemisferio
+  L/R, un dato real pero que no liga una especie con la otra. Corregido
+  `backend/visualization/hemisphere_render.py`: color = par homólogo
+  real (mismo color en las dos imágenes de la comparación), hemisferio
+  conservado como forma del marcador, y etiqueta de texto real
+  (abreviatura) junto a cada punto. Nuevo endpoint `GET /species` para
+  listar especies reales, y nuevo panel `SpeciesComparisonPanel.tsx` en
+  el frontend -- las tres imágenes ahora se ven dentro de la propia
+  ventana de NeuroGraph (selector "Un atlas" / "Comparar especies" en la
+  cabecera), sin pegar URLs a mano en el navegador como hasta ahora.
+  Verificado con `pytest` (146 en verde + 13 omitidas), `ruff check`
+  limpio, y en el frontend `tsc -b`, `npm run build`, `npm test` (11
+  pruebas) y `oxlint`, los cuatro en verde -- más verificación visual
+  directa de las imágenes generadas antes de entregar (se encontró y
+  corrigió un problema real de maquetación con `aspect="equal"` en el
+  propio proceso, ver decisión 39).
+
+**Vista 3D con circuito humano procedimental en dos colores (humano
+exclusivo / compartido con macaco) -- petición de la usuaria, 01/09/2026,
+capa de datos completada, frontend todavía pendiente.** La usuaria pidió
+ver en `Brain3D.tsx` los circuitos humanos de memoria procedimental con
+un color para lo exclusivo del humano y otro para lo compartido con
+macaco. Investigación honesta antes de tocar código: fuera del IPL
+(Cheng et al. 2021), no existía ninguna homología real humano-macaco
+para corteza motora/premotora/SMA, ganglios basales o cerebelo. La
+usuaria eligió, en dos rondas de decisión, investigar y cargar homología
+motora real primero en vez de mostrar el color "compartido" vacío o
+inventado; acotado después al par más sólido disponible en la literatura
+(SMA/pre-SMA), y ante una ambigüedad real de la propia fuente (Glasser et
+al. 2016 no distingue `6ma`/`6mp` como SMA-proper/pre-SMA), a la opción
+más amplia pero honesta: las tres regiones humanas del grupo SMA
+(`6ma`/`6mp`/`SCEF`) enlazadas con el único SMA de macaco cargado,
+`status="uncertain_correspondence"`. Capa de datos completa, verificada
+(`pytest`, `ruff`, SQL generado e inspeccionado) -- detalle completo en
+la decisión 40 de `docs/analisis-arquitectura.md`. **Pendiente
+explícito**: la propia vista 3D en `Brain3D.tsx` (dos colores) todavía no
+se ha empezado; y la homología cargada cubre solo el complejo SMA, no el
+resto de corteza motora/premotora ni ningún subcórtex -- el color
+"compartido" en el 3D solo podrá encenderse, de forma honesta, para las
+regiones que de verdad tienen hoy una fila `Homology` real.
+
+**Conectoma región-región real para HCP-MMP1.0 (Rosen & Halgren, 2021) y
+conversación de fondo sobre el enfoque del proyecto -- 01/09/2026 (decisión
+41 de `docs/analisis-arquitectura.md`, detalle completo ahí).** Tras la
+decisión 40, la usuaria planteó una crítica de fondo ("no hemos conseguido
+nada... apenas puedo ver redes neuronales explicadas"), con un caso
+concreto: el filtro "redes de lenguaje" no mostraba nada en ningún atlas.
+Diagnóstico honesto con datos reales, sin tocar código todavía: `FilterPanel.tsx`
+mezcla claves genéricas de demostración con las reales (arreglo pendiente,
+explícitamente pospuesto por la usuaria); y, más de fondo, "Lenguaje
+(Cole-Anticevic)" solo existe sobre HCP-MMP1.0, que hasta esta decisión no
+tenía **ninguna** conexión región-región real (verificado con la usuaria
+ejecutando SQL directamente contra su base de datos: 39 495 conexiones
+totales = 30 135 Brainnetome + 9 360 Yeh 2022, cero HCP-MMP1.0) -- mientras
+que Brainnetome (que sí tiene conexiones) no tiene ninguna red funcional
+cargada (decisión 25). Inventario real de `E:\NeuroData` corregido de paso:
+~8 GB reales, no los "2TB" que la usuaria creía; seis archivos del Allen
+Human Brain Atlas (~1,7 GB) sin usar por ningún código; cero datos de
+ratón. Aparte, se documentó (sin resolver) un hueco de reproducibilidad
+real: el código que generó las 30 135 conexiones de Brainnetome (decisión
+5) no está en el repositorio actual.
+
+Con dos subagentes de investigación real en paralelo, se confirmó que
+Brainnetome no tiene ninguna clasificación funcional propia verificable
+(un candidato sin documentar fue descartado explícitamente) y se encontró
+un dataset real y citable que sí cubre el hueco de HCP-MMP1.0: **Rosen &
+Halgren (2021), eNeuro**, matriz de conectividad estructural (tractografía
+probabilística, N=1065, HCP S1200) sobre las 360 áreas exactas de
+HCP-MMP1.0, publicada en Zenodo (CC BY 4.0). Ingerida con el mismo patrón
+que el resto del proyecto (módulo puro + script `register_*.py`, sin
+tocar la base de datos directamente): 64 620 conexiones región-región
+nuevas, peso reconstruido de forma determinista y documentada a partir del
+log10 Fpt publicado, `evidence_level='indirect'`. Verificado con `pytest`
+(10 pruebas nuevas, suite completa 162 en verde + 13 omitidas) y `ruff
+check` limpio; SQL generado, inspeccionado a mano (64620 filas únicas
+confirmadas) y dividido en dos archivos para su entrega. **Con esto,
+HCP-MMP1.0 pasa a tener por primera vez conectividad real Y redes
+funcionales de Cole-Anticevic a la vez.** Pendiente explícito: aplicar el
+SQL en la base de datos real de la usuaria; el arreglo del panel de
+filtros; retomar la vista 3D de dos colores (decisión 40); y el resto de
+lo hablado sobre el enfoque general (mapear regiones a los sistemas
+cognitivos de la usuaria desde su Zotero, homología más allá de SMA/IPL,
+ratón como especie nueva, generalizar la ingesta para otras personas).
 
 **Empaquetado y distribución para otras personas (pendiente, señalado por
 la usuaria el 30/08/2026).** Al explicarle la arquitectura completa, surgió
@@ -719,6 +915,22 @@ No se ha decidido todavía en qué momento del plan abordar esto (podría
 ir después de completar la Fase 9, o convivir con fases posteriores) --
 queda anotado aquí para no perder el hilo entre sesiones, tal como pidió
 la usuaria, sin comprometerse todavía a una fecha.
+
+**Requisito 2 (interfaz sin navegador) -- primera etapa completada y
+verificada por la usuaria (01/09/2026, decisión 38).** `frontend/`
+envuelto en una ventana nativa real con Tauri (elegido sobre Electron
+desde la decisión 1), en modo desarrollo: el backend se sigue levantando
+a mano (`docker compose up`) y el frontend sigue siendo el mismo
+React/Vite de siempre por dentro (ningún archivo de `frontend/src/`
+tocado), pero ahora se abre en una ventana de escritorio de verdad en vez
+de en el navegador (`npm run tauri dev` en `frontend/`). El empaquetado
+instalable (que otra persona lo instale sin git/Docker/npm a mano --
+requisito 1) queda explícitamente para una etapa posterior, sin fecha.
+Un problema real detectado en la misma verificación (la selección de
+atlas no funcionaba dentro de la ventana) se diagnosticó con evidencia
+real (consola F12 de la ventana) y quedó resuelto sin ningún cambio de
+código: el backend simplemente no estaba levantado -- detalle completo
+en la decisión 38 de `docs/analisis-arquitectura.md`.
 
 Extensión futura explícita (fuera del alcance de las fases 1-10 salvo
 decisión en contra): ejecución de pipelines completos de dMRI→tractografía,

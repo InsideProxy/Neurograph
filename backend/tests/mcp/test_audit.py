@@ -41,6 +41,58 @@ def test_summarize_result_of_a_plain_value_is_not_fabricated():
     assert summary == {"value": None}
 
 
+def test_summarize_result_of_an_image_keeps_only_its_mime_type_and_size():
+    # render_network/render_brain devuelven un mcp.server.fastmcp.Image
+    # real; se sustituye aquí por un objeto mínimo con el mismo método
+    # `to_image_content()` para no depender del SDK de mcp en esta
+    # prueba (mismo criterio que el resto de pruebas puras del proyecto).
+    class _FakeImageContent:
+        mimeType = "image/png"
+        data = "QQ=="  # base64 de 2 bytes reales
+
+    class _FakeImage:
+        def to_image_content(self):
+            return _FakeImageContent()
+
+    summary = audit._summarize_result(_FakeImage())
+
+    assert summary == {"type": "image", "mime_type": "image/png", "base64_length": 4}
+
+
+def test_summarize_result_of_a_list_of_images_summarizes_each_one():
+    # compare_species_images devuelve las tres imágenes reales a la vez
+    # en una lista -- cada una debe resumirse igual que una imagen suelta,
+    # nunca con sus bytes crudos dentro del recuento/preview.
+    class _FakeImageContent:
+        mimeType = "image/png"
+        data = "QQ=="
+
+    class _FakeImage:
+        def to_image_content(self):
+            return _FakeImageContent()
+
+    summary = audit._summarize_result([_FakeImage(), _FakeImage(), _FakeImage()])
+
+    assert summary["count"] == 3
+    assert summary["preview"] == [{"type": "image", "mime_type": "image/png", "base64_length": 4}] * 3
+
+
+def test_summarize_result_with_a_sql_field_keeps_only_its_real_length():
+    # propose_dataset_ingestion (decisión 46) puede devolver un SQL de
+    # varias decenas de miles de caracteres para un atlas grande -- se
+    # guarda su longitud real, nunca el texto completo, mismo criterio
+    # que ya aplica a los bytes de una imagen.
+    class _FakeProposal(BaseModel):
+        dataset_id: str
+        sql: str
+
+    summary = audit._summarize_result(_FakeProposal(dataset_id="dataset.x", sql="INSERT INTO x VALUES (1);"))
+
+    assert summary["dataset_id"] == "dataset.x"
+    assert summary["sql"] is None
+    assert summary["sql_length"] == len("INSERT INTO x VALUES (1);")
+
+
 def test_audited_tool_logs_the_real_arguments_and_result_on_success(monkeypatch):
     calls = []
     monkeypatch.setattr(audit, "_log_call", lambda *a: calls.append(a))

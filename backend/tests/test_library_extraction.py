@@ -1,6 +1,7 @@
 import datetime as dt
 import zipfile
 
+from backend.ingestion.datasets.formats import UNSUPPORTED_FORMAT_LABEL
 from backend.ingestion.datasets.manifest import DatasetManifest, read_dataset_manifest
 from backend.library.extraction import extract_zip_dataset, extracted_dataset_id
 
@@ -26,7 +27,7 @@ def test_extract_zip_dataset_writes_files_and_linked_manifest(tmp_path):
         id="dataset.human.hcp.s1200_groupavg",
         name="HCP S1200 Group Average Data Release",
         source="BALSA",
-        format="CIFTI/GIFTI/NIfTI",
+        format=UNSUPPORTED_FORMAT_LABEL,
         date_added=dt.date(2026, 8, 28),
     )
     target_dir = tmp_path / "extracted"
@@ -47,7 +48,7 @@ def test_extract_zip_dataset_does_not_re_extract_if_already_done(tmp_path):
     _make_zip(zip_path, {"a.nii": b"1234"})
     source = DatasetManifest(
         id="dataset.human.hcp.s1200_groupavg", name="x", source="BALSA",
-        format="fmt", date_added=dt.date(2026, 8, 28),
+        format=UNSUPPORTED_FORMAT_LABEL, date_added=dt.date(2026, 8, 28),
     )
     target_dir = tmp_path / "extracted"
 

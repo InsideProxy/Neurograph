@@ -48,6 +48,224 @@ _CORTEX_STRUCTURE = {
     "R": "CIFTI_STRUCTURE_CORTEX_RIGHT",
 }
 
+# Nombres anatómicos completos ("long name") de las 180 áreas corticales
+# del atlas de Glasser et al. (2016). El CIFTI original solo trae el
+# código corto de la etiqueta (p. ej. `R_V1_ROI` -> código "V1"): no
+# existe en el propio archivo ningún nombre descriptivo, y hasta ahora
+# `name` se construía a partir de ese código sin más ("V1 (hemisferio
+# izquierdo)"), lo que produce una leyenda donde dos regiones sin
+# relación pueden parecer la misma abreviatura repetida dos veces --
+# hueco ya señalado antes en `frontend/src/logic/regionLabel.ts`
+# ("en HCP-MMP1.0, la etiqueta de origen (CIFTI) no trae más que el
+# código de área... no existe un nombre anatómico descriptivo distinto").
+#
+# Verificados contra la Tabla 1 de:
+#
+#   Huang CC, Rolls ET, Feng J, Lin CP (2022). An extended Human
+#   Connectome Project multimodal parcellation atlas of the human cortex
+#   and subcortical areas. Brain Structure and Function, 227(3),
+#   763-778. https://doi.org/10.1007/s00429-021-02421-6
+#
+# Esa tabla reproduce el campo `RegionLongName` original de la
+# publicación que define el atlas (Glasser et al. 2016) para las 180
+# áreas por hemisferio. No es la fuente primaria del atlas, pero sí una
+# reproducción directa y citable de su nomenclatura oficial (el propio
+# Glasser et al. 2016 no incluye esta tabla completa en su texto
+# principal).
+#
+# Los 180 códigos de esta tabla se contrastaron uno a uno -- no solo por
+# el recuento total -- contra los 180 códigos reales obtenidos
+# ejecutando la propia `regions_from_labels` de este módulo sobre el
+# archivo CIFTI real de la usuaria
+# (`Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii`,
+# 02/09/2026). Esa comparación encontró y corrigió una única
+# discrepancia real: la tabla de Huang et al. imprime "7Pl", pero el
+# código real de la etiqueta CIFTI (y el de Glasser et al. 2016) es
+# "7PL" -- esta tabla usa el código real, nunca el de la tabla
+# secundaria cuando difieren.
+REGION_LONG_NAMES: dict[str, str] = {
+    "1": "Area 1",
+    "10d": "Area 10d",
+    "10pp": "Polar 10p",
+    "10r": "Area 10r",
+    "10v": "Area 10v",
+    "11l": "Area 11l",
+    "13l": "Area 13l",
+    "2": "Area 2",
+    "23c": "Area 23c",
+    "23d": "Area 23d",
+    "24dd": "Dorsal Area 24d",
+    "24dv": "Ventral Area 24d",
+    "25": "Area 25",
+    "31a": "Area 31a",
+    "31pd": "Area 31pd",
+    "31pv": "Area 31p ventral",
+    "33pr": "Area 33 prime",
+    "3a": "Area 3a",
+    "3b": "Primary Sensory Cortex",
+    "4": "Primary Motor Cortex",
+    "43": "Area 43",
+    "44": "Area 44",
+    "45": "Area 45",
+    "46": "Area 46",
+    "47l": "Area 47l (47 lateral)",
+    "47m": "Area 47m",
+    "47s": "Area 47s",
+    "52": "Area 52",
+    "55b": "Area 55b",
+    "5L": "Area 5L",
+    "5m": "Area 5m",
+    "5mv": "Area 5m ventral",
+    "6a": "Area 6 anterior",
+    "6d": "Dorsal area 6",
+    "6ma": "Area 6m anterior",
+    "6mp": "Area 6mp",
+    "6r": "Rostral Area 6",
+    "6v": "Ventral Area 6",
+    "7AL": "Lateral Area 7A",
+    "7Am": "Medial Area 7A",
+    "7PC": "Area 7PC",
+    "7PL": "Lateral Area 7P",
+    "7Pm": "Medial Area 7P",
+    "7m": "Area 7m",
+    "8Ad": "Area 8Ad",
+    "8Av": "Area 8Av",
+    "8BL": "Area 8B Lateral",
+    "8BM": "Area 8BM",
+    "8C": "Area 8C",
+    "9-46d": "Area 9-46d",
+    "9a": "Area 9 anterior",
+    "9m": "Area 9 Middle",
+    "9p": "Area 9 Posterior",
+    "A1": "Primary Auditory Cortex",
+    "A4": "Auditory 4 Complex",
+    "A5": "Auditory 5 Complex",
+    "AAIC": "Anterior Agranular Insula Complex",
+    "AIP": "Anterior IntraParietal Area",
+    "AVI": "Anterior Ventral Insular Area",
+    "DVT": "Dorsal Transitional Visual Area",
+    "EC": "Entorhinal Cortex",
+    "FEF": "Frontal Eye Fields",
+    "FFC": "Fusiform Face Complex",
+    "FOP1": "Frontal Opercular Area 1",
+    "FOP2": "Frontal Opercular Area 2",
+    "FOP3": "Frontal Opercular Area 3",
+    "FOP4": "Frontal Opercular Area 4",
+    "FOP5": "Area Frontal Opercular 5",
+    "FST": "Area FST",
+    "H": "Hippocampus",
+    "IFJa": "Area IFJa",
+    "IFJp": "Area IFJp",
+    "IFSa": "Area IFSa",
+    "IFSp": "Area IFSp",
+    "IP0": "Area IntraParietal 0",
+    "IP1": "Area IntraParietal 1",
+    "IP2": "Area IntraParietal 2",
+    "IPS1": "IntraParietal Sulcus Area 1",
+    "Ig": "Insular Granular Complex",
+    "LBelt": "Lateral Belt Complex",
+    "LIPd": "Area Lateral IntraParietal dorsal",
+    "LIPv": "Area Lateral IntraParietal ventral",
+    "LO1": "Area Lateral Occipital 1",
+    "LO2": "Area Lateral Occipital 2",
+    "LO3": "Area Lateral Occipital 3",
+    "MBelt": "Medial Belt Complex",
+    "MI": "Middle Insular Area",
+    "MIP": "Medial IntraParietal Area",
+    "MST": "Medial Superior Temporal Area",
+    "MT": "Middle Temporal Area",
+    "OFC": "Orbital Frontal Complex",
+    "OP1": "Area OP1-SII",
+    "OP2-3": "Area OP2-3-VS",
+    "OP4": "Area OP4-PV",
+    "PBelt": "ParaBelt Complex",
+    "PCV": "PreCuneus Visual Area",
+    "PEF": "Premotor Eye Field",
+    "PF": "Area PF Complex",
+    "PFcm": "Area PFcm",
+    "PFm": "Area PFm Complex",
+    "PFop": "Area PF Opercular",
+    "PFt": "Area PFt",
+    "PGi": "Area PGi",
+    "PGp": "Area PGp",
+    "PGs": "Area PGs",
+    "PH": "Area PH",
+    "PHA1": "ParaHippocampal Area 1",
+    "PHA2": "ParaHippocampal Area 2",
+    "PHA3": "ParaHippocampal Area 3",
+    "PHT": "Area PHT",
+    "PI": "Para-Insular Area",
+    "PIT": "Posterior InferoTemporal complex",
+    "POS1": "Parieto-Occipital Sulcus Area 1",
+    "POS2": "Parieto-Occipital Sulcus Area 2",
+    "PSL": "PeriSylvian Language Area",
+    "PeEc": "Perirhinal Ectorhinal Cortex",
+    "Pir": "Pirform Cortex",
+    "PoI1": "Area Posterior Insular 1",
+    "PoI2": "Posterior Insular Area 2",
+    "PreS": "PreSubiculum",
+    "ProS": "ProStriate Area",
+    "RI": "RetroInsular Cortex",
+    "RSC": "RetroSplenial Complex",
+    "SCEF": "Supplementary and Cingulate Eye Field",
+    "SFL": "Superior Frontal Language Area",
+    "STGa": "Area STGa",
+    "STSda": "Area STSd anterior",
+    "STSdp": "Area STSd posterior",
+    "STSva": "Area STSv anterior",
+    "STSvp": "Area STSv posterior",
+    "STV": "Superior Temporal Visual Area",
+    "TA2": "Area TA2",
+    "TE1a": "Area TE1 anterior",
+    "TE1m": "Area TE1 Middle",
+    "TE1p": "Area TE1 posterior",
+    "TE2a": "Area TE2 anterior",
+    "TE2p": "Area TE2 posterior",
+    "TF": "Area TF",
+    "TGd": "Area TG dorsal",
+    "TGv": "Area TG Ventral",
+    "TPOJ1": "Area TemporoParietoOccipital Junction 1",
+    "TPOJ2": "Area TemporoParietoOccipital Junction 2",
+    "TPOJ3": "Area TemporoParietoOccipital Junction 3",
+    "V1": "Primary Visual Cortex",
+    "V2": "Second Visual Area",
+    "V3": "Third Visual Area",
+    "V3A": "Area V3A",
+    "V3B": "Area V3B",
+    "V3CD": "Area V3CD",
+    "V4": "Fourth Visual Area",
+    "V4t": "Area V4t",
+    "V6": "Sixth Visual Area",
+    "V6A": "Area V6A",
+    "V7": "Seventh Visual Area",
+    "V8": "Eighth Visual Area",
+    "VIP": "Ventral IntraParietal Complex",
+    "VMV1": "VentroMedial Visual Area 1",
+    "VMV2": "VentroMedial Visual Area 2",
+    "VMV3": "VentroMedial Visual Area 3",
+    "VVC": "Ventral Visual Complex",
+    "a10p": "Area anterior 10p",
+    "a24": "Area a24",
+    "a24pr": "Anterior 24 prime",
+    "a32pr": "Area anterior 32 prime",
+    "a47r": "Area anterior 47r",
+    "a9-46v": "Area anterior 9-46v",
+    "d23ab": "Area dorsal 23 a+b",
+    "d32": "Area dorsal 32",
+    "i6-8": "Inferior 6-8 Transitional Area",
+    "p10p": "Area posterior 10p",
+    "p24": "Area posterior 24",
+    "p24pr": "Area Posterior 24 prime",
+    "p32": "Area p32",
+    "p32pr": "Area p32 prime",
+    "p47r": "Area posterior 47r",
+    "p9-46v": "Area posterior 9-46v",
+    "pOFC": "Posterior OFC Complex",
+    "s32": "Area s32",
+    "s6-8": "Superior 6-8 Transitional Area",
+    "v23ab": "Area ventral 23 a+b",
+}
+
 
 @dataclass(frozen=True)
 class MmpRegion:
@@ -80,6 +298,20 @@ def _region_local_code(raw_label: str) -> str:
     return f"{hemisphere}_{area_code}"
 
 
+def _region_long_name(area_code: str) -> str:
+    """Nombre anatómico completo verificado de `area_code` (ver
+    `REGION_LONG_NAMES`). Lanza `ValueError`, no un `KeyError` silencioso,
+    si algún día apareciera un código sin nombre verificado -- mismo
+    criterio que `_region_local_code`."""
+    long_name = REGION_LONG_NAMES.get(area_code)
+    if long_name is None:
+        raise ValueError(
+            f"No hay nombre anatómico verificado en REGION_LONG_NAMES para "
+            f"el código de área HCP-MMP1.0 {area_code!r}"
+        )
+    return long_name
+
+
 def regions_from_labels(labels: list[CiftiLabel]) -> list[MmpRegion]:
     """Convierte las etiquetas CIFTI crudas de HCP-MMP1.0 (p. ej.
     `R_V1_ROI`) en entidades `Region` de la ontología. Excluye la
@@ -92,7 +324,7 @@ def regions_from_labels(labels: list[CiftiLabel]) -> list[MmpRegion]:
         hemisphere = local_code[0]
         area_code = local_code[2:]
         region_id = build_id(EntityType.REGION, "human", "hcp-mmp1", local_code)
-        name = f"{area_code} (hemisferio {_HEMISPHERE_NAMES[hemisphere]})"
+        name = f"{_region_long_name(area_code)} (hemisferio {_HEMISPHERE_NAMES[hemisphere]})"
         regions.append(
             MmpRegion(
                 id=region_id,
