@@ -18,6 +18,13 @@ export interface GraphNode {
   // nunca se infiere del signo de position3d[0] -- ver Hemisferios.tsx.
   hemisphere: "L" | "R" | null;
   network: string;
+  // Cómo se decidió `network` (decisión 73): el algoritmo y la confianza
+  // REALES de la pertenencia elegida en la base de datos (p. ej.
+  // "majority_vote" con 0.28 = solo el 28 % de los vértices de la región
+  // caen en esa red). null/ausente si no hay red o si la fuente no lo
+  // dice (datos de demostración): nunca se supone una confianza.
+  networkAlgorithm?: string | null;
+  networkConfidence?: number | null;
   position3d: [number, number, number];
   // Espacio de referencia real de `position3d` (sección 2.7 / riesgo 5 de
   // docs/analisis-arquitectura.md), p. ej. "fsLR_32k_S1200_groupavg_

@@ -85,3 +85,90 @@ def test_region_to_node_disambiguates_networks_with_the_same_local_code():
     assert ca_node.network != gordon_node.network
     assert ca_node.network == "cole-anticevic.default"
     assert gordon_node.network == "gordon333.default"
+
+
+# --- Varias clasificaciones de red por región (decisión 73) ---
+
+def _network(network_id):
+    return Network(id=network_id, name=network_id)
+
+
+def _m(network_id, algorithm="majority_vote", confidence=1.0):
+    from backend.api.services.regions_service import MembershipRow
+
+    return MembershipRow(_network(network_id), algorithm, confidence)
+
+
+def test_choose_network_uses_the_atlas_default_source_when_none_is_requested():
+    from backend.api.services.regions_service import choose_network
+
+    region, _ = _region_and_coordinate()
+    memberships = [_m("network.human.yeo2011-7.vis"), _m("network.human.cole-anticevic.visual")]
+    assert choose_network(region, memberships, None).network.id == "network.human.cole-anticevic.visual"
+
+
+def test_choose_network_uses_the_requested_source():
+    from backend.api.services.regions_service import choose_network
+
+    region, _ = _region_and_coordinate()
+    memberships = [_m("network.human.yeo2011-7.vis"), _m("network.human.cole-anticevic.visual")]
+    assert choose_network(region, memberships, "yeo2011-7").network.id == "network.human.yeo2011-7.vis"
+
+
+def test_choose_network_never_borrows_a_network_from_another_source():
+    from backend.api.services.regions_service import choose_network
+
+    region, _ = _region_and_coordinate()
+    assert choose_network(region, [_m("network.human.cole-anticevic.visual")], "yeo2011-17") is None
+
+
+def test_choose_network_two_single_assignments_in_the_same_source_is_an_error():
+    import pytest
+
+    from backend.api.services.regions_service import choose_network
+
+    region, _ = _region_and_coordinate()
+    memberships = [_m("network.human.yeo2011-7.vis"), _m("network.human.yeo2011-7.default")]
+    with pytest.raises(ValueError):
+        choose_network(region, memberships, "yeo2011-7")
+
+
+def test_choose_network_full_distribution_is_never_collapsed_into_one_network():
+    # Caso real: el cerebelo del subcórtex del HCP tiene 10 pertenencias
+    # a Cole-Anticevic con algorithm='full_distribution' (decisión 10).
+    from backend.api.services.regions_service import choose_network
+
+    region, _ = _region_and_coordinate()
+    memberships = [
+        _m("network.human.cole-anticevic.frontoparietal", "full_distribution"),
+        _m("network.human.cole-anticevic.default", "full_distribution"),
+    ]
+    assert choose_network(region, memberships, "cole-anticevic") is None
+
+
+def test_rows_with_several_memberships_produce_one_node_per_region():
+    from backend.api.services.regions_service import _rows_to_nodes
+
+    region, coordinate = _region_and_coordinate()
+    rows = [
+        (region, coordinate, _network("network.human.cole-anticevic.visual"), "majority_vote", 0.9),
+        (region, coordinate, _network("network.human.yeo2011-7.vis"), "majority_vote", 0.28),
+    ]
+    nodes = _rows_to_nodes(rows, "yeo2011-7")
+    assert len(nodes) == 1
+    assert nodes[0].network == "yeo2011-7.vis"
+    # La confianza real de la pertenencia elegida viaja con el nodo, nunca
+    # la de otra clasificación.
+    assert nodes[0].network_algorithm == "majority_vote"
+    assert nodes[0].network_confidence == 0.28
+
+
+def test_unclassified_node_carries_no_membership_details():
+    from backend.api.services.regions_service import _rows_to_nodes
+
+    region, coordinate = _region_and_coordinate()
+    rows = [(region, coordinate, _network("network.human.cole-anticevic.visual"), "majority_vote", 0.9)]
+    node = _rows_to_nodes(rows, "yeo2011-17")[0]
+    assert node.network == "unclassified"
+    assert node.network_algorithm is None
+    assert node.network_confidence is None

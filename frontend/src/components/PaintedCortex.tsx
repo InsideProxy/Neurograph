@@ -26,6 +26,7 @@ import { useLoader, type ThreeEvent } from "@react-three/fiber";
 import { DISPLAY_SCALE } from "../data/api";
 import {
   fillVertexColors,
+  fillVertexColorsByIndex,
   leftTriangleCount,
   regionAtFace,
   type RGB,
@@ -33,6 +34,15 @@ import {
 } from "../logic/surfaceParcels";
 
 export type HemisphereVisibility = "both" | "L" | "R";
+
+// Pintar por otra categoría que no sea la región (decisión 73: la red
+// ORIGINAL de cada vértice, sin agregar por región). La región de cada
+// vértice se sigue usando para el clic y el paso del ratón.
+export interface VertexPaint {
+  vertexIndex: Int32Array;
+  categoryCount: number;
+  colorFor: (index: number) => RGB | null;
+}
 
 export interface SurfaceOverlayHelpers {
   positionOfVertex: (vertex: number) => [number, number, number];
@@ -44,9 +54,12 @@ interface Props {
   map: SurfaceParcelMap;
   sulc: Float32Array | null;
   colorForRegion: (regionIndex: number) => RGB | null;
+  paintBy?: VertexPaint | null;
   hemisphere: HemisphereVisibility;
   onRegionClick: (regionIndex: number) => void;
-  onRegionHover: (regionIndex: number | null) => void;
+  // `face`: los tres vértices del triángulo bajo el cursor, para quien
+  // necesite saber algo más que la región (p. ej. la red del vértice).
+  onRegionHover: (regionIndex: number | null, face: [number, number, number] | null) => void;
   onHemisphereSplitAvailable: (available: boolean) => void;
   children: (helpers: SurfaceOverlayHelpers) => ReactNode;
 }
@@ -56,6 +69,7 @@ export function PaintedCortex({
   map,
   sulc,
   colorForRegion,
+  paintBy = null,
   hemisphere,
   onRegionClick,
   onRegionHover,
@@ -91,9 +105,22 @@ export function PaintedCortex({
   // efecto), nunca se recrea la geometría por un cambio de selección.
   useEffect(() => {
     const attr = geometry.getAttribute("color") as THREE.BufferAttribute;
-    fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion);
+    if (paintBy) {
+      if (paintBy.vertexIndex.length !== map.vertexRegionIndex.length) {
+        throw new Error("el mapa por vértice no tiene el mismo número de vértices que la superficie");
+      }
+      fillVertexColorsByIndex(
+        attr.array as Float32Array,
+        paintBy.vertexIndex,
+        paintBy.categoryCount,
+        sulc,
+        paintBy.colorFor,
+      );
+    } else {
+      fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion);
+    }
     attr.needsUpdate = true;
-  }, [geometry, map, sulc, colorForRegion]);
+  }, [geometry, map, sulc, colorForRegion, paintBy]);
 
   const splitTriangles = useMemo(() => {
     const index = geometry.getIndex();
@@ -148,9 +175,9 @@ export function PaintedCortex({
           }}
           onPointerMove={(e) => {
             e.stopPropagation();
-            onRegionHover(regionOfEvent(e));
+            onRegionHover(regionOfEvent(e), e.face ? [e.face.a, e.face.b, e.face.c] : null);
           }}
-          onPointerOut={() => onRegionHover(null)}
+          onPointerOut={() => onRegionHover(null, null)}
         >
           <meshStandardMaterial vertexColors side={THREE.DoubleSide} roughness={0.85} metalness={0} />
         </mesh>

@@ -60,14 +60,27 @@ import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
-import { PaintedCortex, type HemisphereVisibility, type SurfaceOverlayHelpers } from "./PaintedCortex";
+import {
+  PaintedCortex,
+  type HemisphereVisibility,
+  type SurfaceOverlayHelpers,
+  type VertexPaint,
+} from "./PaintedCortex";
 import {
   hexToLinearRgb,
   parseSulcFile,
+  regionAtFace,
   validateParcelFile,
   type RGB,
   type SurfaceParcelMap,
 } from "../logic/surfaceParcels";
+import {
+  NETWORK_SURFACE_URL_BY_SOURCE,
+  NO_NETWORK,
+  validateNetworkSurfaceFile,
+  vertexNetworkForDisplay,
+  type NetworkSurfaceMap,
+} from "../logic/networkSurface";
 
 // Fondo de la escena en pantalla (decisión 18, 30/08/2026): mismo valor
 // que --panel-bg en frontend/src/index.css. three.js no puede leer
@@ -141,11 +154,18 @@ const SURFACE_SHAPE_LABELS: Record<SurfaceShape, string> = {
   very_inflated: "Muy inflada",
 };
 
-type SurfaceMode = "painted" | "translucent";
+// "network-vertices" (decisión 73): la red ORIGINAL de cada vértice
+// (Yeo 2011 / Power 2011), sin agregar por región -- solo existe para las
+// clasificaciones con mapa por vértice (NETWORK_SURFACE_URL_BY_SOURCE).
+type SurfaceMode = "painted" | "network-vertices" | "translucent";
 
 type ParcelLoad =
   | { key: string; kind: "error"; message: string }
   | { key: string; kind: "ready"; map: SurfaceParcelMap; sulc: Float32Array | null };
+
+type NetworkSurfaceLoad =
+  | { key: string; kind: "error"; message: string }
+  | { key: string; kind: "ready"; map: NetworkSurfaceMap };
 
 // Una sola descarga por archivo y sesión (los .json pesan ~300-470 KB):
 // cambiar de atlas y volver no vuelve a pedirlos.
@@ -700,6 +720,9 @@ interface Props {
   // regiones de superficie, que después se valida contra `nodes`. Sin
   // él (datos de demostración), nunca se pinta la corteza.
   atlasId?: string;
+  // Clasificación de red con la que vienen `nodes` (decisión 73, p. ej.
+  // "yeo2011-7"): decide si hay mapa de redes vértice a vértice.
+  networkSource?: string;
 }
 
 // Controles de la corteza pintada (decisión 72). Solo aparecen en los
@@ -707,6 +730,7 @@ interface Props {
 function SurfaceControls({
   mode,
   onMode,
+  networkVerticesAvailable,
   shape,
   onShape,
   hemisphere,
@@ -715,6 +739,7 @@ function SurfaceControls({
 }: {
   mode: SurfaceMode;
   onMode: (m: SurfaceMode) => void;
+  networkVerticesAvailable: boolean;
   shape: SurfaceShape;
   onShape: (s: SurfaceShape) => void;
   hemisphere: HemisphereVisibility;
@@ -726,11 +751,22 @@ function SurfaceControls({
       <label>
         Corteza:{" "}
         <select value={mode} onChange={(e) => onMode(e.target.value as SurfaceMode)}>
-          <option value="painted">Regiones pintadas</option>
+          <option value="painted">Regiones pintadas (red de cada región)</option>
+          <option
+            value="network-vertices"
+            disabled={!networkVerticesAvailable}
+            title={
+              networkVerticesAvailable
+                ? undefined
+                : "Solo con las clasificaciones de Yeo 2011 y Power 2011: Cole-Anticevic y Gordon 333 asignan la red a regiones enteras, así que su mapa por vértice es el mismo que el de regiones pintadas"
+            }
+          >
+            Redes originales, vértice a vértice{networkVerticesAvailable ? "" : " (no disponible con esta clasificación)"}
+          </option>
           <option value="translucent">Translúcida (solo esferas)</option>
         </select>
       </label>
-      {mode === "painted" && (
+      {mode !== "translucent" && (
         <>
           <label>
             Forma:{" "}
@@ -806,7 +842,7 @@ function computeFocus(
   return null;
 }
 
-export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId }: Props) {
+export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId, networkSource }: Props) {
   const { selectedNodeIds, selectedConnectionId, selectConnection, toggleNode } = useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
@@ -969,8 +1005,56 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
   const [hemisphere, setHemisphere] = useState<HemisphereVisibility>("both");
   const [hemisphereSplitAvailable, setHemisphereSplitAvailable] = useState(true);
   const [hoveredRegion, setHoveredRegion] = useState<number | null>(null);
+  const [hoveredVertexNetwork, setHoveredVertexNetwork] = useState<number | null>(null);
 
-  const painted = surfaceMode === "painted" && currentParcel?.kind === "ready" ? currentParcel : null;
+  // Si la clasificación activa no tiene mapa por vértice (p. ej. se
+  // cambió de Yeo a Cole-Anticevic con este modo elegido), se vuelve a
+  // las regiones pintadas sin tocar la elección guardada.
+  const networkSurfaceUrl = networkSource ? NETWORK_SURFACE_URL_BY_SOURCE[networkSource] : undefined;
+  const effectiveSurfaceMode: SurfaceMode =
+    surfaceMode === "network-vertices" && !networkSurfaceUrl ? "painted" : surfaceMode;
+
+  const painted = effectiveSurfaceMode !== "translucent" && currentParcel?.kind === "ready" ? currentParcel : null;
+
+  // --- Redes originales vértice a vértice (decisión 73) ---
+  // Se descargan solo al elegir el modo, y se validan contra la MISMA
+  // superficie del mapa de regiones (mismo número de vértices por
+  // hemisferio), nunca se pintan por confiar en el nombre del archivo.
+  const parcelVertexCounts =
+    currentParcel?.kind === "ready" ? [currentParcel.map.nVerticesLeft, currentParcel.map.nVerticesRight] : null;
+  const nVerticesLeft = parcelVertexCounts?.[0];
+  const nVerticesRight = parcelVertexCounts?.[1];
+  const networkSurfaceKey =
+    effectiveSurfaceMode === "network-vertices" && networkSurfaceUrl && networkSource && nVerticesLeft !== undefined
+      ? `${networkSource}|${nVerticesLeft}|${nVerticesRight}`
+      : null;
+  const [networkSurfaceLoad, setNetworkSurfaceLoad] = useState<NetworkSurfaceLoad | null>(null);
+  useEffect(() => {
+    if (!networkSurfaceKey || !networkSurfaceUrl || !networkSource) return;
+    if (nVerticesLeft === undefined || nVerticesRight === undefined) return;
+    let cancelled = false;
+    fetchJsonCached(networkSurfaceUrl)
+      .then((raw) => {
+        if (cancelled) return;
+        const validated = validateNetworkSurfaceFile(raw, { networkSource, nVerticesLeft, nVerticesRight });
+        setNetworkSurfaceLoad(
+          validated.ok
+            ? { key: networkSurfaceKey, kind: "ready", map: validated.map }
+            : { key: networkSurfaceKey, kind: "error", message: validated.error }
+        );
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "error desconocido";
+        setNetworkSurfaceLoad({ key: networkSurfaceKey, kind: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [networkSurfaceKey, networkSurfaceUrl, networkSource, nVerticesLeft, nVerticesRight]);
+  const currentNetworkSurface =
+    networkSurfaceLoad && networkSurfaceLoad.key === networkSurfaceKey ? networkSurfaceLoad : null;
+  const networkSurface = currentNetworkSurface?.kind === "ready" ? currentNetworkSurface.map : null;
 
   const allNodesById = useMemo(() => new Map(allNodes.map((n) => [n.id, n])), [allNodes]);
   const filteredNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
@@ -992,6 +1076,25 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
   }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds]);
   const colorForRegion = useCallback((region: number) => regionColors?.[region] ?? null, [regionColors]);
 
+  // Colores del modo vértice a vértice: la red de cada vértice con su
+  // color real (el mismo de theme/networks.ts que usa el connectograma).
+  // Los filtros de red se aplican a la red DEL VÉRTICE; con selección,
+  // solo se pinta dentro de las regiones del foco.
+  const hiddenNetworks = filters.hiddenNetworks;
+  const networkPaint = useMemo<VertexPaint | null>(() => {
+    if (!painted || !networkSurface) return null;
+    const focusIds = focus ? new Set(focus.nodes.map((n) => n.id)) : null;
+    const regionIds = painted.map.regionIds;
+    const vertexIndex = vertexNetworkForDisplay(
+      networkSurface,
+      painted.map.vertexRegionIndex,
+      (i) => !hiddenNetworks.has(networkSurface.networks[i].slug),
+      focusIds ? (r) => focusIds.has(regionIds[r]) : null
+    );
+    const colors = networkSurface.networks.map((n) => hexToLinearRgb(NETWORK_COLORS[n.slug] ?? n.color));
+    return { vertexIndex, categoryCount: colors.length, colorFor: (i) => colors[i] ?? null };
+  }, [painted, networkSurface, focus, hiddenNetworks]);
+
   const anchorById = useMemo(
     () => (painted ? new Map(painted.map.regionIds.map((id, i) => [id, painted.map.anchorVertices[i]])) : null),
     [painted]
@@ -1006,7 +1109,17 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
     },
     [painted, filteredNodeIds, toggleNode]
   );
-  const handleRegionHover = useCallback((region: number | null) => setHoveredRegion(region), []);
+  // Solo valores primitivos en el estado: pasar el ratón por la misma
+  // región/red no vuelve a dibujar nada.
+  const hoverNetworkIndex = networkPaint ? networkSurface?.vertexNetworkIndex : undefined;
+  const handleRegionHover = useCallback(
+    (region: number | null, face: [number, number, number] | null) => {
+      setHoveredRegion(region);
+      const net = face && hoverNetworkIndex ? regionAtFace(hoverNetworkIndex, face[0], face[1], face[2]) : NO_NETWORK;
+      setHoveredVertexNetwork(net === NO_NETWORK ? null : net);
+    },
+    [hoverNetworkIndex]
+  );
   const hoveredNode =
     painted && hoveredRegion !== null && hoveredRegion < painted.map.regionIds.length
       ? allNodesById.get(painted.map.regionIds[hoveredRegion])
@@ -1033,8 +1146,9 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
 
   const surfaceControls = parcelUrl ? (
     <SurfaceControls
-      mode={surfaceMode}
+      mode={effectiveSurfaceMode}
       onMode={setSurfaceMode}
+      networkVerticesAvailable={networkSurfaceUrl !== undefined}
       shape={surfaceShape}
       onShape={setSurfaceShape}
       hemisphere={hemisphere}
@@ -1044,11 +1158,48 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
   ) : null;
 
   const parcelError =
-    surfaceMode === "painted" && currentParcel?.kind === "error" ? (
+    effectiveSurfaceMode !== "translucent" && currentParcel?.kind === "error" ? (
       <p className="brain3d-surface-status brain3d-surface-status--error">
         No se pudo pintar la corteza ({currentParcel.message}). Se muestra la vista de siempre.
       </p>
+    ) : currentNetworkSurface?.kind === "error" ? (
+      <p className="brain3d-surface-status brain3d-surface-status--error">
+        No se pudo cargar el mapa de redes por vértice ({currentNetworkSurface.message}). Se muestran las
+        regiones pintadas.
+      </p>
     ) : null;
+
+  const networkLabel = (slug: string) => NETWORK_LABELS[slug] ?? slug;
+  // Cómo se decidió la red de la región (decisión 73): la confianza real
+  // guardada en la base de datos, nunca un "seguro" implícito.
+  const membershipNote = (node: GraphNode) =>
+    node.networkAlgorithm === "majority_vote" && typeof node.networkConfidence === "number"
+      ? ` (voto mayoritario: ${Math.round(node.networkConfidence * 100)} % de sus vértices)`
+      : "";
+
+  let surfaceStatus: string | null = null;
+  if (painted) {
+    if (effectiveSurfaceMode === "network-vertices" && networkSurface) {
+      const vertexNet = hoveredVertexNetwork !== null ? networkSurface.networks[hoveredVertexNetwork] : undefined;
+      surfaceStatus = hoveredNode
+        ? `Bajo el cursor: ${hoveredNode.label} — este punto, en el mapa original: ${
+            vertexNet ? networkLabel(vertexNet.slug) : "sin red"
+          }; la región entera: ${networkLabel(hoveredNode.network)}${membershipNote(hoveredNode)}`
+        : focus
+          ? "En color, solo dentro de las regiones seleccionadas: la red original de cada vértice, sin agregar por región."
+          : "La red original de cada vértice, sin agregar por región. Gris: sin red en este mapa, o red oculta en los filtros.";
+      surfaceStatus += " Mapa del HCP remuestreado a fs_LR (procedimiento no documentado por el HCP).";
+    } else if (effectiveSurfaceMode === "network-vertices" && !currentNetworkSurface) {
+      surfaceStatus = "Cargando el mapa de redes por vértice…";
+    } else {
+      surfaceStatus = hoveredNode
+        ? `Bajo el cursor: ${hoveredNode.label} — ${networkLabel(hoveredNode.network)}${membershipNote(hoveredNode)}`
+        : focus
+          ? "En color: lo seleccionado y sus vecinos. Haz clic en otra región de la corteza para añadirla o quitarla de la selección."
+          : "Cada región con el color real de su red. Pasa el ratón para ver qué región es; haz clic para seleccionarla.";
+    }
+    if (!painted.sulc) surfaceStatus += " (Sin sombreado de surcos: no se pudo cargar ese archivo.)";
+  }
 
   // Coloca los nodos y líneas del foco. Con la corteza pintada, cada
   // región se dibuja sobre SU vértice ancla en la forma de superficie que
@@ -1123,7 +1274,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
         </div>
         {parcelError}
         <div className="brain3d-focus-placeholder">
-          {surfaceMode === "painted" && parcelsLoading
+          {effectiveSurfaceMode !== "translucent" && parcelsLoading
             ? "Cargando las regiones reales de la superficie…"
             : "Selecciona una región (o una conexión) en el connectograma o en el esquema de hemisferios para ver aquí, en 3D, su red de conectividad."}
         </div>
@@ -1141,16 +1292,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
       </button>
     </div>
     {parcelError}
-    {painted && (
-      <p className="brain3d-surface-status">
-        {hoveredNode
-          ? `Bajo el cursor: ${hoveredNode.label} — ${NETWORK_LABELS[hoveredNode.network] ?? hoveredNode.network}`
-          : focus
-            ? "En color: lo seleccionado y sus vecinos. Haz clic en otra región de la corteza para añadirla o quitarla de la selección."
-            : "Cada región con el color real de su red. Pasa el ratón para ver qué región es; haz clic para seleccionarla."}
-        {!painted.sulc && " (Sin sombreado de surcos: no se pudo cargar ese archivo.)"}
-      </p>
-    )}
+    {surfaceStatus && <p className="brain3d-surface-status">{surfaceStatus}</p>}
     {tooManyFocusConnections && focus && (
       <p className="connectogram-toomany-warning">
         Hay {focus.connections.length} conexiones reales entre los nodos
@@ -1225,6 +1367,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId 
               map={painted.map}
               sulc={painted.sulc}
               colorForRegion={colorForRegion}
+              paintBy={networkPaint}
               hemisphere={hemisphere}
               onRegionClick={handleRegionClick}
               onRegionHover={handleRegionHover}

@@ -30,13 +30,19 @@ interface ApiRegionNode {
   abbreviation: string | null;
   hemisphere: "L" | "R" | null;
   network: string;
+  // Opcionales: un backend anterior a la decisión 73 no los manda.
+  network_algorithm?: string | null;
+  network_confidence?: number | null;
   position3d: [number, number, number];
   reference_space: string;
 }
 
-export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
+// `networkSource` (decisión 73): clasificación de red a usar (p. ej.
+// "yeo2011-7"); sin ella, el backend usa la original de cada atlas.
+export async function fetchRealNodes(atlasId?: string, networkSource?: string): Promise<GraphNode[]> {
   const url = new URL("/regions", API_BASE_URL);
   if (atlasId) url.searchParams.set("atlas_id", atlasId);
+  if (networkSource) url.searchParams.set("network_source", networkSource);
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -49,9 +55,31 @@ export async function fetchRealNodes(atlasId?: string): Promise<GraphNode[]> {
     abbreviation: row.abbreviation,
     hemisphere: row.hemisphere,
     network: row.network,
+    networkAlgorithm: row.network_algorithm ?? null,
+    networkConfidence: row.network_confidence ?? null,
     position3d: row.position3d.map((v) => v * DISPLAY_SCALE) as [number, number, number],
     referenceSpace: row.reference_space,
   }));
+}
+
+export interface NetworkSourceSummary {
+  source: string;
+  regionCount: number;
+  isDefault: boolean;
+}
+
+// Clasificaciones de red REALMENTE cargadas para un atlas (GET
+// /regions/network-sources, decisión 73) -- de aquí sale el selector de
+// clasificación, nunca de una lista escrita a mano.
+export async function fetchNetworkSources(atlasId: string): Promise<NetworkSourceSummary[]> {
+  const url = new URL("/regions/network-sources", API_BASE_URL);
+  url.searchParams.set("atlas_id", atlasId);
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`la API respondió ${response.status}`);
+  }
+  const rows: { source: string; region_count: number; is_default: boolean }[] = await response.json();
+  return rows.map((row) => ({ source: row.source, regionCount: row.region_count, isDefault: row.is_default }));
 }
 
 interface ApiConnectionEdge {

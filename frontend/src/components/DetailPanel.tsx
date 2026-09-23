@@ -85,6 +85,23 @@ function TractRow({ tract, nodeById }: { tract: InducedTract; nodeById: Map<stri
   );
 }
 
+// Decisión 73: el algoritmo y la confianza REALES de la pertenencia a la
+// red (backend `region_network_memberships`), en palabras. Una
+// asignación por voto mayoritario con el 30 % de los vértices no es lo
+// mismo que una con el 100 %, y la interfaz no debe presentarlas igual.
+function membershipDescription(algorithm: string, confidence: number | null): string {
+  const pct = confidence === null ? null : `${Math.round(confidence * 100)} %`;
+  if (algorithm === "majority_vote") {
+    return pct === null
+      ? "Voto mayoritario de los vértices de la región (confianza no registrada)"
+      : `Voto mayoritario: el ${pct} de los vértices de la región cae en esta red`;
+  }
+  if (algorithm === "gordon_intrinsic_label") {
+    return "Etiqueta propia del atlas (Gordon et al., 2016), no calculada por NeuroGraph";
+  }
+  return pct === null ? algorithm : `${algorithm} (confianza ${pct})`;
+}
+
 export function DetailPanel({ nodes, connections, canFetchTracts = false }: Props) {
   const { selectedNodeIds, selectedConnectionId } = useSelectionStore();
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
@@ -193,6 +210,12 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           <dd><code>{node.id}</code></dd>
           <dt>Red</dt>
           <dd>{NETWORK_LABELS[node.network] ?? node.network}</dd>
+          {node.networkAlgorithm && (
+            <>
+              <dt>Cómo se asignó la red</dt>
+              <dd>{membershipDescription(node.networkAlgorithm, node.networkConfidence ?? null)}</dd>
+            </>
+          )}
           <dt>Conexiones ({related.length})</dt>
           <dd>
             <ul>

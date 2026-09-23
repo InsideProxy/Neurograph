@@ -10,7 +10,8 @@ import { Tractography3D } from "./components/Tractography3D";
 import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
-import { fetchRealConnections, fetchRealNodes } from "./data/api";
+import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
+import { NETWORK_SOURCE_LABELS } from "./theme/networks";
 import { pickAndReadSynthesisFile, type PickedSynthesisFile } from "./logic/synthesisImport";
 import { validateSynthesisFile } from "./logic/synthesisValidation";
 import type { GraphConnection, GraphNode } from "./types/domain";
@@ -23,7 +24,9 @@ import "./App.css";
 // demostración, nunca a una combinación de ambos.
 type DataSource =
   | { kind: "loading" }
-  | { kind: "real"; nodes: GraphNode[]; connections: GraphConnection[] }
+  // `networkSource`: clasificación de red con la que vienen estos nodos
+  // (null = la original de cada atlas) -- decisión 73.
+  | { kind: "real"; nodes: GraphNode[]; connections: GraphConnection[]; networkSource: string | null }
   | { kind: "demo"; nodes: GraphNode[]; connections: GraphConnection[] };
 
 // Cada atlas real cargado hasta ahora cuenta una historia distinta:
@@ -69,6 +72,15 @@ export default function App() {
   const [view, setView] = useState<View>("atlas");
   const [selectedAtlasId, setSelectedAtlasId] = useState(ATLASES[0].id);
   const [source, setSource] = useState<DataSource>({ kind: "loading" });
+  // Clasificación de red elegida (decisión 73): null = la original del
+  // atlas. Las disponibles salen de la API (GET /regions/network-sources),
+  // nunca de una lista escrita a mano; si esa consulta falla (p. ej. un
+  // backend anterior), simplemente no hay selector.
+  const [networkSource, setNetworkSource] = useState<string | null>(null);
+  const [networkSources, setNetworkSources] = useState<{ atlasId: string; items: NetworkSourceSummary[] } | null>(
+    null,
+  );
+  const [networkSourceError, setNetworkSourceError] = useState<string | null>(null);
 
   // Pestañas de síntesis de IA (decisión 71): cada una guarda su propio
   // resultado YA VALIDADO y congelado en el momento de importar -- no
@@ -83,8 +95,27 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    setSource({ kind: "loading" });
-    Promise.all([fetchRealNodes(selectedAtlasId), fetchRealConnections(selectedAtlasId)])
+    fetchNetworkSources(selectedAtlasId)
+      .then((items) => {
+        if (!cancelled) setNetworkSources({ atlasId: selectedAtlasId, items });
+      })
+      .catch(() => {
+        if (!cancelled) setNetworkSources({ atlasId: selectedAtlasId, items: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAtlasId]);
+
+  // Cambiar de clasificación NO vacía la vista mientras llegan los nodos
+  // nuevos (se sigue viendo la anterior, con un aviso de "cargando"); solo
+  // cambiar de atlas pasa por el estado "loading" (ver handleChangeAtlas).
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetchRealNodes(selectedAtlasId, networkSource ?? undefined),
+      fetchRealConnections(selectedAtlasId),
+    ])
       .then(([nodes, connections]) => {
         if (cancelled) return;
         if (nodes.length === 0) {
@@ -94,16 +125,38 @@ export default function App() {
           setSource({ kind: "demo", nodes: DEMO_NODES, connections: DEMO_CONNECTIONS });
           return;
         }
-        setSource({ kind: "real", nodes, connections });
+        setSource({ kind: "real", nodes, connections, networkSource });
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
+        if (networkSource !== null) {
+          // Falló solo el cambio de clasificación: se avisa y se vuelve a
+          // la original, nunca se cae a datos de demostración por esto.
+          const message = err instanceof Error ? err.message : "error desconocido";
+          setNetworkSourceError(`No se pudo cargar la clasificación '${networkSource}' (${message}).`);
+          setNetworkSource(null);
+          return;
+        }
         setSource({ kind: "demo", nodes: DEMO_NODES, connections: DEMO_CONNECTIONS });
       });
     return () => {
       cancelled = true;
     };
-  }, [selectedAtlasId]);
+  }, [selectedAtlasId, networkSource]);
+
+  function handleChangeAtlas(atlasId: string) {
+    setSelectedAtlasId(atlasId);
+    setNetworkSource(null);
+    setNetworkSourceError(null);
+    setSource({ kind: "loading" });
+  }
+
+  const sourcesForAtlas = networkSources?.atlasId === selectedAtlasId ? networkSources.items : [];
+  const defaultNetworkSource = sourcesForAtlas.find((s) => s.isDefault)?.source ?? null;
+  // Clasificación de los nodos que SE ESTÁN MOSTRANDO (no la recién
+  // elegida si todavía está cargando): es la que necesita Brain3D.
+  const shownNetworkSource = source.kind === "real" ? (source.networkSource ?? defaultNetworkSource) : null;
+  const networkSourcePending = source.kind === "real" && source.networkSource !== networkSource;
 
   const selectedAtlas = ATLASES.find((a) => a.id === selectedAtlasId)!;
 
@@ -162,7 +215,7 @@ export default function App() {
   const atlasSelector = (
     <label className="atlas-selector">
       Atlas:{" "}
-      <select value={selectedAtlasId} onChange={(e) => setSelectedAtlasId(e.target.value)}>
+      <select value={selectedAtlasId} onChange={(e) => handleChangeAtlas(e.target.value)}>
         {ATLASES.map((atlas) => (
           <option key={atlas.id} value={atlas.id}>
             {atlas.label}
@@ -171,6 +224,31 @@ export default function App() {
       </select>
     </label>
   );
+
+  // Selector de clasificación de red (decisión 73): solo si el atlas tiene
+  // más de una cargada. Cambia la red de cada región en TODAS las vistas a
+  // la vez (connectograma, hemisferios, filtros, cerebro 3D).
+  const networkSourceSelector =
+    source.kind === "real" && sourcesForAtlas.length > 1 ? (
+      <label className="atlas-selector">
+        Redes:{" "}
+        <select
+          value={networkSource ?? defaultNetworkSource ?? ""}
+          onChange={(e) => {
+            setNetworkSourceError(null);
+            setNetworkSource(e.target.value === defaultNetworkSource ? null : e.target.value);
+          }}
+        >
+          {sourcesForAtlas.map((s) => (
+            <option key={s.source} value={s.source}>
+              {NETWORK_SOURCE_LABELS[s.source] ?? s.source} — {s.regionCount} de {source.nodes.length} regiones
+              {s.isDefault ? " (por defecto)" : ""}
+            </option>
+          ))}
+        </select>
+        {networkSourcePending && " cargando…"}
+      </label>
+    ) : null;
 
   const viewToggle = (
     <nav className="view-toggle">
@@ -356,6 +434,8 @@ export default function App() {
         {viewToggle}
         {synthesisImportBanner}
         {atlasSelector}
+        {networkSourceSelector}
+        {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
         <p className={source.kind === "real" ? "real-badge" : "demo-badge"}>{badge}</p>
       </header>
       <div className="layout">
@@ -394,6 +474,7 @@ export default function App() {
                   nodes={source.nodes}
                   connections={source.connections}
                   atlasId={source.kind === "real" ? selectedAtlasId : undefined}
+                  networkSource={shownNetworkSource ?? undefined}
                 />
               </ErrorBoundary>
             </div>

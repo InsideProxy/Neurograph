@@ -86,15 +86,18 @@ mcp = FastMCP(
 
 @mcp.tool()
 @audited_tool("search_region")
-def search_region(atlas_id: str | None = None) -> list[RegionNode]:
+def search_region(atlas_id: str | None = None, network_source: str | None = None) -> list[RegionNode]:
     """Busca regiones reales cargadas en NeuroGraph. `atlas_id` filtra a
     un atlas concreto (p. ej. "atlas.human.hcp.mmp1_0"); sin él, se
     devuelven las regiones de todos los atlas cargados. Cada región
     lleva su coordenada real, el espacio de referencia en el que está
     expresada, y su red funcional si ya se calculó una (si no,
-    "unclassified" -- nunca una red inventada)."""
+    "unclassified" -- nunca una red inventada). `network_source` elige
+    la clasificación de red (decisión 73): p. ej. "cole-anticevic" (la
+    de siempre en HCP-MMP1.0), "yeo2011-7", "yeo2011-17" o "power2011";
+    sin él, la original de cada atlas."""
     with session_scope() as db:
-        return regions_service.list_regions(db, atlas_id)
+        return regions_service.list_regions(db, atlas_id, network_source)
 
 
 @mcp.tool()

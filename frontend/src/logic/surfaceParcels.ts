@@ -176,22 +176,35 @@ export function fillVertexColors(
   sulc: Float32Array | null,
   colorForRegion: (regionIndex: number) => RGB | null,
 ): void {
-  const n = map.vertexRegionIndex.length;
+  fillVertexColorsByIndex(out, map.vertexRegionIndex, map.regionIds.length, sulc, colorForRegion);
+}
+
+// Versión general (decisión 73): cada vértice tiene un índice de
+// categoría (región, o red en el modo "redes vértice a vértice") o
+// NO_REGION (-1); cada categoría, un color o null (= gris de fondo).
+export function fillVertexColorsByIndex(
+  out: Float32Array,
+  vertexIndex: Int32Array,
+  categoryCount: number,
+  sulc: Float32Array | null,
+  colorForCategory: (index: number) => RGB | null,
+): void {
+  const n = vertexIndex.length;
   if (out.length !== n * 3) throw new Error("tamaño del búfer de colores incorrecto");
   const range = sulcRange(sulc);
-  const regionColors = new Array<RGB | null>(map.regionIds.length);
-  for (let r = 0; r < regionColors.length; r++) regionColors[r] = colorForRegion(r);
+  const categoryColors = new Array<RGB | null>(categoryCount);
+  for (let r = 0; r < categoryCount; r++) categoryColors[r] = colorForCategory(r);
 
   for (let v = 0; v < n; v++) {
-    const region = map.vertexRegionIndex[v];
+    const category = vertexIndex[v];
     const s = sulc ? sulc[v] : Number.NaN;
     const t = range && !Number.isNaN(s) ? (s - range[0]) / (range[1] - range[0]) : null;
     let gray: number;
     if (t !== null) gray = GRAY_SULCUS + (GRAY_GYRUS - GRAY_SULCUS) * t;
-    else if (region === NO_REGION) gray = GRAY_MEDIAL_WALL;
+    else if (category === NO_REGION) gray = GRAY_MEDIAL_WALL;
     else gray = GRAY_NO_DATA;
 
-    const color = region === NO_REGION ? null : regionColors[region];
+    const color = category === NO_REGION ? null : (categoryColors[category] ?? null);
     if (color) {
       // El color real de la red se conserva, solo algo más oscuro en los
       // surcos (factor 0.7-1.0) para no perder la forma de la corteza.
