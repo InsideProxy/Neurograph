@@ -44,9 +44,11 @@ Pasos:
    binarios necesitan `lib/` y `share/` al lado para funcionar (son
    dependencias suyas, no del proyecto) — cópialos también, no solo `bin/`.
 5. **Borra estas cuatro carpetas después de copiar** (hallazgo real,
-   decisión 71, 10/09/2026: el primer `npm run tauri build` real falló por
-   superar el límite de 2GB de NSIS/MSI, y estas cuatro sumaban 715MB sin
-   aportar nada en tiempo de ejecución):
+   decisión 70 de `docs/analisis-arquitectura.md`, 10/09/2026 -- este
+   párrafo citaba por error "decisión 71" hasta el 11/09/2026, corregido
+   aquí: la entrada real es la 70. El primer `npm run tauri build` real
+   falló por superar el límite de 2GB de NSIS/MSI, y estas cuatro sumaban
+   715MB sin aportar nada en tiempo de ejecución):
    - `pgAdmin 4/` (686MB -- aplicación gráfica de administración, esta app
      nunca abre ninguna interfaz de administración de bases de datos)
    - `StackBuilder/` (gestor de extensiones adicionales de EDB, sin uso aquí)

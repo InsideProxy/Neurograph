@@ -46,7 +46,6 @@ script con las rutas reales de origen como argumentos.
 from __future__ import annotations
 
 import argparse
-import struct
 from pathlib import Path
 
 import numpy as np
@@ -54,7 +53,15 @@ import numpy as np
 from _mesh_io import write_glb
 
 
-def build_fslr_mesh(surf_left: Path, surf_right: Path, out_path: Path) -> None:
+def build_fslr_mesh(
+    surf_left: Path, surf_right: Path, out_path: Path, name: str = "fslr32k_midthickness"
+) -> None:
+    """`name` (añadido el 23/09/2026, decisión 72) permite reutilizar esta
+    MISMA función para las superficies infladas de S1200 desde
+    scripts/generate_surface_parcels.py -- mismo orden de vértices
+    (izquierda y luego derecha) garantizado por construcción, nunca una
+    segunda copia de esta concatenación. Por defecto, el nombre de
+    siempre: sin cambio de comportamiento para este script."""
     import nibabel as nib
 
     left = nib.load(str(surf_left))
@@ -67,9 +74,9 @@ def build_fslr_mesh(surf_left: Path, surf_right: Path, out_path: Path) -> None:
     vertices = np.concatenate([v_left, v_right], axis=0)
     faces = np.concatenate([f_left, f_right + len(v_left)], axis=0)
 
-    print(f"fsLR: {len(vertices)} vértices, {len(faces)} triángulos "
+    print(f"fsLR ({name}): {len(vertices)} vértices, {len(faces)} triángulos "
           f"({len(v_left)}+{len(v_right)} vértices, {len(f_left)}+{len(f_right)} caras)")
-    write_glb(out_path, vertices, faces, "fslr32k_midthickness")
+    write_glb(out_path, vertices, faces, name)
 
 
 def build_mni152_mesh(mask_path: Path, out_path: Path) -> None:

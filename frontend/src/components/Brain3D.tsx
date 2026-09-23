@@ -15,6 +15,13 @@
 //     seleccionar algo en el connectograma o en Hemisferios, nunca el
 //     grafo completo como valor por defecto (eso sería precisamente la
 //     vista "de conjunto" que este panel existe para no ser).
+//     EXCEPCIÓN, decisión de la usuaria del 23/09/2026 (decisión 72): en
+//     los atlas de superficie con la corteza pintada (PaintedCortex.tsx),
+//     sin nada seleccionado se muestran TODAS las regiones con el color
+//     real de su red (respetando los filtros) -- ese mapa es justamente
+//     lo que permite localizar una red de un vistazo. En cuanto hay
+//     selección, vuelve la regla de foco: lo seleccionado y sus vecinos
+//     en color, el resto en gris.
 // El resto de la codificación visual (color de red, discontinuo para
 // evidencia no directa, flecha para conectividad efectiva, abreviatura
 // permanente junto al nodo) no cambia respecto a la versión anterior de
@@ -30,7 +37,7 @@
 // abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
 // propia (src/logic/textSprite.ts) en vez de troika-three-text o
 // @react-three/drei <Text> -- mismo criterio.
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
@@ -42,11 +49,25 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { getLabelTexture } from "../logic/textSprite";
-import { NETWORK_COLORS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOMOLOGY_HIGHLIGHT_COLOR } from "../theme/networks";
+import {
+  NETWORK_COLORS,
+  NETWORK_LABELS,
+  NEUTRAL_COLOR,
+  ACCENT_SELECTED_COLOR,
+  HOMOLOGY_HIGHLIGHT_COLOR,
+} from "../theme/networks";
 import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
+import { PaintedCortex, type HemisphereVisibility, type SurfaceOverlayHelpers } from "./PaintedCortex";
+import {
+  hexToLinearRgb,
+  parseSulcFile,
+  validateParcelFile,
+  type RGB,
+  type SurfaceParcelMap,
+} from "../logic/surfaceParcels";
 
 // Fondo de la escena en pantalla (decisión 18, 30/08/2026): mismo valor
 // que --panel-bg en frontend/src/index.css. three.js no puede leer
@@ -88,6 +109,70 @@ const REFERENCE_SPACE_MESH: Record<string, string> = {
 // muestra un solo atlas a la vez, pero se comprueba en vez de asumirlo --
 // varios espacios de referencia distintos mezclados en el mismo conjunto de
 // nodos.
+// Regiones reales pintadas sobre la corteza (decisión 72, 23/09/2026).
+// Solo para los atlas de SUPERFICIE con mapa vértice -> región generado y
+// verificado por scripts/generate_surface_parcels.py. La clave es el id
+// del atlas activo, pero el archivo se valida después contra los nodos
+// reales cargados (mismo atlas, mismo espacio de referencia, todas las
+// regiones presentes) -- nunca se pinta por confiar en la clave. Los
+// atlas volumétricos (Brainnetome, subcórtex del HCP) no tienen entrada
+// y siguen con la vista de siempre (esferas + malla translúcida).
+const SURFACE_PARCELS_BY_ATLAS: Record<string, string> = {
+  "atlas.human.hcp.mmp1_0": "/parcels/hcp_mmp1_0.fslr32k.json",
+  "atlas.human.gordon333.cortex": "/parcels/gordon333.fslr32k.json",
+};
+const SURFACE_SULC_URL = "/parcels/fslr32k_sulc.json";
+
+// Tres formas de la MISMA superficie fs_LR 32k (misma topología,
+// comprobada al generarlas): la "real" (midthickness, la de las
+// coordenadas de la base de datos) y dos infladas del promedio de grupo
+// S1200, que abren los surcos para ver el territorio que queda escondido
+// en ellos. Cambiar de forma nunca cambia ningún dato: solo dónde se
+// dibuja cada vértice.
+type SurfaceShape = "midthickness" | "inflated" | "very_inflated";
+const SURFACE_SHAPE_MESH: Record<SurfaceShape, string> = {
+  midthickness: "/meshes/fslr32k_midthickness.glb",
+  inflated: "/meshes/fslr32k_inflated.glb",
+  very_inflated: "/meshes/fslr32k_very_inflated.glb",
+};
+const SURFACE_SHAPE_LABELS: Record<SurfaceShape, string> = {
+  midthickness: "Real (midthickness)",
+  inflated: "Inflada (se ven los surcos)",
+  very_inflated: "Muy inflada",
+};
+
+type SurfaceMode = "painted" | "translucent";
+
+type ParcelLoad =
+  | { key: string; kind: "error"; message: string }
+  | { key: string; kind: "ready"; map: SurfaceParcelMap; sulc: Float32Array | null };
+
+// Una sola descarga por archivo y sesión (los .json pesan ~300-470 KB):
+// cambiar de atlas y volver no vuelve a pedirlos.
+const jsonCache = new Map<string, Promise<unknown>>();
+function fetchJsonCached(url: string): Promise<unknown> {
+  let promise = jsonCache.get(url);
+  if (!promise) {
+    promise = fetch(url).then((r) => {
+      if (!r.ok) throw new Error(`${url} respondió ${r.status}`);
+      return r.json();
+    });
+    promise.catch(() => jsonCache.delete(url));
+    jsonCache.set(url, promise);
+  }
+  return promise;
+}
+
+// Luz que acompaña a la cámara: con la corteza opaca, una única luz fija
+// deja en penumbra la cara que no mira hacia ella al girar el cerebro.
+function CameraLight() {
+  const ref = useRef<THREE.DirectionalLight>(null);
+  useFrame(({ camera }) => {
+    ref.current?.position.copy(camera.position);
+  });
+  return <directionalLight ref={ref} intensity={1.6} />;
+}
+
 function resolveMeshUrl(nodes: GraphNode[]): string | null {
   const spaces = new Set(nodes.map((n) => n.referenceSpace).filter((s): s is string => s !== null));
   if (spaces.size !== 1) {
@@ -288,7 +373,7 @@ function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null
 // Se omite por completo cuando la región no tiene abreviatura registrada
 // todavía (atlas sin backfill de la migración 0007): nunca se inventa
 // una a partir de `label`.
-function NodeLabel({ node }: { node: GraphNode }) {
+function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boolean }) {
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
@@ -317,17 +402,38 @@ function NodeLabel({ node }: { node: GraphNode }) {
   const labelHeight = 0.13;
   const labelWidth = labelHeight * label.aspect;
   return (
-    <sprite position={position} scale={[labelWidth, labelHeight, 1]}>
-      <spriteMaterial map={label.texture} transparent depthWrite={false} sizeAttenuation />
+    <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
+      <spriteMaterial
+        map={label.texture}
+        transparent
+        depthWrite={false}
+        depthTest={!overlay}
+        sizeAttenuation
+      />
     </sprite>
   );
+}
+
+// Props que se añaden (por propagación, nunca como `undefined` explícito:
+// react-three-fiber asignaría `undefined` a la propiedad y rompería el
+// raycast por defecto) a los objetos que se dibujan por encima de la
+// corteza pintada y no deben recibir clics.
+function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
+  return overlay ? { raycast: () => null } : {};
 }
 
 function NodeMesh({
   node,
   isHomologyHighlighted,
+  overlay = false,
 }: {
   node: GraphNode;
+  // Con la corteza pintada y opaca (decisión 72), las esferas y líneas de
+  // la selección se dibujan POR ENCIMA de la superficie (sin prueba de
+  // profundidad) -- si no, las que caen dentro de un surco o al otro lado
+  // quedarían ocultas. En ese modo no reciben clics: la selección se hace
+  // pulsando la propia región sobre la corteza.
+  overlay?: boolean;
   // Homología real hacia la especie de comparación elegida (02/09/2026,
   // ver HomologyComparisonControl más abajo): SIEMPRE calculado a partir
   // de filas `Homology` ya cargadas (GET /homologies?species_id=...,
@@ -373,14 +479,19 @@ function NodeMesh({
           en pantalla (fondo oscuro) como en la exportación (blanco
           forzado, ver ExportBridge) -- por eso el halo también se ve
           bien en la figura exportada, no solo en pantalla. */}
-      <mesh position={node.position3d} scale={1.18}>
+      <mesh position={node.position3d} scale={1.18} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         <sphereGeometry args={[baseRadius, 14, 14]} />
         <meshBasicMaterial
           color={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
           side={THREE.BackSide}
+          depthTest={!overlay}
         />
       </mesh>
-      <mesh position={node.position3d} onClick={() => toggleNode(node.id)}>
+      <mesh
+        position={node.position3d}
+        renderOrder={overlay ? 2 : 0}
+        {...(overlay ? overlayNoRaycast(true) : { onClick: () => toggleNode(node.id) })}
+      >
         {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
             segmento de más cuesta 360 veces más caro que en la demo de 8
             nodos. Sigue viéndose redondo a esta escala. */}
@@ -389,9 +500,10 @@ function NodeMesh({
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
+          depthTest={!overlay}
         />
       </mesh>
-      <NodeLabel node={node} />
+      <NodeLabel node={node} overlay={overlay} />
     </>
   );
 }
@@ -400,10 +512,12 @@ function DirectionArrow({
   from,
   to,
   color,
+  overlay = false,
 }: {
   from: THREE.Vector3;
   to: THREE.Vector3;
   color: string;
+  overlay?: boolean;
 }) {
   // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
   // el equivalente 3D de la flecha del connectograma para conectividad
@@ -419,9 +533,9 @@ function DirectionArrow({
   }, [from, to]);
 
   return (
-    <mesh position={position} quaternion={quaternion}>
+    <mesh position={position} quaternion={quaternion} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
       <coneGeometry args={[0.035, 0.09, 12]} />
-      <meshBasicMaterial color={color} />
+      <meshBasicMaterial color={color} depthTest={!overlay} />
     </mesh>
   );
 }
@@ -433,6 +547,7 @@ function ConnectionLine({
   isDashed,
   isDirected,
   onClick,
+  overlay = false,
 }: {
   a: [number, number, number];
   b: [number, number, number];
@@ -440,6 +555,7 @@ function ConnectionLine({
   isDashed: boolean;
   isDirected: boolean;
   onClick: () => void;
+  overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
   const to = useMemo(() => new THREE.Vector3(...b), [b]);
@@ -466,7 +582,11 @@ function ConnectionLine({
 
   return (
     <>
-      <threeLine geometry={geometry} onClick={onClick}>
+      <threeLine
+        geometry={geometry}
+        renderOrder={overlay ? 2 : 0}
+        {...(overlay ? overlayNoRaycast(true) : { onClick })}
+      >
         {isDashed ? (
           <lineDashedMaterial
             color={color}
@@ -474,16 +594,18 @@ function ConnectionLine({
             opacity={isSelected ? 0.95 : 0.55}
             dashSize={0.08}
             gapSize={0.06}
+            depthTest={!overlay}
           />
         ) : (
           <lineBasicMaterial
             color={color}
             transparent
             opacity={isSelected ? 0.95 : 0.55}
+            depthTest={!overlay}
           />
         )}
       </threeLine>
-      {isDirected && <DirectionArrow from={from} to={to} color={color} />}
+      {isDirected && <DirectionArrow from={from} to={to} color={color} overlay={overlay} />}
     </>
   );
 }
@@ -574,6 +696,68 @@ function HomologyComparisonControl({
 interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
+  // Atlas activo (decisión 72): solo se usa para elegir el archivo de
+  // regiones de superficie, que después se valida contra `nodes`. Sin
+  // él (datos de demostración), nunca se pinta la corteza.
+  atlasId?: string;
+}
+
+// Controles de la corteza pintada (decisión 72). Solo aparecen en los
+// atlas de superficie con mapa de regiones.
+function SurfaceControls({
+  mode,
+  onMode,
+  shape,
+  onShape,
+  hemisphere,
+  onHemisphere,
+  hemisphereSplitAvailable,
+}: {
+  mode: SurfaceMode;
+  onMode: (m: SurfaceMode) => void;
+  shape: SurfaceShape;
+  onShape: (s: SurfaceShape) => void;
+  hemisphere: HemisphereVisibility;
+  onHemisphere: (h: HemisphereVisibility) => void;
+  hemisphereSplitAvailable: boolean;
+}) {
+  return (
+    <div className="brain3d-surface-controls">
+      <label>
+        Corteza:{" "}
+        <select value={mode} onChange={(e) => onMode(e.target.value as SurfaceMode)}>
+          <option value="painted">Regiones pintadas</option>
+          <option value="translucent">Translúcida (solo esferas)</option>
+        </select>
+      </label>
+      {mode === "painted" && (
+        <>
+          <label>
+            Forma:{" "}
+            <select value={shape} onChange={(e) => onShape(e.target.value as SurfaceShape)}>
+              {(Object.keys(SURFACE_SHAPE_LABELS) as SurfaceShape[]).map((s) => (
+                <option key={s} value={s}>
+                  {SURFACE_SHAPE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label title={hemisphereSplitAvailable ? undefined : "La malla no permite separar hemisferios"}>
+            Hemisferio:{" "}
+            <select
+              value={hemisphere}
+              onChange={(e) => onHemisphere(e.target.value as HemisphereVisibility)}
+              disabled={!hemisphereSplitAvailable}
+            >
+              <option value="both">Ambos</option>
+              <option value="L">Solo izquierdo (ver su cara medial)</option>
+              <option value="R">Solo derecho (ver su cara medial)</option>
+            </select>
+          </label>
+        </>
+      )}
+    </div>
+  );
 }
 
 // Calcula el subgrafo de foco actual a partir de la selección compartida
@@ -622,8 +806,8 @@ function computeFocus(
   return null;
 }
 
-export function Brain3D({ nodes: allNodes, connections: allConnections }: Props) {
-  const { selectedNodeIds, selectedConnectionId, selectConnection } = useSelectionStore();
+export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId }: Props) {
+  const { selectedNodeIds, selectedConnectionId, selectConnection, toggleNode } = useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
 
@@ -643,7 +827,6 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   const tooManyFocusConnections = (focus?.connections.length ?? 0) > MAX_RENDERED_CONNECTIONS;
   const visibleFocusConnections = tooManyFocusConnections ? [] : (focus?.connections ?? []);
 
-  const nodeById = new Map(nodes.map((n) => [n.id, n]));
   // A partir de TODOS los nodos del atlas actual (nunca solo los filtrados
   // ni solo los del foco actual): la malla de fondo representa el espacio
   // de referencia del atlas cargado, no cambia según qué esté seleccionado
@@ -733,6 +916,102 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
   }, [comparisonSpeciesId]);
   const homologyNodeIds = homology.kind === "loaded" ? homology.ids : EMPTY_HOMOLOGY_IDS;
 
+  // --- Corteza pintada con las regiones reales (decisión 72) ---
+  const parcelUrl = atlasId ? SURFACE_PARCELS_BY_ATLAS[atlasId] : undefined;
+  // Espacio de referencia real de los nodos cargados: tiene que ser uno
+  // solo (mismo criterio que resolveMeshUrl) para poder validar el
+  // archivo de regiones contra él.
+  const nodesReferenceSpace = useMemo(() => {
+    const spaces = new Set(allNodes.map((n) => n.referenceSpace));
+    const [only] = spaces;
+    return spaces.size === 1 && typeof only === "string" ? only : null;
+  }, [allNodes]);
+  const allNodeIdsKey = useMemo(() => allNodes.map((n) => n.id).join(","), [allNodes]);
+  const parcelKey =
+    parcelUrl && atlasId && nodesReferenceSpace ? `${atlasId}|${nodesReferenceSpace}|${allNodeIdsKey}` : null;
+
+  // El estado guarda la clave para la que se cargó: si la clave actual no
+  // coincide, se está cargando -- así nunca se pone el estado "cargando"
+  // de forma síncrona dentro del efecto (aviso react(set-state-in-effect)).
+  const [parcelLoad, setParcelLoad] = useState<ParcelLoad | null>(null);
+  useEffect(() => {
+    if (!parcelUrl || !parcelKey || !atlasId || !nodesReferenceSpace) return;
+    let cancelled = false;
+    const nodeIds = allNodeIdsKey.split(",");
+    Promise.all([fetchJsonCached(parcelUrl), fetchJsonCached(SURFACE_SULC_URL).catch(() => null)])
+      .then(([rawParcels, rawSulc]) => {
+        if (cancelled) return;
+        const validated = validateParcelFile(rawParcels, { atlasId, referenceSpace: nodesReferenceSpace }, nodeIds);
+        if (!validated.ok) {
+          setParcelLoad({ key: parcelKey, kind: "error", message: validated.error });
+          return;
+        }
+        const sulc = rawSulc ? parseSulcFile(rawSulc, validated.map.vertexRegionIndex.length) : null;
+        setParcelLoad({ key: parcelKey, kind: "ready", map: validated.map, sulc });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "error desconocido";
+        setParcelLoad({ key: parcelKey, kind: "error", message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [parcelUrl, parcelKey, atlasId, nodesReferenceSpace, allNodeIdsKey]);
+  const currentParcel = parcelLoad && parcelLoad.key === parcelKey ? parcelLoad : null;
+  const parcelsLoading = parcelKey !== null && currentParcel === null;
+
+  // Por defecto, la forma inflada: en la midthickness, buena parte de la
+  // corteza queda escondida dentro de los surcos, justo lo que impide
+  // localizar una región de un vistazo.
+  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("painted");
+  const [surfaceShape, setSurfaceShape] = useState<SurfaceShape>("inflated");
+  const [hemisphere, setHemisphere] = useState<HemisphereVisibility>("both");
+  const [hemisphereSplitAvailable, setHemisphereSplitAvailable] = useState(true);
+  const [hoveredRegion, setHoveredRegion] = useState<number | null>(null);
+
+  const painted = surfaceMode === "painted" && currentParcel?.kind === "ready" ? currentParcel : null;
+
+  const allNodesById = useMemo(() => new Map(allNodes.map((n) => [n.id, n])), [allNodes]);
+  const filteredNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
+
+  // Color de cada región de la superficie: sin selección, todas las
+  // visibles según los filtros con el color real de su red (decisión de
+  // la usuaria, 23/09/2026); con selección, solo el foco. Las regiones
+  // con homología real resaltada sustituyen su color por el de homología
+  // -- mismo criterio exacto que NodeMesh (nunca una mezcla de los dos).
+  const regionColors = useMemo<(RGB | null)[] | null>(() => {
+    if (!painted) return null;
+    const shown = focus ? new Set(focus.nodes.map((n) => n.id)) : filteredNodeIds;
+    return painted.map.regionIds.map((id) => {
+      const node = allNodesById.get(id);
+      if (!node || !shown.has(id)) return null;
+      const hex = homologyNodeIds.has(id) ? HOMOLOGY_HIGHLIGHT_COLOR : (NETWORK_COLORS[node.network] ?? "#888888");
+      return hexToLinearRgb(hex);
+    });
+  }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds]);
+  const colorForRegion = useCallback((region: number) => regionColors?.[region] ?? null, [regionColors]);
+
+  const anchorById = useMemo(
+    () => (painted ? new Map(painted.map.regionIds.map((id, i) => [id, painted.map.anchorVertices[i]])) : null),
+    [painted]
+  );
+
+  // Clic sobre la corteza = mismo efecto que un clic sobre el nodo en el
+  // connectograma. Una región oculta por los filtros no se selecciona.
+  const handleRegionClick = useCallback(
+    (region: number) => {
+      const id = painted?.map.regionIds[region];
+      if (id && filteredNodeIds.has(id)) toggleNode(id);
+    },
+    [painted, filteredNodeIds, toggleNode]
+  );
+  const handleRegionHover = useCallback((region: number | null) => setHoveredRegion(region), []);
+  const hoveredNode =
+    painted && hoveredRegion !== null && hoveredRegion < painted.map.regionIds.length
+      ? allNodesById.get(painted.map.regionIds[hoveredRegion])
+      : undefined;
+
   const homologyControl = (
     <HomologyComparisonControl
       speciesList={speciesList}
@@ -752,19 +1031,101 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
     );
   }
 
+  const surfaceControls = parcelUrl ? (
+    <SurfaceControls
+      mode={surfaceMode}
+      onMode={setSurfaceMode}
+      shape={surfaceShape}
+      onShape={setSurfaceShape}
+      hemisphere={hemisphere}
+      onHemisphere={setHemisphere}
+      hemisphereSplitAvailable={hemisphereSplitAvailable}
+    />
+  ) : null;
+
+  const parcelError =
+    surfaceMode === "painted" && currentParcel?.kind === "error" ? (
+      <p className="brain3d-surface-status brain3d-surface-status--error">
+        No se pudo pintar la corteza ({currentParcel.message}). Se muestra la vista de siempre.
+      </p>
+    ) : null;
+
+  // Coloca los nodos y líneas del foco. Con la corteza pintada, cada
+  // región se dibuja sobre SU vértice ancla en la forma de superficie que
+  // se está mostrando (en la midthickness es exactamente `position3d`),
+  // y se omite si su hemisferio está oculto.
+  const renderFocus = (helpers: SurfaceOverlayHelpers | null) => {
+    if (!focus) return null;
+    const placed = new Map<string, GraphNode>();
+    for (const node of focus.nodes) {
+      if (helpers && anchorById) {
+        const anchor = anchorById.get(node.id);
+        if (anchor === undefined || !helpers.isVertexVisible(anchor)) continue;
+        placed.set(node.id, { ...node, position3d: helpers.positionOfVertex(anchor) });
+      } else {
+        placed.set(node.id, node);
+      }
+    }
+    const overlay = helpers !== null;
+    return (
+      <>
+        {[...placed.values()].map((node) => (
+          <NodeMesh
+            key={node.id}
+            node={node}
+            isHomologyHighlighted={homologyNodeIds.has(node.id)}
+            overlay={overlay}
+          />
+        ))}
+        {visibleFocusConnections.map((conn) => {
+          const a = placed.get(conn.source);
+          const b = placed.get(conn.target);
+          if (!a || !b) return null;
+          // Todo lo que aparece en la vista de foco está, por construcción,
+          // "seleccionado" en algún sentido (toca al nodo elegido, es la
+          // conexión elegida, o une a dos nodos de la selección múltiple) --
+          // por eso basta con reutilizar las mismas condiciones que ya
+          // existían, sin una bandera aparte para el caso de selección
+          // múltiple.
+          const isSelected =
+            selectedConnectionId === conn.id ||
+            selectedNodeIds.has(conn.source) ||
+            selectedNodeIds.has(conn.target);
+          return (
+            <ConnectionLine
+              key={conn.id}
+              a={a.position3d}
+              b={b.position3d}
+              isSelected={isSelected}
+              isDashed={conn.evidenceLevel !== "direct"}
+              isDirected={conn.type === "effective"}
+              onClick={() => selectConnection(conn.id)}
+              overlay={overlay}
+            />
+          );
+        })}
+      </>
+    );
+  };
+
   // Vista de foco, no de conjunto (decisión de la usuaria, 30/08/2026):
   // sin nada seleccionado, este panel no dibuja el grafo completo -- ya
   // lo hacen el connectograma y Hemisferios. Invita a seleccionar algo
   // en cualquiera de los otros dos en vez de mostrar un lienzo vacío sin
-  // explicación.
-  if (!focus) {
+  // explicación. Excepción (decisión 72): con la corteza pintada sí se
+  // muestra el mapa completo de regiones, ver `regionColors`.
+  if (!focus && !painted) {
     return (
       <>
-        {homologyControl}
+        <div className="brain3d-toolbar">
+          {homologyControl}
+          {surfaceControls}
+        </div>
+        {parcelError}
         <div className="brain3d-focus-placeholder">
-          Selecciona una región (o una conexión) en el connectograma o en
-          el esquema de hemisferios para ver aquí, en 3D, su red de
-          conectividad.
+          {surfaceMode === "painted" && parcelsLoading
+            ? "Cargando las regiones reales de la superficie…"
+            : "Selecciona una región (o una conexión) en el connectograma o en el esquema de hemisferios para ver aquí, en 3D, su red de conectividad."}
         </div>
       </>
     );
@@ -772,13 +1133,25 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
 
   return (
     <>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flex: "0 0 auto", flexWrap: "wrap", gap: 8 }}>
+    <div className="brain3d-toolbar">
       {homologyControl}
+      {surfaceControls}
       <button type="button" className="export-btn" onClick={handleExport}>
         Exportar JPEG
       </button>
     </div>
-    {tooManyFocusConnections && (
+    {parcelError}
+    {painted && (
+      <p className="brain3d-surface-status">
+        {hoveredNode
+          ? `Bajo el cursor: ${hoveredNode.label} — ${NETWORK_LABELS[hoveredNode.network] ?? hoveredNode.network}`
+          : focus
+            ? "En color: lo seleccionado y sus vecinos. Haz clic en otra región de la corteza para añadirla o quitarla de la selección."
+            : "Cada región con el color real de su red. Pasa el ratón para ver qué región es; haz clic para seleccionarla."}
+        {!painted.sulc && " (Sin sombreado de surcos: no se pudo cargar ese archivo.)"}
+      </p>
+    )}
+    {tooManyFocusConnections && focus && (
       <p className="connectogram-toomany-warning">
         Hay {focus.connections.length} conexiones reales entre los nodos
         seleccionados — demasiadas para dibujar aquí sin riesgo. Se
@@ -828,6 +1201,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
       <color attach="background" args={[SCENE_BG]} />
       <ambientLight intensity={0.6} />
       <pointLight position={[5, 5, 5]} intensity={60} />
+      {painted && <CameraLight />}
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
       <ExportBridge exportRef={exportRef} />
@@ -840,42 +1214,38 @@ export function Brain3D({ nodes: allNodes, connections: allConnections }: Props)
           de foco. `<Suspense>` es obligatorio: `useLoader` suspende
           mientras el archivo se descarga la primera vez (luego queda en
           caché por url). */}
-      {meshUrl && (
-        <ErrorBoundary fallback={null}>
+      {painted ? (
+        // Si la malla de la superficie no carga (o no corresponde al mapa
+        // de regiones: PaintedCortex lanza un error en vez de pintar mal),
+        // se vuelve a la vista de siempre: esferas en su posición real.
+        <ErrorBoundary key={`${surfaceShape}|${parcelKey}`} fallback={renderFocus(null)}>
           <Suspense fallback={null}>
-            <ReferenceMesh url={meshUrl} />
+            <PaintedCortex
+              meshUrl={SURFACE_SHAPE_MESH[surfaceShape]}
+              map={painted.map}
+              sulc={painted.sulc}
+              colorForRegion={colorForRegion}
+              hemisphere={hemisphere}
+              onRegionClick={handleRegionClick}
+              onRegionHover={handleRegionHover}
+              onHemisphereSplitAvailable={setHemisphereSplitAvailable}
+            >
+              {(helpers) => renderFocus(helpers)}
+            </PaintedCortex>
           </Suspense>
         </ErrorBoundary>
+      ) : (
+        <>
+          {meshUrl && (
+            <ErrorBoundary fallback={null}>
+              <Suspense fallback={null}>
+                <ReferenceMesh url={meshUrl} />
+              </Suspense>
+            </ErrorBoundary>
+          )}
+          {renderFocus(null)}
+        </>
       )}
-      {focus.nodes.map((node) => (
-        <NodeMesh key={node.id} node={node} isHomologyHighlighted={homologyNodeIds.has(node.id)} />
-      ))}
-      {visibleFocusConnections.map((conn) => {
-        const a = nodeById.get(conn.source);
-        const b = nodeById.get(conn.target);
-        if (!a || !b) return null;
-        // Todo lo que aparece en la vista de foco está, por construcción,
-        // "seleccionado" en algún sentido (toca al nodo elegido, es la
-        // conexión elegida, o une a dos nodos de la selección múltiple) --
-        // por eso basta con reutilizar las mismas condiciones que ya
-        // existían, sin una bandera aparte para el caso de selección
-        // múltiple.
-        const isSelected =
-          selectedConnectionId === conn.id ||
-          selectedNodeIds.has(conn.source) ||
-          selectedNodeIds.has(conn.target);
-        return (
-          <ConnectionLine
-            key={conn.id}
-            a={a.position3d}
-            b={b.position3d}
-            isSelected={isSelected}
-            isDashed={conn.evidenceLevel !== "direct"}
-            isDirected={conn.type === "effective"}
-            onClick={() => selectConnection(conn.id)}
-          />
-        );
-      })}
     </Canvas>
     </div>
     </>

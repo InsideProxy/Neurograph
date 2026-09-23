@@ -1,6 +1,7 @@
 mod backend;
 mod postgres;
 mod setup;
+mod synthesis;
 
 use std::sync::Mutex;
 use tauri::{Manager, WindowEvent};
@@ -12,6 +13,12 @@ struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Diálogo nativo de archivos (decisión 71, 11/09/2026), usado
+        // por "Importar síntesis de IA" -- ver src/synthesis.rs para por
+        // qué la lectura del archivo elegido es un comando propio y no
+        // tauri-plugin-fs.
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![synthesis::read_synthesis_file])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
