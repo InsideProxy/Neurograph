@@ -25,9 +25,6 @@ export interface ThemeInfo {
   number: number;
   name: string;
   description: string;
-  // Solo para la vista previa de Ajustes; los valores que usa la app están
-  // en index.css.
-  preview: { bg: string; panel: string; border: string };
 }
 
 export const THEME_INFO: Readonly<Record<ThemeId, Readonly<ThemeInfo>>> = {
@@ -35,25 +32,21 @@ export const THEME_INFO: Readonly<Record<ThemeId, Readonly<ThemeInfo>>> = {
     number: 1,
     name: "Original",
     description: "Los colores de siempre de NeuroGraph",
-    preview: { bg: "#15161c", panel: "#1d1e26", border: "#34343e" },
   },
   grafito: {
     number: 2,
     name: "Grafito",
     description: "Oscuro neutro, tonos suaves",
-    preview: { bg: "#0f1115", panel: "#16191e", border: "#262b33" },
   },
   noche: {
     number: 3,
     name: "Noche",
     description: "Oscuro azulado, algo más de intensidad",
-    preview: { bg: "#0a0e17", panel: "#111726", border: "#1f2940" },
   },
   claro: {
     number: 4,
     name: "Claro",
     description: "Fondo claro, como la imagen exportada",
-    preview: { bg: "#f3f2ee", panel: "#ffffff", border: "#e2e0d9" },
   },
 };
 

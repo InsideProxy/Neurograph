@@ -1,52 +1,179 @@
-:root {
-  /* Tema oscuro real (30/08/2026, decisión 18 de
-     docs/analisis-arquitectura.md): hasta ahora el tema oscuro estaba
-     deliberadamente deshabilitado (ver historial de este archivo) porque
-     el connectograma dibujaba su SVG sobre fondo blanco fijo y su texto
-     en color oscuro fijo -- confirmado el 28/08/2026 con las 360
-     regiones reales que eso se volvía ilegible en cuanto el sistema
-     forzaba 'dark'. La usuaria pidió ahora, explícitamente, lo
-     contrario: la app en fondo oscuro con colores claros, y la
-     exportación a JPEG siempre en oscuro sobre blanco (ya así desde la
-     decisión 11 -- frontend/src/logic/exportImage.ts fuerza blanco
-     explícito sin importar el tema en pantalla). La pieza que faltaba no
-     era "elegir un fondo oscuro" sino elegir los colores de las líneas,
-     nodos y texto que SÍ se exportan (Connectogram.tsx, Hemisferios.tsx,
-     Brain3D.tsx, DetailPanel.tsx) de forma que se lean con contraste
-     suficiente sobre los dos fondos a la vez -- ver
-     frontend/src/theme/networks.ts para esos colores "intermedios",
-     calculados por contraste WCAG real (script ad hoc), no a ojo. Los
-     colores de esta hoja (chrome de la interfaz: cabecera, badges,
-     botones, paneles de texto) solo tienen que verse bien en el tema
-     oscuro, porque el chrome nunca se exporta -- solo el contenido de
-     los tres paneles visuales y la leyenda del panel de detalle. */
+/* Tipografía (decisión 77; docs/rediseno-interfaz-diseno.md, sección 7):
+   Atkinson Hyperlegible Next y Mono, instaladas con la aplicación para que
+   la versión de escritorio funcione sin conexión (licencia SIL OFL 1.1, ver
+   public/licenses/OFL-*.txt). Son fuentes variables: un archivo por
+   subconjunto cubre todos los pesos. */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-next-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-next-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Mono';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-mono-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Mono';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Temas (decisiones 18 y 77; docs/rediseno-interfaz-diseno.md, 4.1).
+   main.tsx pone data-theme en <html> antes del primer render; sin él se
+   usa el tema 1. Todos los bloques definen las mismas variables.
+   Equivalencias con los nombres del spec:
+     --code-bg = raised, --text-h = strong, --text-muted = muted,
+     --text-faint = faint, --accent-bg = accentSoft,
+     --accent-border = accentBorder.
+   Cada color de estado (--success, --warning, --error, --synthesis) tiene
+   su fondo translúcido --*-bg. Los colores que se dibujan dentro de los
+   SVG y del 3D no están aquí: están en theme/themes.ts (DRAW_TOKENS). Los
+   mismos bloques se aplican a cualquier elemento con
+   data-theme-preview="<id>": así la vista previa de Ajustes muestra los
+   colores reales de cada tema sin repetirlos en TypeScript. */
+:root,
+:root[data-theme="original"],
+[data-theme-preview="original"] {
+  --bg: #15161c;
+  --panel-bg: #1d1e26;
+  --code-bg: #23242c;
+  --hover: #2a2b34;
+  --border: #34343e;
+  --border-strong: #46465a;
   --text: #c7c5d0;
   --text-h: #f3f2f7;
   --text-muted: #9995a8;
-  --bg: #15161c;
-  --panel-bg: #1d1e26;
-  --border: #34343e;
-  --code-bg: #23242c;
+  --text-faint: #6f6c7d;
   --accent: #ac61d1;
   --accent-bg: rgba(172, 97, 209, 0.15);
   --accent-border: rgba(172, 97, 209, 0.5);
-  --social-bg: rgba(35, 36, 44, 0.5);
+  --success: #7fe0a0;
+  --success-bg: rgba(127, 224, 160, 0.16);
+  --warning: #f0c473;
+  --warning-bg: rgba(240, 196, 115, 0.16);
+  --error: #ff9b9b;
+  --error-bg: rgba(255, 90, 90, 0.12);
+  --synthesis: #ff7b3d;
+  --synthesis-bg: rgba(255, 123, 61, 0.18);
   --shadow:
     rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+  color-scheme: dark;
+}
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+:root[data-theme="grafito"],
+[data-theme-preview="grafito"] {
+  --bg: #0f1115;
+  --panel-bg: #16191e;
+  --code-bg: #1d2127;
+  --hover: #232830;
+  --border: #262b33;
+  --border-strong: #363c47;
+  --text: #c9ced6;
+  --text-h: #f1f3f6;
+  --text-muted: #8d95a3;
+  --text-faint: #5f6775;
+  --accent: #e8ecf1;
+  --accent-bg: rgba(232, 236, 241, 0.08);
+  --accent-border: rgba(232, 236, 241, 0.35);
+  --success: #6cc497;
+  --success-bg: rgba(108, 196, 151, 0.14);
+  --warning: #e7c46a;
+  --warning-bg: rgba(231, 196, 106, 0.14);
+  --error: #f09a9a;
+  --error-bg: rgba(240, 154, 154, 0.12);
+  --synthesis: #ff7b3d;
+  --synthesis-bg: rgba(255, 123, 61, 0.16);
+  --shadow:
+    rgba(0, 0, 0, 0.55) 0 10px 15px -3px, rgba(0, 0, 0, 0.35) 0 4px 6px -2px;
+  color-scheme: dark;
+}
+
+:root[data-theme="noche"],
+[data-theme-preview="noche"] {
+  --bg: #0a0e17;
+  --panel-bg: #111726;
+  --code-bg: #172035;
+  --hover: #1c2640;
+  --border: #1f2940;
+  --border-strong: #2e3b58;
+  --text: #cbd5e6;
+  --text-h: #f2f5fb;
+  --text-muted: #8a97b0;
+  --text-faint: #5b6782;
+  --accent: #e3ebfb;
+  --accent-bg: rgba(227, 235, 251, 0.08);
+  --accent-border: rgba(227, 235, 251, 0.35);
+  --success: #5fd0a0;
+  --success-bg: rgba(95, 208, 160, 0.14);
+  --warning: #edc766;
+  --warning-bg: rgba(237, 199, 102, 0.14);
+  --error: #f59c9c;
+  --error-bg: rgba(245, 156, 156, 0.12);
+  --synthesis: #ff7b3d;
+  --synthesis-bg: rgba(255, 123, 61, 0.16);
+  --shadow:
+    rgba(0, 0, 0, 0.6) 0 10px 15px -3px, rgba(0, 0, 0, 0.4) 0 4px 6px -2px;
+  color-scheme: dark;
+}
+
+:root[data-theme="claro"],
+[data-theme-preview="claro"] {
+  --bg: #f3f2ee;
+  --panel-bg: #ffffff;
+  --code-bg: #f6f5f1;
+  --hover: #eeede8;
+  --border: #e2e0d9;
+  --border-strong: #cfccc3;
+  --text: #3a3d43;
+  --text-h: #14161a;
+  --text-muted: #686c74;
+  --text-faint: #9a9da4;
+  --accent: #16181c;
+  --accent-bg: rgba(22, 24, 28, 0.06);
+  --accent-border: rgba(22, 24, 28, 0.35);
+  --success: #227a4d;
+  --success-bg: rgba(34, 122, 77, 0.1);
+  --warning: #7a5d00;
+  --warning-bg: rgba(122, 93, 0, 0.1);
+  --error: #b42318;
+  --error-bg: rgba(180, 35, 24, 0.08);
+  --synthesis: #b93d0a;
+  --synthesis-bg: rgba(185, 61, 10, 0.1);
+  --shadow:
+    rgba(40, 36, 20, 0.12) 0 10px 15px -3px, rgba(40, 36, 20, 0.08) 0 4px 6px -2px;
+  color-scheme: light;
+}
+
+:root {
+  --sans: 'Atkinson Hyperlegible Next', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: var(--sans);
+  --mono: 'Atkinson Hyperlegible Mono', ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  /* 'dark' explícito, no 'light dark': ya no dependemos de que el
-     navegador adivine -- el tema oscuro es ahora un diseño real de
-     NeuroGraph, con sus propios colores para controles nativos
-     (scrollbars, checkboxes...), no una improvisación del sistema. */
-  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
+  /* Casillas, deslizadores y demás controles nativos con el acento del
+     tema, no con el color por defecto del navegador. */
+  accent-color: var(--accent);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -55,6 +182,16 @@
   @media (max-width: 1024px) {
     font-size: 16px;
   }
+}
+
+/* Los controles de formulario no heredan la fuente por defecto: sin esto,
+   botones, desplegables y campos seguirían con la del sistema. Solo la
+   familia, para no cambiar ningún tamaño. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 
