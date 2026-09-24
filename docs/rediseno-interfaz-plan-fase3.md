@@ -13,13 +13,13 @@
 
 **Tecnología:** React 19, TypeScript 6 estricto, Vite 8, zustand 5, vitest 4 (entorno node, sin DOM; `react-dom/server` para comprobar marcado) y oxlint.
 
-**Spec:** `docs/rediseno-interfaz-diseno.md` (commit `1f524db`), secciones 5.1 y 5.3 a 5.8, con las reglas generales de las secciones 3, 7, 8, 9, 10, 11 y 12. La barra de estado que se valoró para 5.7 quedó descartada por la usuaria: no está en este plan. El buscador de regiones (5.8) se añadió después, a petición de la usuaria: es la Task 11.
+**Spec:** `docs/rediseno-interfaz-diseno.md` (commit `1f524db`), secciones 5.1 y 5.3 a 5.8, con las reglas generales de las secciones 3, 7, 8, 9, 10, 11 y 12. La barra de estado que se valoró para 5.7 quedó descartada por el usuario: no está en este plan. El buscador de regiones (5.8) se añadió después, a petición del usuario: es la Task 11.
 
 **Numeración.** Las Tasks 1 a 10 se escribieron antes que el buscador y no se han tocado. En su texto, «Task 11», «Task 12» y «Task 13» son las que ahora son la 12, la 13 y la 14: la verificación en la app real (dos tareas) y la D4 con los retoques del spec.
 
 **Referencia visual:** la maqueta aprobada `/home/dae/.config/superpowers/worktrees/Neurograph/rediseno-referencias/maqueta-claude-design/Main.dc.html`, pantalla principal a 1440×900. Sirve para la disposición, el espaciado, la jerarquía, el logotipo y los iconos. Donde no coincide con el spec, manda el spec.
 
-**Orden de las fases:** esta fase va antes que la 2 (paleta suave). Lo propusimos nosotros, porque lo que más pesaba en la petición inicial era la estructura, y la usuaria nos dejó seguir en autónomo (spec 11). No depende de la fase 2.
+**Orden de las fases:** esta fase va antes que la 2 (paleta suave). Lo propusimos nosotros, porque lo que más pesaba en la petición inicial era la estructura, y el usuario nos dejó seguir en autónomo (spec 11). No depende de la fase 2.
 
 **Lo que la fase 1 dejó para esta** (D3 de `docs/decisiones-diseno.md`, «Limitaciones conocidas», y spec 12):
 
@@ -1159,7 +1159,7 @@ interface TopBarProps {
   importRef?: Ref<HTMLButtonElement>;
 }
 
-// Logotipo de la maqueta (decisión de la usuaria, 24/09/2026; principio 4
+// Logotipo de la maqueta (decisión del usuario, 24/09/2026; principio 4
 // del spec): un anillo con cuatro nodos unidos. El anillo y las uniones
 // van en los grises del tema; los nodos llevan colores de red de
 // Cole-Anticevic (Lenguaje, Por defecto, Frontoparietal y Visual), la
@@ -1506,7 +1506,7 @@ Expected: PASS (13 pruebas).
    ```css
    /* ------------------------------------------------------------------
       Decisión 74 (24/09/2026): espacio de trabajo "una vista grande +
-      miniaturas" (disposición elegida por la usuaria). Nada de esto cambia
+      miniaturas" (disposición elegida por el usuario). Nada de esto cambia
       colores de datos (theme/networks.ts): solo reparto de espacio, tamaños
       de letra y espaciado del chrome. La barra superior de entonces la
       sustituye la de la D4, al final de este archivo.
@@ -1548,7 +1548,7 @@ Expected: PASS (13 pruebas).
    .topbar__tab-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
    .topbar__tab--closable .topbar__tab-btn { padding-right: 2px; }
    /* Las síntesis de IA conservan su naranja: tercera categoría visual
-      (decisión de la usuaria, 11/09/2026). */
+      (decisión del usuario, 11/09/2026). */
    .icon--synthesis { color: var(--synthesis); }
    .topbar__tab-close { align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 4px; padding: 0; border: none; border-radius: 6px; background: none; color: var(--text-muted); cursor: pointer; }
    .topbar__tab-close:hover { background: var(--hover); color: var(--text-h); }
@@ -1975,7 +1975,7 @@ El flujo de los manejadores no cambia: cada rama que ponía un texto en una fran
          return;
        }
        if (picked === null) {
-         // La usuaria cerró el diálogo sin elegir nada -- no es un error.
+         // El usuario cerró el diálogo sin elegir nada -- no es un error.
          return;
        }
        let raw: unknown;
@@ -3108,7 +3108,7 @@ Expected: PASS.
    .export-btn:disabled, .export-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
    .export-btn:disabled:hover, .export-btn[aria-disabled="true"]:hover { border-color: var(--border); background: var(--code-bg); color: var(--text); }
    /* Estado activo: "Ocultar no seleccionados" de los hemisferios
-      (02/09/2026, petición de la usuaria) y la lupa del connectograma
+      (02/09/2026, petición del usuario) y la lupa del connectograma
       (aria-pressed, D4). El borde usa --accent para que el estado se
       distinga con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema
       elegido en Ajustes. */
@@ -4082,7 +4082,7 @@ Estas dos vistas conservan su contenido y reciben la misma jerarquía de título
 - Modify: `frontend/src/components/Connectogram.tsx` y `frontend/src/components/Hemisferios.tsx` (la flecha del recuadro de lectura)
 - Modify: `frontend/src/App.css` (reglas del detalle de la decisión 74 y reglas nuevas)
 
-La flecha «→» queda para la conectividad efectiva, la única con sentido (principio 1 del spec), en todos los sitios donde se nombra una conexión: el título del detalle, los dos recuadros de lectura y la lista de conectividad inducida. Las demás llevan «↔». En esos dos últimos sitios los nombres siguen completos, como pidió la usuaria el 30/08/2026.
+La flecha «→» queda para la conectividad efectiva, la única con sentido (principio 1 del spec), en todos los sitios donde se nombra una conexión: el título del detalle, los dos recuadros de lectura y la lista de conectividad inducida. Las demás llevan «↔». En esos dos últimos sitios los nombres siguen completos, como pidió el usuario el 30/08/2026.
 
 - [ ] **Step 1: la flecha y el título de una conexión**
 
@@ -5856,7 +5856,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 
 ### Task 11: buscador de regiones
 
-Spec 5.8 (commit `1f524db`), petición de la usuaria: con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
+Spec 5.8 (commit `1f524db`), petición del usuario: con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
 - Un campo con autocompletado en Filtros, justo encima de la selección (5.3), con el patrón *combobox*: el campo (`role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-activedescendant` y, mientras la lista está abierta, `aria-controls`) y su lista (`role="listbox"`). Las teclas de la lista son las de la lista del contexto de datos (`logic/listbox.ts`, Task 1). La sugerencia activa lleva el contorno del color de acento y se desplaza a la vista al moverse con el teclado, como en `DataContextMenu` tras su revisión (commit `fdfd932`). El ratón también la cambia, pero no desplaza la lista.
 - Busca en la abreviatura y en el nombre completo, sin distinguir mayúsculas ni tildes. Las abreviaturas que llevan el lado (Brainnetome, Gordon) se buscan y se ordenan sin él. Orden: abreviatura exacta, abreviatura que empieza por lo escrito, abreviatura que lo contiene y nombre que lo contiene; a igualdad, por abreviatura, con los números en su orden, y por lado. Como mucho, 8 sugerencias.
 - Solo sugiere regiones de redes visibles. Si lo escrito solo está en redes ocultas, o si la abreviatura exacta solo está en redes ocultas aunque haya otras sugerencias, lo dice en una línea bajo el campo («TE1m está en la red Auditiva, que está oculta.») con «Mostrar la red», o «Mostrar las redes» si son varias. Los botones llaman a `toggleNetwork` del store de filtros.
@@ -6843,11 +6843,11 @@ La verificación ocupa dos tareas. Esta prepara la carpeta, los dos servidores y
 
 - Se usa un navegador sin interfaz aparte, con un script de Node. Nada de herramientas MCP de navegador:
   - Las del MCP de Playwright escriben la carpeta `.playwright-mcp/` en la copia principal, que es su directorio de trabajo, y la copia principal no se toca.
-  - Las `mcp__claude-in-chrome__*` y `mcp__browsermcp__*` manejan el Chrome de la usuaria, que ella está mirando.
+  - Las `mcp__claude-in-chrome__*` y `mcp__browsermcp__*` manejan el Chrome del usuario, que ella está mirando.
 - Playwright 1.55.0 se carga desde `/home/dae/PycharmProjects/gh3.2/node_modules/playwright`. Solo se carga: allí no se escribe nada.
 - Se lanza `chromium.launch({ headless: true })` con un perfil desechable. Todo lo que se genera (perfil, capturas, informes) va a la carpeta del scratchpad.
-- Si Playwright falla, la alternativa es `google-chrome --headless=new --user-data-dir=<carpeta del scratchpad>`. Nunca Chrome con el perfil de la usuaria.
-- Los puertos 5173 (el de la usuaria) y 5199 (el que mira la usuaria) no se usan.
+- Si Playwright falla, la alternativa es `google-chrome --headless=new --user-data-dir=<carpeta del scratchpad>`. Nunca Chrome con el perfil del usuario.
+- Los puertos 5173 (el del usuario) y 5199 (el que mira el usuario) no se usan.
 - Cada fase se lanza en su propia orden, con `timeout` y un tiempo límite largo, o en segundo plano. Al terminar cada una no deben quedar navegadores sueltos (Step 6).
 - Los servidores de desarrollo se paran al terminar la Task 13.
 - La plantilla de la fase 1 es `/tmp/claude-1000/-home-dae-PycharmProjects-Neurograph-Neurograph/6f1cd430-11e0-4483-a66a-eec44d813eed/scratchpad/task9-final-20260924-194434/` (`final.cjs`, con la versión anterior servida aparte y los JSON guardados). Si ya no existe, los scripts de abajo bastan.
@@ -6925,7 +6925,7 @@ cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend
 cd "$D/antes/frontend" && npx vite --port 5242 --strictPort
 ```
 
-Los datos reales los sirve el backend de la usuaria, en `127.0.0.1:8420`, que acepta cualquier puerto local. Solo se le hacen peticiones GET de lectura. No lo arranques tú: si no responde, la fase «preflight» lo dice (Step 6).
+Los datos reales los sirve el backend del usuario, en `127.0.0.1:8420`, que acepta cualquier puerto local. Solo se le hacen peticiones GET de lectura. No lo arranques tú: si no responde, la fase «preflight» lo dice (Step 6).
 
 - [ ] **Step 4: los ayudantes**
 
@@ -8807,20 +8807,20 @@ Toma la D3 de ese mismo archivo como modelo: su forma, sus encabezados en negrit
 - Título: `## D4. Estructura de la interfaz (fase 3 del rediseño) -- dd/mm/aaaa`, con la fecha del día.
 - Párrafos con encabezado en negrita:
   - **Motivación.** La interfaz tenía aspecto de alfa: la barra superior mezclaba navegación, datos y acciones, y la información no tenía jerarquía. Es la estructura común a los cuatro temas de la D3.
-  - **Orden de las fases.** La fase 3 se hizo antes que la 2 (paleta suave). Lo propusimos nosotros, porque lo que más pesaba en la petición inicial era la estructura (el menú superior, el logo y la jerarquía), y la usuaria nos dejó seguir en autónomo. No digas que lo eligió ella. La fase 3 no depende de la 2: los colores de red siguen saliendo de `resolveNetworkColor(clave)`, con un solo argumento.
-  - **Decidido por la usuaria** (24/09/2026). Pidió deshacer y rehacer, porque un clic de más le hacía perder un montaje. Se valoró también una barra de estado fija al pie, y ella la descartó el mismo día: la maqueta ya da ese feedback donde se usa (la selección y el recuento de Filtros, el recuadro de lectura y el panel de detalle), y el pie lo repetiría. En la misma revisión del spec se añadieron el recuento del recuadro de lectura y los nombres de ◎ y +. El mismo día pidió un buscador de regiones, porque localizar a ojo una región entre 360 es muy difícil: decidió que fuera en Filtros, sobre la selección, y que solo sugiriera regiones de las redes visibles.
+  - **Orden de las fases.** La fase 3 se hizo antes que la 2 (paleta suave). Lo propusimos nosotros, porque lo que más pesaba en la petición inicial era la estructura (el menú superior, el logo y la jerarquía), y el usuario nos dejó seguir en autónomo. No digas que lo eligió ella. La fase 3 no depende de la 2: los colores de red siguen saliendo de `resolveNetworkColor(clave)`, con un solo argumento.
+  - **Decidido por el usuario** (24/09/2026). Pidió deshacer y rehacer, porque un clic de más le hacía perder un montaje. Se valoró también una barra de estado fija al pie, y ella la descartó el mismo día: la maqueta ya da ese feedback donde se usa (la selección y el recuento de Filtros, el recuadro de lectura y el panel de detalle), y el pie lo repetiría. En la misma revisión del spec se añadieron el recuento del recuadro de lectura y los nombres de ◎ y +. El mismo día pidió un buscador de regiones, porque localizar a ojo una región entre 360 es muy difícil: decidió que fuera en Filtros, sobre la selección, y que solo sugiriera regiones de las redes visibles.
   - **Qué cambia.** Una lista, con una línea por cada parte: la barra superior y cómo se pliega, con los valores medidos en la Task 12 a 1400, 1280 y 1024 px y con dos síntesis; el contexto de datos accesible con el teclado; el estado de los datos; los avisos, arriba a la derecha, e Importar solo en la aplicación de escritorio; los filtros con recuentos; las cabeceras, las herramientas, la lupa como botón de alternar y «Ampliar»; los recuadros de lectura, con el recuento; el panel de detalle; deshacer y rehacer, con sus botones, sus atajos y su aviso (anunciado por una región viva, con un tiempo que se para con el ratón o el foco encima); el buscador de regiones, con su autocompletado, el aviso de las redes ocultas y Ctrl+K; y lo que la D3 dejó para esta fase: la barra (di que cabe en una fila y a qué altura solo si la Task 12 lo midió), los anillos neutros de las muestras, el foco del color de acento y la leyenda de la selección múltiple, que en pantalla ya no corta las etiquetas largas.
   - **Qué no cambia.** El estado, los stores y los manejadores del desarrollador principal, con estas excepciones, que se dicen una a una: la cola de avisos sustituye a las dos franjas con el mismo flujo; `handleImportSynthesis` pregunta antes a `isTauri()` y separa sus mensajes en texto comprensible y «Detalles», con los mensajes nuevos; `handleChangeAtlas` llama además a `resetHistory()`, y un efecto nuevo lo llama cuando llega otra clasificación (el menú de redes no cambia); y Ctrl+K despliega Filtros con su `setFiltersCollapsed` de siempre. Los stores de selección y de filtros no cambian: el historial se suscribe a ellos, y el buscador usa sus `addNodes` y `toggleNetwork`. Un comentario de `state/selection.ts`, que no se toca, queda desfasado: dice que el botón «Añadir a selección» de `FilterPanel` es el único sitio que llama a `addNodes`, y el buscador también lo llama. Dilo en la D4, para que lo sepa el desarrollador principal. Tampoco cambian `NETWORK_COLORS`, la lógica de representación, la disposición de la D1 (una vista grande, dos miniaturas, filtros a la izquierda y detalle a la derecha, con sus secciones de filtros plegables) ni los gráficos, que son la fase 4.
   - **Desviaciones del spec.** Las de este plan, incluido el cambio de «Se ven N de M» por «N de M conexiones pasan los filtros», y las que añadiera el Step 5 de la Task 13.
   - **Limitaciones conocidas:**
     - la ventana real de Tauri no se ha comprobado;
-    - comprobación manual pendiente para la usuaria: Importar en la aplicación de escritorio, con el diálogo real (aquí se probó con Tauri simulado en el navegador, con la validación de siempre);
+    - comprobación manual pendiente para el usuario: Importar en la aplicación de escritorio, con el diálogo real (aquí se probó con Tauri simulado en el navegador, con la validación de siempre);
     - la barra espaciadora para volver a abrir la lista no se ha comprobado en Firefox (Tauri usa WebKit y Chromium);
     - quien usa el teclado sin lector de pantalla no ve la etiqueta emergente del punto de «Datos reales», que no se enfoca;
     - con movimiento reducido, el indicador de carga de «Redes» no gira (queda un arco quieto) y no hay ningún «cargando…» a la vista: el texto solo lo oyen los lectores de pantalla;
     - los errores de carga de las pestañas de tractografía, si los hubo en la fase `otras`, son de la base de datos, no de esta fase;
     - lo que las Tasks 12 y 13 dejaran sin ver, con las regiones que los scripts no pudieron seleccionar (`sinComprobar`).
-  - **Pregunta abierta para la usuaria:** el peso de las conexiones conserva su formato de siempre, que puede llegar a 22 cifras. ¿Redondearlo, con el valor exacto en la etiqueta emergente?
+  - **Pregunta abierta para el usuario:** el peso de las conexiones conserva su formato de siempre, que puede llegar a 22 cifras. ¿Redondearlo, con el valor exacto en la etiqueta emergente?
   - **Verificación.** Describe el método aquí mismo, como la D3, sin remitir al scratchpad, que se borra con la sesión: Chromium sin interfaz (Playwright), un servidor de desarrollo propio y el backend local con datos reales, solo con peticiones GET; la versión anterior a la fase servida aparte y los mismos datos guardados para las dos, porque `GET /connections` no devuelve siempre el mismo orden; y cada región se selecciona comprobando, en el recuadro de lectura y en la selección, que es la buscada. Después, lo que se vio en las Tasks 12 y 13: temas y anchos, barra, síntesis, teclado, avisos, vistas, filtros contra la referencia, exportaciones comparadas con las de la versión anterior, deshacer y el buscador. Añade el número de pruebas, `tsc` limpio, lint con los mismos 9 avisos y la compilación.
   - **Queda para las fases 2 y 4.** Fase 2: la paleta suave y «Colores de las redes» en Ajustes; los consumidores nuevos de color de red (`NetworkTag` y las filas del detalle, con `useDrawColors().networkColor`, y las muestras de los filtros, con `resolveNetworkColor`) pasan a la versión con tema y modo. Fase 4: la leyenda del connectograma (5.4), los gráficos (sección 6), la atenuación por profundidad y la captura del 3D sin parpadeo.
 - Al final, la línea con las secciones del spec retocadas en el Step 2, como la de la D3.

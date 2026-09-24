@@ -1,8 +1,8 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por la usuaria y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`.
-- **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueña). Es una referencia de aspecto. Los valores que mandan son los de este documento.
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`.
+- **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
 
@@ -42,7 +42,7 @@ Fuera:
 1. **La lógica de representación no cambia.** El color del nodo es la red, el grosor de la línea es el peso, el trazo discontinuo es evidencia no directa (indirecta o hipótesis) y la flecha es conectividad efectiva. Las posiciones y el orden de los nodos siguen saliendo de los mismos datos.
 2. **El color de red es un dato.** `NETWORK_COLORS` sigue siendo el color extraído de cada atlas (`theme/networks.ts:225`). La paleta suave es una capa de presentación calculada a partir de él, y siempre se puede volver a los originales.
 3. **Un tema cambia colores, no estructura.** Barra, jerarquía, controles y mejoras de los gráficos son iguales en los cuatro temas.
-4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. La única excepción es el logotipo de la maqueta, que lleva cuatro nodos con colores de red: representa justo eso, redes (decisión de la usuaria, 24/09/2026).
+4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. La única excepción es el logotipo de la maqueta, que lleva cuatro nodos con colores de red: representa justo eso, redes (decisión del usuario, 24/09/2026).
 5. **Todo color sale de un token.** No quedan colores fijos en componentes ni en `App.css`.
 6. **Los nodos conservan su anillo neutro** (regla de `theme/networks.ts:228-234`). Es lo que mantiene visibles los colores extremos, como `#000000` o `#ffffcc`, sobre cualquier fondo.
 
@@ -75,7 +75,7 @@ Notas:
 
 - **Original** reproduce los colores actuales de `index.css` y `App.css`; `accentSoft` y `accentBorder` son los `--accent-bg` y `--accent-border` de hoy.
 - **Acento:** no hay texto sobre fondo de acento sólido. Los estados activos usan `accentSoft` como fondo, y su borde es `accentBorder`, o `accent` cuando el estado tiene que distinguirse con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema elegido en Ajustes.
-- **Síntesis de IA:** conserva su naranja, que fue decisión de la usuaria como tercera categoría visual. En Claro es más oscuro para leerse sobre blanco.
+- **Síntesis de IA:** conserva su naranja, que fue decisión del usuario como tercera categoría visual. En Claro es más oscuro para leerse sobre blanco.
 - **Fondos de estado:** cada color de estado tiene su fondo translúcido (`--success-bg`, `--warning-bg`, `--error-bg`, `--synthesis-bg`) en `index.css`. Las etiquetas de estado van sobre `--bg` con ese fondo tintado, y así superan 4,5:1 en los cuatro temas. Para lograrlo en Claro, `success` pasa de `#227a4d` (4,2:1) a `#1f6e45` (4,9:1), y el fondo de síntesis queda en `rgba(185, 61, 10, 0.06)` (4,6:1).
 - **Contraste sobre el panel** (medido):
   - `text`, `strong`, `muted`, `success`, `warning`, `error` y `synthesis` superan 4,5:1 en todos los temas.
@@ -185,7 +185,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 - **Estado:** `{ tema, modoPaleta }`. `modoPaleta` vale `"suave"`, `"original"` o `null`, que es automático: `"original"` en el tema Original y `"suave"` en los demás.
 - **Independencia:** cambiar de tema no borra un `modoPaleta` elegido a mano.
 - **Almacenamiento:** se guarda en `localStorage` con la clave `neurograph.apariencia`. Cada lectura y escritura va en `try/catch`: si el almacenamiento falla o no existe, se usan los valores por defecto sin error.
-- **Tema por defecto: Grafito.** Lo elegimos con la delegación de la usuaria («lo que sea mejor, tu criterio»), y se le confirma al pedirle permiso para fusionar. Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
+- **Tema por defecto: Grafito.** Lo elegimos con la delegación del usuario («lo que sea mejor, tu criterio»), y se le confirma al pedirle permiso para fusionar. Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
 - **Primer render:** `main.tsx` lee la elección de forma síncrona y aplica `data-theme` y `color-scheme` en `<html>` antes del primer render, para que no parpadee el tema equivocado. `index.css` define los tokens de 4.1 para cada `data-theme`.
 
 ## 5. Estructura, común a todos los temas
@@ -276,9 +276,9 @@ Las vistas de una conexión y de varias regiones conservan su contenido y recibe
 
 ### 5.7 Deshacer y rehacer
 
-Petición de la usuaria (24/09/2026): con un clic de más se pierde un montaje. Un clic en una línea selecciona esa conexión y vacía la selección de regiones, y «Resaltar» una red reemplaza la selección entera.
+Petición del usuario (24/09/2026): con un clic de más se pierde un montaje. Un clic en una línea selecciona esa conexión y vacía la selección de regiones, y «Resaltar» una red reemplaza la selección entera.
 
-Se valoró una barra de estado fija al pie. La usuaria la descartó el mismo día: la maqueta ya da ese feedback donde se usa, y el pie lo repetiría. Ese feedback está en la selección y el recuento de Filtros (5.3), el recuadro de lectura (5.4) y el panel de detalle (5.5).
+Se valoró una barra de estado fija al pie. El usuario la descartó el mismo día: la maqueta ya da ese feedback donde se usa, y el pie lo repetiría. Ese feedback está en la selección y el recuento de Filtros (5.3), el recuadro de lectura (5.4) y el panel de detalle (5.5).
 
 - **Qué se guarda:** cada cambio de la selección (regiones y conexión) y de los filtros (redes y tipos ocultos, peso mínimo). Cada paso es una instantánea de las dos cosas, no una acción.
 - **Qué no se guarda:** el paso del ratón, la vista ampliada, la lupa, el tema y el plegado de paneles o secciones.
@@ -304,9 +304,9 @@ Se valoró una barra de estado fija al pie. La usuaria la descartó el mismo dí
 
 ### 5.8 Buscador de regiones
 
-Petición de la usuaria (24/09/2026): con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
+Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
 
-- **Dónde:** en Filtros, justo encima de la selección (5.3), porque ahí se arma el montaje (decisión de la usuaria). Vale para las tres vistas, que comparten la selección.
+- **Dónde:** en Filtros, justo encima de la selección (5.3), porque ahí se arma el montaje (decisión del usuario). Vale para las tres vistas, que comparten la selección.
 - **Autocompletado:** al escribir aparece una lista de sugerencias bajo el campo (patrón *combobox*, `aria-autocomplete="list"`).
   - La primera ya está activa, así que Intro la elige.
   - Las flechas se mueven por la lista.
@@ -315,7 +315,7 @@ Petición de la usuaria (24/09/2026): con 360 regiones en el círculo, es muy di
   - Orden: abreviatura exacta; abreviatura que empieza por lo escrito; abreviatura que lo contiene; nombre que lo contiene.
   - A igualdad, por abreviatura y por lado (izquierdo antes que derecho).
   - Como máximo, 8 sugerencias.
-- **Solo redes visibles** (decisión de la usuaria): se sugieren las regiones de las redes que no están ocultas en Filtros, porque las demás no se ven en las vistas. Si lo escrito solo aparece en redes ocultas, la lista lo dice, por ejemplo «TE1m está en la red Auditiva, que está oculta», con un botón «Mostrar la red».
+- **Solo redes visibles** (decisión del usuario): se sugieren las regiones de las redes que no están ocultas en Filtros, porque las demás no se ven en las vistas. Si lo escrito solo aparece en redes ocultas, la lista lo dice, por ejemplo «TE1m está en la red Auditiva, que está oculta», con un botón «Mostrar la red».
 - **Cada sugerencia** lleva:
   - el color de su red, con el anillo neutro;
   - la abreviatura, con su lado cuando la abreviatura no lo lleva («TE1m (izq.)»);
@@ -355,7 +355,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
-- **Atenuar lo que queda detrás** (idea de la usuaria, 24/09/2026):
+- **Atenuar lo que queda detrás** (idea del usuario, 24/09/2026):
   - Es un interruptor en los controles del 3D, activado por defecto.
   - Líneas, marcadores y etiquetas se ven más tenues cuanto más lejos de la cámara están, dentro de la profundidad del cerebro. Así una región de la cara interna o del otro hemisferio no parece flotar delante.
   - Para las líneas no se usa la oclusión estricta: van en recta entre dos puntos de la corteza y pasan por dentro, así que quedarían casi todas tapadas.
@@ -473,11 +473,11 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
 
-Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y la usuaria nos dejó seguir en autónomo.
+Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo.
 
 ## 12. Riesgos y puntos abiertos
 
-- **Tema por defecto:** Grafito, elegido con la delegación de la usuaria; se le confirma al pedirle permiso para fusionar.
+- **Tema por defecto:** Grafito, elegido con la delegación del usuario; se le confirma al pedirle permiso para fusionar.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
 - **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla. En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3 (D3 de `docs/decisiones-diseno.md`).
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.

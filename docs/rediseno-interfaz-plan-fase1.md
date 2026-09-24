@@ -2030,17 +2030,17 @@ Expected:
 
 - [x] **Step 2: servidor de desarrollo propio, en otro puerto**
 
-No usar el 5173: es el de la usuaria.
+No usar el 5173: es el del usuario.
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vite --port 5199 --strictPort
 ```
 
-Ejecútalo en segundo plano. El backend de la usuaria, en `127.0.0.1:8420`, acepta cualquier puerto local (`allow_origin_regex` en `backend/api/main.py`). Solo se le hacen peticiones GET de lectura, desde un navegador sin interfaz y aparte, nunca desde el de la usuaria.
+Ejecútalo en segundo plano. El backend del usuario, en `127.0.0.1:8420`, acepta cualquier puerto local (`allow_origin_regex` en `backend/api/main.py`). Solo se le hacen peticiones GET de lectura, desde un navegador sin interfaz y aparte, nunca desde el del usuario.
 
 - [x] **Step 3: comprobar en un navegador sin interfaz (Playwright)**
 
-Regla: todo lo que genere la prueba (capturas, JPEG, el directorio `.playwright-mcp` si aparece) va a una carpeta nueva del scratchpad. En la copia principal de la usuaria (`/home/dae/PycharmProjects/Neurograph/Neurograph`) no se escribe nada. Al terminar, comprueba que su `git status` sigue limpio.
+Regla: todo lo que genere la prueba (capturas, JPEG, el directorio `.playwright-mcp` si aparece) va a una carpeta nueva del scratchpad. En la copia principal del usuario (`/home/dae/PycharmProjects/Neurograph/Neurograph`) no se escribe nada. Al terminar, comprueba que su `git status` sigue limpio.
 
 Datos para la prueba:
 - Al arrancar, el cerebro 3D ya está en la vista grande (`mainView` empieza en `"brain3d"`). Para verlo en grande de nuevo, pulsa su miniatura.
@@ -2106,8 +2106,8 @@ Sigue el formato de la D1 de ese mismo archivo:
 
 - Un título `## D3. Temas de la interfaz (fase 1 del rediseño) -- dd/mm/aaaa`, con la fecha del día (por ejemplo, `24/09/2026`).
 - Párrafos con encabezado en negrita:
-  - **Motivación.** La interfaz tosca y los colores de red «RGB burdo», pedido por la usuaria.
-  - **Decidido por la usuaria.** Cuatro temas elegibles desde un engranaje. El 1 conserva los colores de hoy. El público son investigadores. Validado por el desarrollador principal.
+  - **Motivación.** La interfaz tosca y los colores de red «RGB burdo», pedido por el usuario.
+  - **Decidido por el usuario.** Cuatro temas elegibles desde un engranaje. El 1 conserva los colores de hoy. El público son investigadores. Validado por el desarrollador principal.
   - **Qué cambia.** Una lista: los cuatro temas y los tokens CSS y de dibujo; el store con persistencia; la tipografía local, con cursivas y licencia; la exportación con la paleta de exportación, incluido el redibujo del 3D; y Ajustes.
   - **Qué no cambia.** `NETWORK_COLORS` y la lógica de representación. En el tema 1, lo único distinto en color es el respaldo de una red desconocida, que pasa a ser siempre el gris de «sin clasificar» (`#8a8a8a`); antes era `#888`, `#888888` o `NEUTRAL_COLOR` según el componente (spec 4.2, «se unifica»).
   - **Diferencias con el spec en esta fase.** Las de este plan.
