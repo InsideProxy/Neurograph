@@ -360,8 +360,20 @@ function ExportBridge({
   onExportingChange: (exporting: boolean) => void;
 }) {
   const { gl, scene, camera } = useThree();
+  // Estado «exportando» ya aplicado, leído a través de un ref para que la
+  // función de exportación no cambie en cada render.
+  const exportingRef = useRef(exporting);
   useEffect(() => {
-    exportRef.current = () => onExportingChange(true);
+    exportingRef.current = exporting;
+  }, [exporting]);
+  useEffect(() => {
+    // Segunda protección, además del botón desactivado: mientras se
+    // exporta, pedir otra exportación no hace nada. Si no, un clic que
+    // llegara antes de que React aplique el «false» del final de la
+    // captura dejaría «exportando» en true para siempre.
+    exportRef.current = () => {
+      if (!exportingRef.current) onExportingChange(true);
+    };
     return () => {
       exportRef.current = null;
     };
@@ -373,17 +385,22 @@ function ExportBridge({
       const previousClearColor = gl.getClearColor(new THREE.Color());
       const previousClearAlpha = gl.getClearAlpha();
       const previousBackground = scene.background;
-      gl.setClearColor("#ffffff", 1);
-      scene.background = new THREE.Color("#ffffff");
-      gl.render(scene, camera);
-      exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
-      gl.setClearColor(previousClearColor, previousClearAlpha);
-      scene.background = previousBackground;
-      // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
-      // él el blanco de la captura se vería en pantalla durante un fotograma.
-      gl.render(scene, camera);
-      captured = true;
-      onExportingChange(false);
+      // try/finally: aunque la captura falle, la pantalla vuelve al fondo
+      // del tema y se sale del modo «exportando».
+      try {
+        gl.setClearColor("#ffffff", 1);
+        scene.background = new THREE.Color("#ffffff");
+        gl.render(scene, camera);
+        exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
+      } finally {
+        gl.setClearColor(previousClearColor, previousClearAlpha);
+        scene.background = previousBackground;
+        // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
+        // él el blanco de la captura se vería en pantalla durante un fotograma.
+        gl.render(scene, camera);
+        captured = true;
+        onExportingChange(false);
+      }
     });
     return () => {
       cancelAnimationFrame(frame);
@@ -1319,7 +1336,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
-        <button type="button" className="export-btn" onClick={handleExport}>
+        {/* Desactivado mientras se exporta (ver ExportBridge): un segundo
+            clic antes de que acabe la exportación dejaría el modo
+            «exportando» atascado. */}
+        <button type="button" className="export-btn" onClick={handleExport} disabled={exporting}>
           Exportar JPEG
         </button>
       </div>
