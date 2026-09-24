@@ -268,6 +268,41 @@ Las vistas de una conexión y de varias regiones conservan su contenido y recibe
 - Los errores se quedan hasta que se cierran.
 - Si `isTauri()` (de `@tauri-apps/api/core`, presente en la versión instalada, 2.11.1) indica que la aplicación corre en un navegador, «Importar» no intenta abrir el diálogo. Muestra el aviso «“Importar síntesis” solo funciona en la aplicación de escritorio». Nunca se compara el texto del error, porque cambia según el navegador.
 
+### 5.7 Barra de estado
+
+Petición de la usuaria (24/09/2026): una línea fija al pie de la ventana resume el estado de trabajo, en todos los temas. De izquierda a derecha:
+
+1. **Selección:** «Nada seleccionado», «1 región: R_SFG_7_2 (der.)», «N regiones» o «1 conexión: V1 izq. ↔ V1 der.». Usa el mismo título que el panel de detalle (5.5).
+2. **Conexiones de la selección:** las que tocan la selección y pasan los filtros.
+   - Con una región: «245 conexiones de la región». Con varias: «M conexiones entre ellas».
+   - Si superan el tope de dibujado (`MAX_RENDERED_CONNECTIONS`), se añade «demasiadas para dibujar: sube el peso mínimo».
+3. **Filtros activos:** solo los que se apartan del estado inicial, por ejemplo «Peso ≥ 0,004 · 2 redes ocultas · 1 tipo oculto». Sin ninguno: «Sin filtros».
+4. **Deshacer y Rehacer** (5.8), a la derecha.
+
+- **Cálculo:** los recuentos salen de una función pura (`logic/selectionSummary.ts`) sobre los mismos datos filtrados que usan las vistas. Se calcula una vez por cambio.
+- **Anuncios:** solo el resumen de la selección es `role="status"`, así que se anuncia al cambiar la selección. Pasar el ratón no cambia nada en la barra.
+- **Sin repetir el contexto:** el atlas y la clasificación siguen en la barra superior.
+- **Sin desplazamiento de página:** la página sigue sin él (D1); el área de trabajo cede la altura de esta línea.
+- **Con poco ancho:** primero los filtros pasan a «N filtros»; después, las conexiones pierden «de la región» o «entre ellas». La selección y los botones se quedan.
+
+### 5.8 Deshacer y rehacer
+
+Petición de la usuaria (24/09/2026): con un clic de más se pierde un montaje. Un clic en una línea selecciona esa conexión y vacía la selección de regiones, y «Resaltar» una red reemplaza la selección entera.
+
+- **Qué se guarda:** cada cambio de la selección (regiones y conexión) y de los filtros (redes y tipos ocultos, peso mínimo). Cada paso es una instantánea de las dos cosas, no una acción.
+- **Qué no se guarda:** el paso del ratón, la vista ampliada, la lupa, el tema y el plegado de paneles o secciones.
+- **Cambio de atlas o de clasificación:** el historial se vacía, porque las regiones y las redes guardadas dejan de valer. El atlas nuevo empieza con el historial vacío.
+- **Deslizador de peso:** un arrastre cuenta como un solo paso. Los cambios seguidos con el teclado se agrupan si llegan con menos de 500 ms de diferencia.
+- **Profundidad:** los 50 últimos pasos.
+- **Controles:**
+  - Botones «Deshacer» y «Rehacer» en la barra de estado, con `aria-disabled` cuando no hay paso. Su etiqueta emergente describe el paso, por ejemplo «Deshacer: quitar R_SFG_7_2 de la selección».
+  - Teclado: Ctrl+Z (⌘Z en macOS) deshace; Ctrl+Mayús+Z y Ctrl+Y rehacen. Los botones lo declaran con `aria-keyshortcuts`. No se interceptan dentro de un campo de texto.
+- **Arquitectura:**
+  - Un store nuevo, `state/history.ts`, se suscribe a `useSelectionStore` y `useFiltersStore` y guarda instantáneas. Deshacer y rehacer las restauran con `setState`.
+  - No cambia la API ni el código de esos dos stores, que son del desarrollador principal.
+  - Ignora los cambios que provoca él mismo.
+- **Descripción de un paso:** una función pura (`logic/historyStep.ts`) compara dos instantáneas. Ejemplos: «añadir R_SFG_7_2 a la selección», «quitar 3 regiones», «seleccionar la conexión A ↔ B», «limpiar la selección», «ocultar la red Visual», «peso mínimo de 0,001 a 0,004» o, si cambian varias cosas, «varios cambios».
+
 ## 6. Gráficos, sin cambiar lo que representan
 
 ### 6.1 Connectograma
@@ -294,6 +329,12 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
+- **Atenuar lo que queda detrás** (idea de la usuaria, 24/09/2026):
+  - Es un interruptor en los controles del 3D, activado por defecto.
+  - Líneas, marcadores y etiquetas se ven más tenues cuanto más lejos de la cámara están, dentro de la profundidad del cerebro. Así una región de la cara interna o del otro hemisferio no parece flotar delante.
+  - Para las líneas no se usa la oclusión estricta: van en recta entre dos puntos de la corteza y pasan por dentro, así que quedarían casi todas tapadas.
+  - La exportación reproduce la atenuación tal como se ve.
+- **Captura del 3D sin parpadeo:** la captura se dibuja en un `WebGLRenderTarget` fuera de pantalla. Mientras dura «exportando», el bucle visible se detiene. Así ya no se ven en pantalla los fotogramas con los colores de exportación (limitación anotada en D3).
 
 ## 7. Tipografía
 
@@ -328,7 +369,9 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **`state/appearance.ts`:** store de zustand con `tema` y `modoPaleta`, más la persistencia de 4.5.
 - **`theme/useDrawColors.ts`:** hook `useDrawColors({ paraExportar })` que devuelve los tokens de dibujo y `networkColor(clave)` según el store. Con `paraExportar`, devuelve los de exportación. Solo `Brain3D` lo usa así, con su estado local «exportando».
 - **`logic/exportPalette.ts`:** `applyExportColors(raiz, resolver)`. Recorre `[data-ng-fill]`, `[data-ng-stroke]` y `[data-ng-stroke-opacity]` y escribe los atributos.
-- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast` e `Icon` (iconos SVG en línea).
+- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast`, `StatusBar` e `Icon` (iconos SVG en línea).
+- **`state/history.ts`:** el historial de deshacer (5.8). Es un store propio que se suscribe a los de selección y filtros sin cambiarlos.
+- **`logic/selectionSummary.ts` y `logic/historyStep.ts`:** funciones puras de la barra de estado (5.7) y de la descripción de cada paso (5.8).
 
 **Fase 1.** Lo construido difiere de lo anterior en estos puntos (D3 de `docs/decisiones-diseno.md`):
 
@@ -371,6 +414,13 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
   - `exportColorFor`, comprobando que con el tema Original y la paleta original devuelve exactamente los colores de hoy.
 - **`appearance`:** valores por defecto y lectura y escritura con un almacenamiento simulado que falla.
 - **`sulcRange`:** percentiles y suavizado sobre un vector conocido.
+- **`history`:**
+  - registra los cambios de selección y de filtros, y deshace y rehace;
+  - agrupa el deslizador;
+  - se vacía al cambiar de atlas;
+  - no registra lo que él mismo restaura;
+  - respeta el límite de 50 pasos.
+- **`selectionSummary` y `historyStep`:** recuentos y descripciones sobre casos conocidos, incluidos una región, varias, una conexión y el tope de dibujado.
 - **Sin romper nada:** las pruebas actuales siguen pasando, incluida `networkSurface.test.ts`, que compara `NETWORK_COLORS` con los JSON.
 
 El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
@@ -387,8 +437,10 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Tipografía local y `accent-color`.
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
-3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle y avisos.
-4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores y etiquetas).
+3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, barra de estado y deshacer.
+4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
+
+Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y la usuaria nos dejó seguir en autónomo.
 
 ## 12. Riesgos y puntos abiertos
 
