@@ -1,7 +1,7 @@
 // Engranaje de Ajustes (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.2).
 // Fase 1: solo el tema. La opción «Colores de las redes» llega con la
 // paleta suave, en la fase 2.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { useAppearanceStore } from "../state/appearance";
 import { resolveNetworkColor } from "../theme/colors";
 import { THEME_IDS, THEME_INFO } from "../theme/themes";
@@ -22,6 +22,9 @@ export function SettingsMenu() {
   const setTheme = useAppearanceStore((state) => state.setTheme);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const dialogTitleId = useId();
+  const themeLabelId = useId();
+  const descBaseId = useId();
 
   const close = () => {
     setOpen(false);
@@ -32,8 +35,12 @@ export function SettingsMenu() {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Solo devuelve el foco al engranaje si estaba dentro del panel: si
+        // ya se habia ido fuera (revision de la tarea 8), Escape no debe
+        // arrastrarlo de vuelta.
+        const focusWasInPanel = panelRef.current?.contains(document.activeElement);
         setOpen(false);
-        triggerRef.current?.focus();
+        if (focusWasInPanel) triggerRef.current?.focus();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
@@ -49,8 +56,17 @@ export function SettingsMenu() {
     };
   }, [open]);
 
+  // Tab/Shift+Tab que saca el foco de todo el bloque .settings (engranaje +
+  // panel) cierra el panel sin moverlo de nuevo -- se deja seguir su curso
+  // natural (revision de la tarea 8).
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setOpen(false);
+  };
+
   return (
-    <div className="settings">
+    <div className="settings" onBlur={handleBlur}>
       <button
         ref={triggerRef}
         type="button"
@@ -67,17 +83,17 @@ export function SettingsMenu() {
         </svg>
       </button>
       {open && (
-        <div ref={panelRef} className="settings__panel" role="dialog" aria-label="Ajustes">
+        <div ref={panelRef} className="settings__panel" role="dialog" aria-labelledby={dialogTitleId}>
           <div className="settings__header">
-            <h2>Ajustes</h2>
+            <h2 id={dialogTitleId}>Ajustes</h2>
             <button type="button" className="icon-btn" aria-label="Cerrar ajustes" onClick={close}>
               ×
             </button>
           </div>
-          <p className="settings__label" id="settings-theme-label">
+          <p className="settings__label" id={themeLabelId}>
             Tema
           </p>
-          <div className="settings__themes" role="group" aria-labelledby="settings-theme-label">
+          <div className="settings__themes" role="group" aria-labelledby={themeLabelId}>
             {THEME_IDS.map((id) => {
               const info = THEME_INFO[id];
               return (
@@ -86,6 +102,8 @@ export function SettingsMenu() {
                   type="button"
                   className="settings__theme"
                   aria-pressed={theme === id}
+                  aria-label={`${info.number} · ${info.name}`}
+                  aria-describedby={`${descBaseId}-${id}`}
                   onClick={() => setTheme(id)}
                 >
                   {/* data-theme-preview: index.css aplica a este elemento las
@@ -101,7 +119,9 @@ export function SettingsMenu() {
                   <span className="settings__theme-name">
                     {info.number} · {info.name}
                   </span>
-                  <span className="settings__theme-desc">{info.description}</span>
+                  <span className="settings__theme-desc" id={`${descBaseId}-${id}`}>
+                    {info.description}
+                  </span>
                 </button>
               );
             })}

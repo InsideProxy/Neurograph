@@ -239,7 +239,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .topbar__brand { font-weight: 700; color: var(--text-h); font-size: 1rem; letter-spacing: 0.02em; margin-right: 4px; }
 .topbar .view-toggle { margin: 0; flex-wrap: wrap; }
 .topbar .view-toggle__btn, .topbar .synthesis-import-btn { font-size: 0.8rem; padding: 3px 10px; }
-.topbar__controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; }
+.topbar__controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; flex: 1 1 auto; justify-content: flex-end; }
 .topbar .real-badge, .topbar .demo-badge { font-size: 0.74rem; white-space: nowrap; }
 
 /* La vista de trabajo ocupa exactamente la ventana: nada se desplaza
@@ -348,22 +348,21 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
    emergente con los cuatro temas. */
 .topbar .settings { margin-left: auto; position: relative; }
-.topbar .topbar__controls + .settings { margin-left: 0; }
 .settings__trigger { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; }
 .settings__trigger[aria-expanded="true"] { background: var(--code-bg); border-color: var(--border-strong); color: var(--text-h); }
 .settings__icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.settings__panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 380px; box-sizing: border-box; padding: 16px; border-radius: 14px; background: var(--panel-bg); border: 1px solid var(--border-strong); box-shadow: var(--shadow); text-align: left; }
+.settings__panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 380px; max-width: calc(100vw - 24px); max-height: calc(100svh - 120px); overflow-y: auto; box-sizing: border-box; padding: 16px; border-radius: 14px; background: var(--panel-bg); border: 1px solid var(--border-strong); box-shadow: var(--shadow); text-align: left; }
 .settings__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .settings__header h2 { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-h); }
 .settings__label { margin: 0 0 8px; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .settings__themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .settings__theme { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--border); background: var(--code-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .settings__theme:hover { border-color: var(--border-strong); }
-.settings__theme[aria-pressed="true"] { border-color: var(--accent-border); background: var(--accent-bg); box-shadow: 0 0 0 1px var(--accent-border); }
+.settings__theme[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); box-shadow: 0 0 0 1px var(--accent); }
 .settings__theme:focus-visible, .settings__trigger:focus-visible, .settings__panel .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .settings__preview { position: relative; display: block; height: 56px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); overflow: hidden; }
 .settings__preview-side { position: absolute; left: 7px; top: 7px; bottom: 7px; width: 28px; border-radius: 4px; background: var(--panel-bg); }
 .settings__preview-main { position: absolute; left: 41px; right: 7px; top: 7px; bottom: 7px; border-radius: 4px; background: var(--panel-bg); display: flex; align-items: center; justify-content: center; gap: 5px; }
-.settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; }
+.settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .settings__theme-name { font-size: 0.72rem; font-weight: 600; color: var(--text-h); }
 .settings__theme-desc { font-size: 0.64rem; line-height: 1.35; color: var(--text-muted); }
