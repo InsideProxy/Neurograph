@@ -64,8 +64,10 @@ describe("writeAppearance", () => {
   });
 });
 
-// En node no hay window ni document: el store no guarda nada ni toca el
-// documento, así que se puede probar sin efectos secundarios.
+// Sin window ni document (node), el store no guarda nada ni toca el
+// documento: la primera prueba mira solo el estado. La segunda simula los
+// dos con vi.stubGlobal para comprobar que setTheme guarda y aplica el
+// tema.
 describe("useAppearanceStore", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
