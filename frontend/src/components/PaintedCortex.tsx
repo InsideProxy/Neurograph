@@ -29,6 +29,7 @@ import {
   fillVertexColorsByIndex,
   leftTriangleCount,
   regionAtFace,
+  type CortexGrays,
   type RGB,
   type SurfaceParcelMap,
 } from "../logic/surfaceParcels";
@@ -55,6 +56,7 @@ interface Props {
   sulc: Float32Array | null;
   colorForRegion: (regionIndex: number) => RGB | null;
   paintBy?: VertexPaint | null;
+  grays: CortexGrays;
   hemisphere: HemisphereVisibility;
   onRegionClick: (regionIndex: number) => void;
   // `face`: los tres vértices del triángulo bajo el cursor, para quien
@@ -70,6 +72,7 @@ export function PaintedCortex({
   sulc,
   colorForRegion,
   paintBy = null,
+  grays,
   hemisphere,
   onRegionClick,
   onRegionHover,
@@ -115,12 +118,13 @@ export function PaintedCortex({
         paintBy.categoryCount,
         sulc,
         paintBy.colorFor,
+        grays,
       );
     } else {
-      fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion);
+      fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion, grays);
     }
     attr.needsUpdate = true;
-  }, [geometry, map, sulc, colorForRegion, paintBy]);
+  }, [geometry, map, sulc, colorForRegion, paintBy, grays]);
 
   const splitTriangles = useMemo(() => {
     const index = geometry.getIndex();

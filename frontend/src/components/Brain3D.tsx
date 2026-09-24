@@ -49,13 +49,9 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { getLabelTexture } from "../logic/textSprite";
-import {
-  NETWORK_COLORS,
-  NETWORK_LABELS,
-  NEUTRAL_COLOR,
-  ACCENT_SELECTED_COLOR,
-  HOMOLOGY_HIGHLIGHT_COLOR,
-} from "../theme/networks";
+import { NETWORK_LABELS } from "../theme/networks";
+import { hasNetworkColor } from "../theme/colors";
+import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -67,6 +63,7 @@ import {
   type VertexPaint,
 } from "./PaintedCortex";
 import {
+  cortexGraysFromSrgb,
   hexToLinearRgb,
   parseSulcFile,
   regionAtFace,
@@ -81,15 +78,6 @@ import {
   vertexNetworkForDisplay,
   type NetworkSurfaceMap,
 } from "../logic/networkSurface";
-
-// Fondo de la escena en pantalla (decisión 18, 30/08/2026): mismo valor
-// que --panel-bg en frontend/src/index.css. three.js no puede leer
-// variables CSS, así que este valor se duplica aquí a propósito -- si
-// --panel-bg cambia algún día, este literal hay que actualizarlo a mano
-// junto a él (documentado también en index.css). ExportBridge, más
-// abajo, lo sustituye temporalmente por blanco al exportar, igual que ya
-// hacía con el color de "clear" del renderer.
-const SCENE_BG = "#1d1e26";
 
 // Malla de fondo del cerebro 3D (petición de la usuaria, 30/08/2026: "falta
 // una malla que simule el cerebro... las áreas no pueden aparecer 'en el
@@ -346,28 +334,39 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
 }
 
 // Puente para exportar el frame actual del canvas WebGL a JPEG en color
-// sobre fondo blanco (sección 20; decisión de la usuaria, 30/08/2026,
-// ver docs/analisis-arquitectura.md): react-three-fiber no expone
-// gl/scene/camera fuera del árbol de <Canvas>, así que este componente
-// vive dentro de él solo para guardar una función de exportación en el
-// ref que le pasa Brain3D. Se fuerza primero un frame con fondo blanco
-// opaco, se lee el canvas, y se restaura el fondo original para no
-// alterar lo que ve la usuaria en pantalla.
+// sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
+// react-three-fiber no expone gl, scene ni camera fuera del árbol de
+// <Canvas>, así que este componente vive dentro de él y deja la función
+// de exportación en el ref que le pasa Brain3D.
 //
-// Bug real encontrado y corregido el 30/08/2026 (decisión 18, junto con
-// el tema oscuro): esto SOLO cambiaba `gl.setClearColor`, que es lo que
-// pinta el renderer cuando `scene.background` es `null`. Ahora que la
-// escena tiene un fondo propio (`SCENE_BG`, ver `<color attach=
-// "background">` en `Brain3D`), `scene.background` GANA siempre sobre el
-// color de "clear" -- forzar solo `setClearColor` habría exportado igual
-// el fondo oscuro en vez de blanco, deshaciendo en la práctica la
-// decisión 11 en cuanto se activara el tema oscuro. Por eso aquí se
-// sustituye también `scene.background` temporalmente, no solo el color
-// de "clear".
-function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null } }) {
+// D3 (docs/decisiones-diseno.md): antes de capturar, el cerebro se vuelve a dibujar con los
+// colores de EXPORTACIÓN (estado local «exportando» de Brain3D), no con
+// los del tema de pantalla. Si no, en un tema oscuro la selección (casi
+// blanca) desaparecería sobre el blanco del JPEG. La captura espera un
+// fotograma: en él ya están los materiales nuevos y los colores de la
+// corteza, que PaintedCortex recalcula en un efecto. Como en la decisión
+// 18, se sustituye tanto el color de "clear" como scene.background, que
+// gana siempre sobre el primero. Después se restaura el fondo y el modo
+// normal; los colores de pantalla vuelven en el siguiente render.
+function ExportBridge({
+  exportRef,
+  exporting,
+  onExportingChange,
+}: {
+  exportRef: { current: (() => void) | null };
+  exporting: boolean;
+  onExportingChange: (exporting: boolean) => void;
+}) {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
-    exportRef.current = () => {
+    exportRef.current = () => onExportingChange(true);
+    return () => {
+      exportRef.current = null;
+    };
+  }, [exportRef, onExportingChange]);
+  useEffect(() => {
+    if (!exporting) return;
+    const frame = requestAnimationFrame(() => {
       const previousClearColor = gl.getClearColor(new THREE.Color());
       const previousClearAlpha = gl.getClearAlpha();
       const previousBackground = scene.background;
@@ -377,12 +376,10 @@ function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null
       exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
       gl.setClearColor(previousClearColor, previousClearAlpha);
       scene.background = previousBackground;
-      gl.render(scene, camera);
-    };
-    return () => {
-      exportRef.current = null;
-    };
-  }, [gl, scene, camera, exportRef]);
+      onExportingChange(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [exporting, gl, scene, camera, onExportingChange]);
   return null;
 }
 
@@ -445,6 +442,7 @@ function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
 function NodeMesh({
   node,
   isHomologyHighlighted,
+  colors,
   overlay = false,
 }: {
   node: GraphNode;
@@ -461,6 +459,7 @@ function NodeMesh({
   // defecto (ninguna especie de comparación elegida, o esta región en
   // concreto no tiene ninguna fila de homología real hacia ella).
   isHomologyHighlighted: boolean;
+  colors: DrawColors;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
   const isSelected = selectedNodeIds.has(node.id);
@@ -477,9 +476,7 @@ function NodeMesh({
   // lo SUSTITUYE, nunca lo combina ni lo atenúa, para que las dos
   // señales (red funcional real / homología real) nunca se mezclen en
   // un tercer color ambiguo que no sea ninguna de las dos.
-  const fillColor = isHomologyHighlighted
-    ? HOMOLOGY_HIGHLIGHT_COLOR
-    : NETWORK_COLORS[node.network] ?? "#888";
+  const fillColor = isHomologyHighlighted ? colors.homology : colors.networkColor(node.network);
   return (
     <>
       {/* Halo de contorno neutro (decisión 18, 30/08/2026) -- equivalente
@@ -494,15 +491,14 @@ function NodeMesh({
           mesh, un poco más grande y con las caras traseras hacia fuera
           (`side: THREE.BackSide`), deja ver solo un fino borde alrededor
           del nodo real -- técnica estándar de "contorno por casco
-          invertido". Usa NEUTRAL_COLOR/ACCENT_SELECTED_COLOR (theme/
-          networks.ts), los mismos "colores intermedios" legibles tanto
-          en pantalla (fondo oscuro) como en la exportación (blanco
-          forzado, ver ExportBridge) -- por eso el halo también se ve
-          bien en la figura exportada, no solo en pantalla. */}
+          invertido". Usa los tokens nodeRing/selected del tema (D3 de
+          docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a
+          dibujar con los de la paleta de exportación, así que el
+          contorno también se ve en la figura exportada. */}
       <mesh position={node.position3d} scale={1.18} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         <sphereGeometry args={[baseRadius, 14, 14]} />
         <meshBasicMaterial
-          color={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+          color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
         />
@@ -567,6 +563,7 @@ function ConnectionLine({
   isDashed,
   isDirected,
   onClick,
+  colors,
   overlay = false,
 }: {
   a: [number, number, number];
@@ -575,6 +572,7 @@ function ConnectionLine({
   isDashed: boolean;
   isDirected: boolean;
   onClick: () => void;
+  colors: DrawColors;
   overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
@@ -583,7 +581,7 @@ function ConnectionLine({
   // "#999999": el primero tenía casi cero contraste contra el fondo
   // oscuro de la escena (una conexión SELECCIONADA era casi invisible,
   // justo el caso que más importa distinguir) -- ver theme/networks.ts.
-  const color = isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR;
+  const color = isSelected ? colors.selected : colors.edge;
 
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints([from, to]);
@@ -611,7 +609,7 @@ function ConnectionLine({
           <lineDashedMaterial
             color={color}
             transparent
-            opacity={isSelected ? 0.95 : 0.55}
+            opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             dashSize={0.08}
             gapSize={0.06}
             depthTest={!overlay}
@@ -620,7 +618,7 @@ function ConnectionLine({
           <lineBasicMaterial
             color={color}
             transparent
-            opacity={isSelected ? 0.95 : 0.55}
+            opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             depthTest={!overlay}
           />
         )}
@@ -894,6 +892,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
   const exportRef = useRef<(() => void) | null>(null);
   const handleExport = () => exportRef.current?.();
+  const [exporting, setExporting] = useState(false);
+  // Colores de dibujo; durante la exportación, los de la paleta de
+  // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
+  // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
+  // de fondo claro en los temas oscuros.
+  const screenColors = useDrawColors();
+  const colors = useDrawColors(exporting);
+  const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
 
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
@@ -1073,10 +1079,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     return painted.map.regionIds.map((id) => {
       const node = allNodesById.get(id);
       if (!node || !shown.has(id)) return null;
-      const hex = homologyNodeIds.has(id) ? HOMOLOGY_HIGHLIGHT_COLOR : (NETWORK_COLORS[node.network] ?? "#888888");
+      const hex = homologyNodeIds.has(id) ? colors.homology : colors.networkColor(node.network);
       return hexToLinearRgb(hex);
     });
-  }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds]);
+  }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds, colors]);
   const colorForRegion = useCallback((region: number) => regionColors?.[region] ?? null, [regionColors]);
 
   // Colores del modo vértice a vértice: la red de cada vértice con su
@@ -1094,9 +1100,11 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       (i) => !hiddenNetworks.has(networkSurface.networks[i].slug),
       focusIds ? (r) => focusIds.has(regionIds[r]) : null
     );
-    const colors = networkSurface.networks.map((n) => hexToLinearRgb(NETWORK_COLORS[n.slug] ?? n.color));
-    return { vertexIndex, categoryCount: colors.length, colorFor: (i) => colors[i] ?? null };
-  }, [painted, networkSurface, focus, hiddenNetworks]);
+    const netColors = networkSurface.networks.map((n) =>
+      hexToLinearRgb(hasNetworkColor(n.slug) ? colors.networkColor(n.slug) : n.color)
+    );
+    return { vertexIndex, categoryCount: netColors.length, colorFor: (i) => netColors[i] ?? null };
+  }, [painted, networkSurface, focus, hiddenNetworks, colors]);
 
   const anchorById = useMemo(
     () => (painted ? new Map(painted.map.regionIds.map((id, i) => [id, painted.map.anchorVertices[i]])) : null),
@@ -1228,6 +1236,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
             key={node.id}
             node={node}
             isHomologyHighlighted={homologyNodeIds.has(node.id)}
+            colors={colors}
             overlay={overlay}
           />
         ))}
@@ -1254,6 +1263,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               isDashed={conn.evidenceLevel !== "direct"}
               isDirected={conn.type === "effective"}
               onClick={() => selectConnection(conn.id)}
+              colors={colors}
               overlay={overlay}
             />
           );
@@ -1353,16 +1363,17 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       {/* Fondo de la escena (decisión 18, 30/08/2026): antes no se fijaba
           ningún fondo, así que el <Canvas> quedaba transparente y dejaba
           ver el fondo de la página (blanco, antes de esta misma
-          decisión) -- ahora usa el mismo tono que el resto de paneles en
-          pantalla (SCENE_BG = --panel-bg). ExportBridge lo sustituye
-          temporalmente por blanco al exportar. */}
-      <color attach="background" args={[SCENE_BG]} />
+          decisión) -- ahora es el token sceneBg del tema (D3 de
+          docs/decisiones-diseno.md), siempre el de pantalla, también
+          mientras se exporta. ExportBridge lo sustituye temporalmente
+          por blanco al exportar. */}
+      <color attach="background" args={[screenColors.sceneBg]} />
       <ambientLight intensity={0.6} />
       <pointLight position={[5, 5, 5]} intensity={60} />
       {painted && <CameraLight />}
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
-      <ExportBridge exportRef={exportRef} />
+      <ExportBridge exportRef={exportRef} exporting={exporting} onExportingChange={setExporting} />
       {/* Malla de fondo (30/08/2026, petición de la usuaria) -- ver
           REFERENCE_SPACE_MESH/resolveMeshUrl más arriba y ReferenceMesh.tsx. Envuelta
           en su propio ErrorBoundary (nunca el mismo que usa App.tsx para
@@ -1384,6 +1395,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               sulc={painted.sulc}
               colorForRegion={colorForRegion}
               paintBy={networkPaint}
+              grays={cortexGrays}
               hemisphere={hemisphere}
               onRegionClick={handleRegionClick}
               onRegionHover={handleRegionHover}
@@ -1398,7 +1410,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
           {meshUrl && (
             <ErrorBoundary fallback={null}>
               <Suspense fallback={null}>
-                <ReferenceMesh url={meshUrl} />
+                <ReferenceMesh url={meshUrl} color={colors.edge} />
               </Suspense>
             </ErrorBoundary>
           )}

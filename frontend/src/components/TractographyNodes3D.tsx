@@ -30,6 +30,7 @@ import { colorForTractIndex } from "../logic/tractColors";
 import type { HybridEdge, HybridNode } from "../types/domain";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
+import { useDrawColors } from "../theme/useDrawColors";
 
 // Mismo motivo que Tractography3D.tsx/Brain3D.tsx: <threeLine> es la
 // etiqueta que @react-three/fiber expone para evitar la colisión entre
@@ -37,8 +38,6 @@ import { ReferenceMesh } from "./ReferenceMesh";
 // (extend es idempotente) para que este componente no dependa de que
 // otro archivo ya lo haya registrado.
 extend({ ThreeLine: THREE.Line });
-
-const SCENE_BG = "#1d1e26";
 
 // Misma malla real de fondo que Tractography3D.tsx -- mismo espacio de
 // referencia exacto (ORG_800FC_100HCP_groupwise), así que se reutiliza
@@ -121,6 +120,7 @@ function EdgeStreamlineSet({ edge, color }: { edge: HybridEdge; color: string })
 }
 
 export function TractographyNodes3D() {
+  const colors = useDrawColors();
   const [nodes, setNodes] = useState<HybridNode[] | "loading" | "error">("loading");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [edgesState, setEdgesState] = useState<EdgesState>({ kind: "idle" });
@@ -259,14 +259,14 @@ export function TractographyNodes3D() {
             </div>
           ) : (
             <Canvas camera={{ position: [4, 0, 0], fov: 45 }}>
-              <color attach="background" args={[SCENE_BG]} />
+              <color attach="background" args={[colors.sceneBg]} />
               <ambientLight intensity={0.7} />
               <pointLight position={[5, 5, 5]} intensity={60} />
               <Controls />
               {meshUrl && (
                 <ErrorBoundary fallback={null}>
                   <Suspense fallback={null}>
-                    <ReferenceMesh url={meshUrl} />
+                    <ReferenceMesh url={meshUrl} color={colors.edge} />
                   </Suspense>
                 </ErrorBoundary>
               )}

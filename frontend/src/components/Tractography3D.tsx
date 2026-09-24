@@ -31,6 +31,7 @@ import { colorForTractIndex } from "../logic/tractColors";
 import type { TractGeometry, TractSummary } from "../types/domain";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
+import { useDrawColors } from "../theme/useDrawColors";
 
 // Mismo motivo que Brain3D.tsx: <threeLine> es la etiqueta que
 // @react-three/fiber expone para evitar la colisión entre el <line> de
@@ -40,8 +41,6 @@ import { ReferenceMesh } from "./ReferenceMesh";
 // `extend` es idempotente, así que registrarlo dos veces no tiene coste
 // ni efecto distinto.
 extend({ ThreeLine: THREE.Line });
-
-const SCENE_BG = "#1d1e26";
 
 // Malla de fondo real para ESTE espacio de referencia (decisión 63,
 // 08/09/2026, petición de la usuaria: "falta construir una malla o
@@ -137,6 +136,7 @@ function StreamlineSet({ geometry, color }: { geometry: TractGeometry; color: st
 }
 
 export function Tractography3D() {
+  const colors = useDrawColors();
   const [summaries, setSummaries] = useState<TractSummary[] | "loading" | "error">("loading");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [geometryById, setGeometryById] = useState<Map<string, GeometryState>>(new Map());
@@ -260,7 +260,7 @@ export function Tractography3D() {
             </div>
           ) : (
             <Canvas camera={{ position: [4, 0, 0], fov: 45 }}>
-              <color attach="background" args={[SCENE_BG]} />
+              <color attach="background" args={[colors.sceneBg]} />
               <ambientLight intensity={0.7} />
               <pointLight position={[5, 5, 5]} intensity={60} />
               <Controls />
@@ -272,7 +272,7 @@ export function Tractography3D() {
               {meshUrl && (
                 <ErrorBoundary fallback={null}>
                   <Suspense fallback={null}>
-                    <ReferenceMesh url={meshUrl} />
+                    <ReferenceMesh url={meshUrl} color={colors.edge} />
                   </Suspense>
                 </ErrorBoundary>
               )}
