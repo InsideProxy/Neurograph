@@ -225,6 +225,9 @@ Un panel emergente que sale del engranaje:
   - Cabecera con el número de redes y los botones de texto «Todas» y «Ninguna», que ya no ocupan dos líneas.
   - Cada fila lleva casilla, color, nombre y número de regiones de esa red, contado sobre los nodos cargados.
   - Las acciones ◎ y + aparecen al pasar el ratón o al llegar a la fila con el teclado (`:focus-within`).
+    - Siguen distinguiendo las dos funciones de hoy: ◎ resalta solo esa red y sustituye la selección; + la añade a lo ya resaltado.
+    - Sus etiquetas emergentes y `aria-label` lo dicen: «Resaltar solo la red Auditiva (sustituye la selección)» y «Añadir la red Auditiva a la selección».
+    - Si ◎ sustituye una selección de varias regiones, sale el aviso con «Deshacer» (5.7).
 - **Tipo de conectividad:** junto a cada tipo, cuántas conexiones de ese tipo pasan los demás filtros (redes y peso mínimo), sin contar su propia casilla. Así se ve cuántas añadiría al marcarla. `App` calcula esos recuentos y se los pasa a `FilterPanel` en una prop nueva, `connectionCountsByType`.
 - **Peso mínimo:** el valor, el deslizador y «Se ven N de M conexiones». N son las conexiones visibles con todos los filtros; M, las cargadas para el atlas. Van en otra prop nueva.
 - **Ayuda:** «¿Cómo funcionan los filtros?» con el texto de ayuda actual.
@@ -244,6 +247,8 @@ Un panel emergente que sale del engranaje:
   - «Efectiva (con dirección)», con muestra de flecha.
   - «Color del punto = red».
 - **Recuadro de lectura:** conserva su altura fija (decisión 74b) y muestra región, hemisferio y red como etiqueta de color.
+  - Con una región seleccionada, añade a la derecha cuántas de sus conexiones pasan los filtros, con el umbral, como en la maqueta: «5 conexiones pasan los filtros (peso ≥ 0,02)».
+  - Añade también la pista «pasa el ratón por otra región para verla».
 - **Miniaturas:** botón visible «Ampliar» con icono, en lugar del texto «⤢ ampliar». Se mantiene la capa que amplía al hacer clic en cualquier punto.
 
 ### 5.5 Panel de detalle de una región
@@ -268,26 +273,11 @@ Las vistas de una conexión y de varias regiones conservan su contenido y recibe
 - Los errores se quedan hasta que se cierran.
 - Si `isTauri()` (de `@tauri-apps/api/core`, presente en la versión instalada, 2.11.1) indica que la aplicación corre en un navegador, «Importar» no intenta abrir el diálogo. Muestra el aviso «“Importar síntesis” solo funciona en la aplicación de escritorio». Nunca se compara el texto del error, porque cambia según el navegador.
 
-### 5.7 Barra de estado
-
-Petición de la usuaria (24/09/2026): una línea fija al pie de la ventana resume el estado de trabajo, en todos los temas. De izquierda a derecha:
-
-1. **Selección:** «Nada seleccionado», «1 región: R_SFG_7_2 (der.)», «N regiones» o «1 conexión: V1 izq. ↔ V1 der.». Usa el mismo título que el panel de detalle (5.5).
-2. **Conexiones de la selección:** las que tocan la selección y pasan los filtros.
-   - Con una región: «245 conexiones de la región». Con varias: «M conexiones entre ellas».
-   - Si superan el tope de dibujado (`MAX_RENDERED_CONNECTIONS`), se añade «demasiadas para dibujar: sube el peso mínimo».
-3. **Filtros activos:** solo los que se apartan del estado inicial, por ejemplo «Peso ≥ 0,004 · 2 redes ocultas · 1 tipo oculto». Sin ninguno: «Sin filtros».
-4. **Deshacer y Rehacer** (5.8), a la derecha.
-
-- **Cálculo:** los recuentos salen de una función pura (`logic/selectionSummary.ts`) sobre los mismos datos filtrados que usan las vistas. Se calcula una vez por cambio.
-- **Anuncios:** solo el resumen de la selección es `role="status"`, así que se anuncia al cambiar la selección. Pasar el ratón no cambia nada en la barra.
-- **Sin repetir el contexto:** el atlas y la clasificación siguen en la barra superior.
-- **Sin desplazamiento de página:** la página sigue sin él (D1); el área de trabajo cede la altura de esta línea.
-- **Con poco ancho:** primero los filtros pasan a «N filtros»; después, las conexiones pierden «de la región» o «entre ellas». La selección y los botones se quedan.
-
-### 5.8 Deshacer y rehacer
+### 5.7 Deshacer y rehacer
 
 Petición de la usuaria (24/09/2026): con un clic de más se pierde un montaje. Un clic en una línea selecciona esa conexión y vacía la selección de regiones, y «Resaltar» una red reemplaza la selección entera.
+
+Se valoró una barra de estado fija al pie. La usuaria la descartó el mismo día: la maqueta ya da ese feedback donde se usa, y el pie lo repetiría. Ese feedback está en la selección y el recuento de Filtros (5.3), el recuadro de lectura (5.4) y el panel de detalle (5.5).
 
 - **Qué se guarda:** cada cambio de la selección (regiones y conexión) y de los filtros (redes y tipos ocultos, peso mínimo). Cada paso es una instantánea de las dos cosas, no una acción.
 - **Qué no se guarda:** el paso del ratón, la vista ampliada, la lupa, el tema y el plegado de paneles o secciones.
@@ -295,8 +285,16 @@ Petición de la usuaria (24/09/2026): con un clic de más se pierde un montaje. 
 - **Deslizador de peso:** un arrastre cuenta como un solo paso. Los cambios seguidos con el teclado se agrupan si llegan con menos de 500 ms de diferencia.
 - **Profundidad:** los 50 últimos pasos.
 - **Controles:**
-  - Botones «Deshacer» y «Rehacer» en la barra de estado, con `aria-disabled` cuando no hay paso. Su etiqueta emergente describe el paso, por ejemplo «Deshacer: quitar R_SFG_7_2 de la selección».
-  - Teclado: Ctrl+Z (⌘Z en macOS) deshace; Ctrl+Mayús+Z y Ctrl+Y rehacen. Los botones lo declaran con `aria-keyshortcuts`. No se interceptan dentro de un campo de texto.
+  - **Botones de icono ↶ «Deshacer» y ↷ «Rehacer»:** van en la fila de selección de Filtros, junto a «N regiones seleccionadas · Limpiar» (5.3), que es donde se arma el montaje.
+    - Llevan `aria-disabled` cuando no hay paso.
+    - Su etiqueta emergente describe el paso, por ejemplo «Deshacer: quitar R_SFG_7_2 de la selección». Aparece también al llegar con el teclado.
+  - **Teclado:** Ctrl+Z (⌘Z en macOS) deshace; Ctrl+Mayús+Z y Ctrl+Y rehacen.
+    - Los botones lo declaran con `aria-keyshortcuts`.
+    - No se interceptan dentro de un campo de texto.
+    - Funcionan aunque el panel de Filtros esté plegado.
+  - **Aviso con «Deshacer»:** aparece cuando un solo paso quita dos o más regiones de la selección, por un clic en una línea, «Resaltar» otra red o «Limpiar». Dice «Se sustituyó la selección de N regiones» o «Se vació la selección de N regiones», con un botón «Deshacer».
+    - Usa la cola de avisos (5.6), pero con `role="status"` y sin robar el foco.
+    - Se va solo a los 8 s o con el siguiente cambio.
 - **Arquitectura:**
   - Un store nuevo, `state/history.ts`, se suscribe a `useSelectionStore` y `useFiltersStore` y guarda instantáneas. Deshacer y rehacer las restauran con `setState`.
   - No cambia la API ni el código de esos dos stores, que son del desarrollador principal.
@@ -369,9 +367,9 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **`state/appearance.ts`:** store de zustand con `tema` y `modoPaleta`, más la persistencia de 4.5.
 - **`theme/useDrawColors.ts`:** hook `useDrawColors({ paraExportar })` que devuelve los tokens de dibujo y `networkColor(clave)` según el store. Con `paraExportar`, devuelve los de exportación. Solo `Brain3D` lo usa así, con su estado local «exportando».
 - **`logic/exportPalette.ts`:** `applyExportColors(raiz, resolver)`. Recorre `[data-ng-fill]`, `[data-ng-stroke]` y `[data-ng-stroke-opacity]` y escribe los atributos.
-- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast`, `StatusBar` e `Icon` (iconos SVG en línea).
-- **`state/history.ts`:** el historial de deshacer (5.8). Es un store propio que se suscribe a los de selección y filtros sin cambiarlos.
-- **`logic/selectionSummary.ts` y `logic/historyStep.ts`:** funciones puras de la barra de estado (5.7) y de la descripción de cada paso (5.8).
+- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast` e `Icon` (iconos SVG en línea).
+- **`state/history.ts`:** el historial de deshacer (5.7). Es un store propio que se suscribe a los de selección y filtros sin cambiarlos.
+- **`logic/historyStep.ts`:** función pura que describe cada paso (5.7) y decide si merece el aviso con «Deshacer».
 
 **Fase 1.** Lo construido difiere de lo anterior en estos puntos (D3 de `docs/decisiones-diseno.md`):
 
@@ -420,7 +418,8 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
   - se vacía al cambiar de atlas;
   - no registra lo que él mismo restaura;
   - respeta el límite de 50 pasos.
-- **`selectionSummary` y `historyStep`:** recuentos y descripciones sobre casos conocidos, incluidos una región, varias, una conexión y el tope de dibujado.
+- **`historyStep`:** descripciones sobre casos conocidos (una región, varias, una conexión, filtros y varios cambios a la vez) y la regla del aviso: el paso quita dos o más regiones.
+- **Recuadro de lectura:** el texto «N conexiones pasan los filtros (peso ≥ X)», con el singular donde toca.
 - **Sin romper nada:** las pruebas actuales siguen pasando, incluida `networkSurface.test.ts`, que compara `NETWORK_COLORS` con los JSON.
 
 El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
@@ -437,7 +436,7 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Tipografía local y `accent-color`.
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
-3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, barra de estado y deshacer.
+3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, y deshacer y rehacer.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
 
 Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y la usuaria nos dejó seguir en autónomo.
