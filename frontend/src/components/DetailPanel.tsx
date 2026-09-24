@@ -159,10 +159,17 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   const colors = useDrawColors();
   const handleExportLegend = () => {
     if (legendSvgRef.current) {
+      // fitWidthToContent: la leyenda es un SVG de ancho fijo (260 px), y
+      // la fuente de la exportación (una pila del sistema) es más ancha
+      // que la serif con la que salía antes el JPEG. Sin esto, una
+      // etiqueta larga se cortaría en la imagen. En pantalla la leyenda
+      // sigue igual: la fase 3 rehace este panel (D3 de
+      // docs/decisiones-diseno.md).
       exportSvgAsJpeg(
         legendSvgRef.current,
         `neurograph-leyenda-${Date.now()}.jpg`,
         exportResolverFor(useAppearanceStore.getState().theme),
+        { fitWidthToContent: true },
       );
     }
   };

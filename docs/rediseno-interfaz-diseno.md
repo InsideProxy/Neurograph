@@ -394,6 +394,6 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 
 - **Tema por defecto:** la propuesta es Grafito; se confirma al revisar este documento.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
-- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador: en la leyenda de la selección múltiple, que es un SVG de ancho fijo, una etiqueta larga puede cortarse en el JPEG (D3 de `docs/decisiones-diseno.md`).
+- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla. En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3 (D3 de `docs/decisiones-diseno.md`).
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.

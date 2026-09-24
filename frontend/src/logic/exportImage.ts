@@ -15,6 +15,11 @@ import { applyExportColors, EXPORT_FONT_FAMILY, type ColorResolver } from "./exp
 const JPEG_QUALITY = 0.95;
 const EXPORT_SCALE = 3;
 
+// Hueco a la derecha del texto cuando la imagen se ensancha para que quepa
+// (opción fitWidthToContent): el mismo que deja la leyenda a la izquierda,
+// donde cada fila empieza en x = 10.
+const FIT_WIDTH_MARGIN = 10;
+
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -37,9 +42,19 @@ function triggerDownload(blob: Blob, filename: string): void {
  * @param resolveColor Resuelve las referencias `data-ng-*` del clon a la
  * paleta de exportación del tema activo (D3 de docs/decisiones-diseno.md).
  * Quien llama lo obtiene con `exportResolverFor(theme)` (theme/colors.ts).
+ * @param options.fitWidthToContent Ensancha la imagen hasta que quepa todo
+ * el contenido, medido con la fuente de la exportación. Nunca la estrecha,
+ * y la altura no cambia. Solo sirve para un SVG sin `viewBox`, cuyo
+ * contenido está en píxeles: con `viewBox`, el contenido se escala a la
+ * caja del SVG y la opción se ignora.
  */
-export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveColor: ColorResolver): void {
-  const width = svg.viewBox?.baseVal?.width || svg.width.baseVal.value || svg.clientWidth;
+export function exportSvgAsJpeg(
+  svg: SVGSVGElement,
+  filename: string,
+  resolveColor: ColorResolver,
+  options: { fitWidthToContent?: boolean } = {},
+): void {
+  let width = svg.viewBox?.baseVal?.width || svg.width.baseVal.value || svg.clientWidth;
   const height = svg.viewBox?.baseVal?.height || svg.height.baseVal.value || svg.clientHeight;
   if (!width || !height) {
     // eslint-disable-next-line no-console
@@ -48,8 +63,6 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
   }
 
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("width", String(width));
-  clone.setAttribute("height", String(height));
 
   // Paleta de exportación (D3 de docs/decisiones-diseno.md): colores legibles sobre el blanco
   // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
@@ -66,6 +79,15 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
     }
   });
   clone.setAttribute("font-family", EXPORT_FONT_FAMILY);
+
+  // Ancho ajustado al texto (opción fitWidthToContent). Se mide aquí, con
+  // la fuente de la exportación ya puesta en el clon: el texto del JPEG usa
+  // esa fuente, no la de la pantalla, y cada fuente tiene su ancho.
+  if (options.fitWidthToContent && !svg.hasAttribute("viewBox")) {
+    width = Math.max(width, Math.ceil(contentRightEdge(clone) + FIT_WIDTH_MARGIN));
+  }
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
 
   const serialized = new XMLSerializer().serializeToString(clone);
   const svgBlob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
@@ -103,6 +125,29 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
     console.error("No se pudo exportar el SVG a JPEG (fallo al cargar la imagen serializada).");
   };
   image.src = svgUrl;
+}
+
+// Borde derecho del contenido de un clon de SVG, en sus unidades (píxeles,
+// sin viewBox). El navegador solo mide lo que está en el documento, así
+// que el clon se cuelga un instante de <body> y se quita en el acto, antes
+// de que llegue a pintarse: ni se ve ni sus id repetidos molestan al SVG
+// original. visibility: hidden y no display: none, porque sin maqueta
+// getBBox no mide nada. all: initial corta la herencia de la página:
+// :root fija letter-spacing, text-rendering y font-synthesis, y el SVG
+// exportado, que se dibuja como imagen aparte, no los hereda. Con ellos,
+// el texto medido saldría más ancho que el del JPEG.
+function contentRightEdge(clone: SVGSVGElement): number {
+  const holder = document.createElement("div");
+  holder.style.cssText = "all: initial; position: absolute; left: -100000px; top: 0; visibility: hidden;";
+  holder.appendChild(clone);
+  document.body.appendChild(holder);
+  try {
+    const box = clone.getBBox();
+    return box.x + box.width;
+  } finally {
+    holder.remove();
+    clone.remove();
+  }
 }
 
 /**
