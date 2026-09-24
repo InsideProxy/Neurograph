@@ -237,7 +237,7 @@ export function fillVertexColorsByIndex(
 
   // Extremos del degradado surco -> giro, izados fuera del bucle: con
   // decenas de miles de vértices por hemisferio, restar y desestructurar
-  // un array en cada iteración duplicaba el tiempo (revisión de la tarea 6).
+  // un array en cada iteración duplicaba el tiempo de pintar la corteza.
   const s0 = grays.sulcus[0],
     s1 = grays.sulcus[1],
     s2 = grays.sulcus[2];

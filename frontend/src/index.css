@@ -53,8 +53,13 @@
 }
 
 /* Temas (decisión 18 y D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.1).
-   main.tsx pone data-theme en <html> antes del primer render; sin él se
-   usa el tema 1. Todos los bloques definen las mismas variables.
+   main.tsx pone data-theme en <html> antes del primer render. Sin él (antes
+   de que cargue el JS) se usa el tema por defecto, Grafito (DEFAULT_THEME
+   en theme/themes.ts): el :root solo va en su bloque, así que la página
+   sin JS coincide con lo que verá quien no ha elegido tema. Los selectores
+   :root[data-theme="…"] pesan más que :root, así que cada tema elegido gana
+   a este respaldo. Todos los bloques definen las mismas variables
+   (theme/themeCss.test.ts lo comprueba).
    Equivalencias con los nombres del spec:
      --code-bg = raised, --text-h = strong, --text-muted = muted,
      --text-faint = faint, --accent-bg = accentSoft,
@@ -65,7 +70,6 @@
    mismos bloques se aplican a cualquier elemento con
    data-theme-preview="<id>": así la vista previa de Ajustes muestra los
    colores reales de cada tema sin repetirlos en TypeScript. */
-:root,
 :root[data-theme="original"],
 [data-theme-preview="original"] {
   --bg: #15161c;
@@ -94,6 +98,7 @@
   color-scheme: dark;
 }
 
+:root,
 :root[data-theme="grafito"],
 [data-theme-preview="grafito"] {
   --bg: #0f1115;

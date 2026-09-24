@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { NEUTRAL_COLOR } from "./networks";
-import { DRAW_TOKENS } from "./themes";
+import { NETWORK_COLORS, NEUTRAL_COLOR } from "./networks";
+import { DRAW_TOKENS, THEME_IDS, type DrawTokens } from "./themes";
 import { exportColorFor, exportResolverFor, hasNetworkColor, ngFill, ngStrokeOpacity, resolveNetworkColor } from "./colors";
 import { drawColorsFor } from "./useDrawColors";
 
@@ -95,5 +95,30 @@ describe("drawColorsFor", () => {
   it("forExport devuelve los tokens de exportación", () => {
     expect(drawColorsFor("grafito", true).selected).toBe(DRAW_TOKENS.claro.selected);
     expect(drawColorsFor("original", true).selected).toBe(DRAW_TOKENS.original.selected);
+  });
+});
+
+// El cerebro 3D exporta volviendo a dibujar con drawColorsFor(tema, true);
+// los SVG, con exportColorFor sobre sus atributos data-ng-*. Las dos vías
+// tienen que dar los mismos colores, o el 3D y el connectograma exportados
+// no casarían. Importa sobre todo en la fase 2, cuando la paleta suave
+// cambie los colores de red.
+describe("exportación: el 3D y los SVG usan los mismos colores", () => {
+  const keys = [...Object.keys(NETWORK_COLORS), "red-que-no-existe"];
+
+  it.each(THEME_IDS)("colores de red, tema %s", (theme) => {
+    const colors = drawColorsFor(theme, true);
+    for (const key of keys) {
+      expect(colors.networkColor(key), key).toBe(exportColorFor(`net:${key}`, "paint", theme));
+    }
+  });
+
+  it.each(THEME_IDS)("tokens de color y de opacidad, tema %s", (theme) => {
+    const colors = drawColorsFor(theme, true);
+    for (const key of Object.keys(DRAW_TOKENS[theme]) as (keyof DrawTokens)[]) {
+      const value = colors[key];
+      if (typeof value === "number") expect(exportColorFor(key, "opacity", theme), key).toBe(String(value));
+      else if (typeof value === "string" && key !== "dash") expect(exportColorFor(key, "paint", theme), key).toBe(value);
+    }
   });
 });

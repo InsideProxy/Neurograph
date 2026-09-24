@@ -35,11 +35,11 @@ export function SettingsMenu() {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        // Tambien devuelve el foco si no habia nada enfocado o el foco
-        // habia caido en <body> -- lo que pasa tras un clic dentro del
-        // panel en una zona sin foco propio, como el titulo o "TEMA"
-        // (revision de la tarea 8): sin esto Escape dejaria el foco
-        // perdido en <body>.
+        // El foco vuelve al engranaje si estaba dentro del panel, y también
+        // si no había nada enfocado o el foco había caído en <body>. Eso
+        // pasa tras un clic en una zona del panel sin foco propio, como el
+        // título o «TEMA», y sin esto Escape dejaría el foco perdido en
+        // <body>.
         const current = document.activeElement;
         const refocus = !current || current === document.body || panelRef.current?.contains(current);
         setOpen(false);
@@ -59,18 +59,18 @@ export function SettingsMenu() {
     };
   }, [open]);
 
-  // Tab/Shift+Tab que saca el foco de todo el bloque .settings (engranaje +
-  // panel) cierra el panel sin moverlo de nuevo -- se deja seguir su curso
-  // natural (revision de la tarea 8).
+  // Si el foco sale del bloque .settings (engranaje y panel) con Tab o
+  // Mayús+Tab, el panel se cierra y el foco sigue su curso natural: un
+  // panel abierto que ya no tiene el foco se quedaría olvidado encima de
+  // la vista.
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
-    // relatedTarget nulo no significa que el foco haya salido del bloque:
-    // en Chromium, un clic en una parte no enfocable del panel (el
-    // titulo, "TEMA", el relleno) deja el foco en <body> sin
-    // relatedTarget; en macOS, WebKit (Safari) y Firefox no dan el foco
-    // a los botones al pulsarlos, asi que elegir una tarjeta tampoco pone
-    // relatedTarget dentro del panel. En ambos casos no hay que cerrar
-    // aqui -- el clic realmente fuera ya lo cierra el "pointerdown" del
-    // otro efecto (revision de la tarea 8).
+    // relatedTarget nulo no significa que el foco haya salido del bloque.
+    // En Chromium, un clic en una parte no enfocable del panel (el título,
+    // «TEMA», el relleno) deja el foco en <body> sin relatedTarget. En
+    // macOS, WebKit (Safari) y Firefox no dan el foco a los botones al
+    // pulsarlos, así que elegir una tarjeta tampoco pone relatedTarget
+    // dentro del panel. En ninguno de los dos casos hay que cerrar aquí: un
+    // clic de verdad fuera ya lo cierra el «pointerdown» del otro efecto.
     const next = event.relatedTarget as Node | null;
     if (!next || event.currentTarget.contains(next)) return;
     setOpen(false);

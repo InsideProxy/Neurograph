@@ -124,11 +124,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const size = fixedSize ?? measuredSize;
 
   // Exportación a JPEG en color sobre fondo blanco (decisión de la
-  // usuaria, 30/08/2026): el propio <svg> ya no lleva ningún fondo
-  // inline (decisión 18, 30/08/2026 -- vive en App.css como `.viz-svg`,
-  // solo para pantalla), así que basta con serializarlo tal cual --
-  // exportImage.ts compone el resultado sobre un blanco explícito sin
-  // depender de que el SVG traiga fondo propio.
+  // usuaria, 30/08/2026): el propio <svg> no lleva fondo inline
+  // (decisión 18, 30/08/2026 -- vive en App.css como `.viz-svg`, solo
+  // para pantalla), y exportImage.ts compone el resultado sobre un blanco
+  // explícito. Los colores no se serializan tal cual: en el clon,
+  // applyExportColors (logic/exportPalette.ts) cambia cada color marcado
+  // con un atributo data-ng-* por el de la paleta de exportación del tema
+  // (D3 de docs/decisiones-diseno.md).
   const svgRef = useRef<SVGSVGElement>(null);
   const handleExport = () => {
     if (svgRef.current) {

@@ -62,8 +62,8 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* display:flex column (30/08/2026): el botón "Exportar JPEG" de Brain3D.tsx vive dentro de este contenedor de altura fija, por encima del lienzo -- sin flex, el <Canvas> (que ocupa 100% de alto) se sale del contenedor en vez de compartir el espacio con el botón. */
 .export-btn { font-size: 0.78rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
 .export-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
-.export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.export-btn:disabled:hover { border-color: var(--border); background: var(--panel-bg); }
+.export-btn:disabled, .export-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.export-btn:disabled:hover, .export-btn[aria-disabled="true"]:hover { border-color: var(--border); background: var(--panel-bg); }
 /* Botón "Ocultar no seleccionados" del esquema de hemisferios (02/09/2026,
    petición de la usuaria): mismo tratamiento de estado activo que
    .view-toggle__btn--active, reutilizado aquí en vez de un tercer patrón
@@ -354,7 +354,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .settings__panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 380px; max-width: calc(100vw - 24px); max-height: calc(100svh - 120px); overflow-y: auto; box-sizing: border-box; padding: 16px; border-radius: 14px; background: var(--panel-bg); border: 1px solid var(--border-strong); box-shadow: var(--shadow); text-align: left; }
 .settings__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .settings__header h2 { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-h); }
-.settings__label { margin: 0 0 8px; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.settings__label { margin: 0 0 8px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .settings__themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .settings__theme { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--border); background: var(--code-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .settings__theme:hover { border-color: var(--border-strong); }
@@ -365,4 +365,4 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .settings__preview-main { position: absolute; left: 41px; right: 7px; top: 7px; bottom: 7px; border-radius: 4px; background: var(--panel-bg); display: flex; align-items: center; justify-content: center; gap: 5px; }
 .settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .settings__theme-name { font-size: 0.72rem; font-weight: 600; color: var(--text-h); }
-.settings__theme-desc { font-size: 0.64rem; line-height: 1.35; color: var(--text-muted); }
+.settings__theme-desc { font-size: 0.72rem; line-height: 1.35; color: var(--text-muted); }

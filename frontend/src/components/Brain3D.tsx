@@ -350,6 +350,10 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
 // a dibujar en el acto (para que en pantalla no quede el fotograma blanco
 // de la captura) y se sale del modo «exportando»; los colores de
 // pantalla vuelven en el siguiente render.
+//
+// onExportingChange tiene que ser estable (Brain3D pasa setExporting). Con
+// una función en línea cambiaría en cada render, y el efecto de la captura
+// se limpiaría a mitad de la exportación: la cancelaría sin avisar.
 function ExportBridge({
   exportRef,
   exporting,
@@ -367,10 +371,10 @@ function ExportBridge({
     exportingRef.current = exporting;
   }, [exporting]);
   useEffect(() => {
-    // Segunda protección, además del botón desactivado: mientras se
-    // exporta, pedir otra exportación no hace nada. Si no, un clic que
-    // llegara antes de que React aplique el «false» del final de la
-    // captura dejaría «exportando» en true para siempre.
+    // Segunda protección, además de la del botón (handleExport en
+    // Brain3D): mientras se exporta, pedir otra exportación no hace nada.
+    // Si no, un clic que llegara antes de que React aplique el «false» del
+    // final de la captura dejaría «exportando» en true para siempre.
     exportRef.current = () => {
       if (!exportingRef.current) onExportingChange(true);
     };
@@ -610,10 +614,11 @@ function ConnectionLine({
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
   const to = useMemo(() => new THREE.Vector3(...b), [b]);
-  // Colores "intermedios" (decisión 18, 30/08/2026), no "#222222"/
-  // "#999999": el primero tenía casi cero contraste contra el fondo
-  // oscuro de la escena (una conexión SELECCIONADA era casi invisible,
-  // justo el caso que más importa distinguir) -- ver theme/networks.ts.
+  // Tokens selected y edge del tema (D3 de docs/decisiones-diseno.md); al
+  // exportar, los de la paleta de exportación. Antes de la decisión 18
+  // (30/08/2026) eran "#222222"/"#999999", y el primero casi no se veía
+  // sobre el fondo oscuro de la escena: una conexión SELECCIONADA, justo
+  // la que más importa distinguir, era casi invisible.
   const color = isSelected ? colors.selected : colors.edge;
 
   const geometry = useMemo(() => {
@@ -924,8 +929,15 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // concreto, la rueda del ratón controla el zoom.
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
   const exportRef = useRef<(() => void) | null>(null);
-  const handleExport = () => exportRef.current?.();
   const [exporting, setExporting] = useState(false);
+  // Mientras se exporta, el botón lleva aria-disabled y no disabled, para
+  // que no pierda el foco del teclado; por eso el clic se ignora aquí.
+  // ExportBridge descarta además una segunda petición que llegue antes de
+  // que React aplique el estado.
+  const handleExport = () => {
+    if (exporting) return;
+    exportRef.current?.();
+  };
   // Colores de dibujo; durante la exportación, los de la paleta de
   // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
   // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
@@ -1338,10 +1350,11 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
-        {/* Desactivado mientras se exporta (ver ExportBridge): un segundo
-            clic antes de que acabe la exportación dejaría el modo
-            «exportando» atascado. */}
-        <button type="button" className="export-btn" onClick={handleExport} disabled={exporting}>
+        {/* Desactivado mientras se exporta (ver handleExport y
+            ExportBridge): un segundo clic antes de que acabe la exportación
+            dejaría el modo «exportando» atascado. aria-disabled y no
+            disabled: así el botón conserva el foco del teclado. */}
+        <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
           Exportar JPEG
         </button>
       </div>

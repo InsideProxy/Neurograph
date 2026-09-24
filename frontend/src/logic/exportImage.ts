@@ -1,10 +1,11 @@
 // Exportación de las visualizaciones a JPEG en color sobre fondo blanco
 // (sección 20; decisión de la usuaria, 30/08/2026, ver
 // docs/analisis-arquitectura.md): las imágenes tienen que poder usarse
-// directamente como figuras de un paper o de la tesis, así que la
-// exportación nunca depende del tema visual en pantalla -- siempre
-// compone sobre blanco explícito, se vea la app como se vea en pantalla
-// (incluido un futuro tema oscuro).
+// directamente como figuras de un paper o de la tesis, así que el fondo
+// nunca depende del tema en pantalla: siempre se compone sobre blanco
+// explícito. Los colores sí siguen al tema, pero a su paleta de
+// exportación, pensada para leerse sobre ese blanco (D3 de
+// docs/decisiones-diseno.md).
 import { applyExportColors, EXPORT_FONT_FAMILY, type ColorResolver } from "./exportPalette";
 
 // Calidad JPEG y factor de sobre-muestreo: una figura de paper necesita
@@ -15,10 +16,21 @@ import { applyExportColors, EXPORT_FONT_FAMILY, type ColorResolver } from "./exp
 const JPEG_QUALITY = 0.95;
 const EXPORT_SCALE = 3;
 
-// Hueco a la derecha del texto cuando la imagen se ensancha para que quepa
-// (opción fitWidthToContent): el mismo que deja la leyenda a la izquierda,
-// donde cada fila empieza en x = 10.
+// Hueco a la derecha del contenido medido cuando la imagen se ensancha para
+// que quepa (opción fitWidthToContent). Da aire tras el texto y absorbe las
+// pequeñas diferencias entre medir en la página y dibujar la imagen.
 const FIT_WIDTH_MARGIN = 10;
+
+/**
+ * Ancho de la imagen con la opción fitWidthToContent: el borde derecho del
+ * contenido más el margen, redondeado hacia arriba. Nunca estrecha el ancho
+ * de partida. Si la medida no es un número finito (por ejemplo, porque no
+ * se pudo medir), devuelve el ancho de partida.
+ */
+export function fittedWidth(base: number, contentRight: number, margin = FIT_WIDTH_MARGIN): number {
+  if (!Number.isFinite(contentRight)) return base;
+  return Math.max(base, Math.ceil(contentRight + margin));
+}
 
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -42,11 +54,15 @@ function triggerDownload(blob: Blob, filename: string): void {
  * @param resolveColor Resuelve las referencias `data-ng-*` del clon a la
  * paleta de exportación del tema activo (D3 de docs/decisiones-diseno.md).
  * Quien llama lo obtiene con `exportResolverFor(theme)` (theme/colors.ts).
- * @param options.fitWidthToContent Ensancha la imagen hasta que quepa todo
- * el contenido, medido con la fuente de la exportación. Nunca la estrecha,
- * y la altura no cambia. Solo sirve para un SVG sin `viewBox`, cuyo
- * contenido está en píxeles: con `viewBox`, el contenido se escala a la
- * caja del SVG y la opción se ignora.
+ * @param options.fitWidthToContent Ensancha la imagen hasta el borde
+ * derecho del contenido, medido con la fuente de la exportación, más
+ * FIT_WIDTH_MARGIN. Solo se ajusta el borde derecho: nunca estrecha la
+ * imagen ni cambia su altura, y lo que sobresalga por la izquierda o por
+ * arriba sigue fuera. getBBox no cuenta los trazos (stroke): un contorno
+ * pegado al borde derecho depende del margen para verse entero. Solo sirve
+ * para un SVG sin `viewBox`, cuyo contenido está en píxeles; con `viewBox`,
+ * el contenido se escala a la caja del SVG y la opción se ignora (en
+ * desarrollo, con un aviso en la consola).
  */
 export function exportSvgAsJpeg(
   svg: SVGSVGElement,
@@ -83,8 +99,13 @@ export function exportSvgAsJpeg(
   // Ancho ajustado al texto (opción fitWidthToContent). Se mide aquí, con
   // la fuente de la exportación ya puesta en el clon: el texto del JPEG usa
   // esa fuente, no la de la pantalla, y cada fuente tiene su ancho.
-  if (options.fitWidthToContent && !svg.hasAttribute("viewBox")) {
-    width = Math.max(width, Math.ceil(contentRightEdge(clone) + FIT_WIDTH_MARGIN));
+  if (options.fitWidthToContent) {
+    if (!svg.hasAttribute("viewBox")) {
+      width = fittedWidth(width, contentRightEdge(clone));
+    } else if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn("Exportación: fitWidthToContent se ignora en un SVG con viewBox.");
+    }
   }
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));
@@ -105,9 +126,8 @@ export function exportSvgAsJpeg(
       console.error("No se pudo exportar: el navegador no dio un contexto 2D de canvas.");
       return;
     }
-    // Fondo blanco explícito: nunca depender de que el SVG ya lo traiga
-    // pintado (hoy sí, vía su propio style="background:#fff", pero esto
-    // no debe romperse si ese estilo cambia en el futuro).
+    // Fondo blanco explícito: el SVG no trae fondo propio. En pantalla se
+    // lo pone el CSS (.viz-svg, .legend-svg), que no viaja con el clon.
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -128,22 +148,40 @@ export function exportSvgAsJpeg(
 }
 
 // Borde derecho del contenido de un clon de SVG, en sus unidades (píxeles,
-// sin viewBox). El navegador solo mide lo que está en el documento, así
-// que el clon se cuelga un instante de <body> y se quita en el acto, antes
-// de que llegue a pintarse: ni se ve ni sus id repetidos molestan al SVG
-// original. visibility: hidden y no display: none, porque sin maqueta
-// getBBox no mide nada. all: initial corta la herencia de la página:
-// :root fija letter-spacing, text-rendering y font-synthesis, y el SVG
-// exportado, que se dibuja como imagen aparte, no los hereda. Con ellos,
-// el texto medido saldría más ancho que el del JPEG.
+// sin viewBox), o NaN si no se puede medir; en ese caso la exportación
+// sigue con el ancho de partida. El navegador solo mide lo que está en el
+// documento, así que el clon se cuelga un instante de <body> y se quita en
+// el acto, antes de que llegue a pintarse: ni se ve ni sus id repetidos
+// molestan al SVG original. position: fixed y fuera de la vista, para que
+// una leyenda alta no alargue el desplazamiento de la página mientras se
+// mide; visibility: hidden y no display: none, porque sin maqueta getBBox
+// no mide nada.
+//
+// La medida vale para el JPEG si se cumplen dos condiciones:
+// - Ninguna regla de la página se aplica directamente al clon (a su clase,
+//   o a svg, text o tspan) cambiando el texto. all: initial solo corta la
+//   herencia: :root fija letter-spacing, text-rendering y font-synthesis,
+//   que el SVG exportado, dibujado como imagen aparte, no hereda. Solo el
+//   letter-spacing ya daría entre 8 y 13 px de más en una etiqueta larga.
+//   Hoy la única regla que toca el clon es .legend-svg, y no cambia la
+//   fuente.
+// - EXPORT_FONT_FAMILY no nombra ninguna fuente que la página cargue con
+//   @font-face. Si lo hiciera, en la página se mediría con esa fuente,
+//   pero la imagen no puede cargarla y dibujaría con otra.
 function contentRightEdge(clone: SVGSVGElement): number {
   const holder = document.createElement("div");
-  holder.style.cssText = "all: initial; position: absolute; left: -100000px; top: 0; visibility: hidden;";
+  holder.style.cssText = "all: initial; position: fixed; left: -100000px; top: -100000px; visibility: hidden;";
   holder.appendChild(clone);
   document.body.appendChild(holder);
   try {
     const box = clone.getBBox();
     return box.x + box.width;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn("Exportación: no se pudo medir el contenido; se usa el ancho de partida.", error);
+    }
+    return Number.NaN;
   } finally {
     holder.remove();
     clone.remove();
