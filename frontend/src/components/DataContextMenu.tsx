@@ -56,9 +56,11 @@ export function DataContextMenu({
   const captionId = `${baseId}-caption`;
   const listId = `${baseId}-list`;
   const optionId = useCallback((index: number) => `${baseId}-option-${index}`, [baseId]);
-  // Si las opciones se acortan (cambia el atlas) con el menú abierto, el
-  // índice guardado puede quedar fuera de rango: se recorta al pintar, sin
-  // tocar el estado (revisión de la Task 1).
+  // Si las opciones se acortan con el menú abierto, el índice guardado
+  // puede quedar fuera de rango: se recorta al pintar, sin tocar el
+  // estado (revisión de la Task 1). Guarda defensiva, no un caso que
+  // ocurra hoy: cambiar de atlas desmonta el menú de Redes en vez de
+  // dejarlo abierto con menos opciones.
   const activeIndex = options.length === 0 ? 0 : Math.min(active, options.length - 1);
 
   const openList = () => {
@@ -96,8 +98,14 @@ export function DataContextMenu({
     if (!list || !option) return;
     const listBox = list.getBoundingClientRect();
     const optionBox = option.getBoundingClientRect();
-    if (optionBox.top < listBox.top) list.scrollTop -= listBox.top - optionBox.top;
-    else if (optionBox.bottom > listBox.bottom) list.scrollTop += optionBox.bottom - listBox.bottom;
+    // clientTop/clientHeight, no el getBoundingClientRect de la propia
+    // lista: este incluye el borde (1px) y clientHeight ya lo descuenta,
+    // así que comparar contra listBox.top/bottom a secas desplazaba con
+    // un error de un par de píxeles (revisión de la Task 1).
+    const top = listBox.top + list.clientTop;
+    const bottom = top + list.clientHeight;
+    if (optionBox.top < top) list.scrollTop -= top - optionBox.top;
+    else if (optionBox.bottom > bottom) list.scrollTop += optionBox.bottom - bottom;
   }, [open, activeIndex, optionId]);
 
   // Un clic fuera la cierra sin mover el foco: se queda donde se hizo clic.
@@ -201,7 +209,14 @@ export function DataContextMenu({
               aria-selected={option.value === value}
               className={index === activeIndex ? "data-menu__option data-menu__option--active" : "data-menu__option"}
               onClick={() => choose(index)}
-              onMouseMove={() => setActive(index)}
+              onMouseMove={() => {
+                // Por si un movimiento del teclado dejó la marca a true en
+                // un borde de la lista sin que el efecto la consumiera
+                // (mismo índice, sin re-render): así el próximo hover
+                // nunca desplaza la lista (revisión de la Task 1).
+                scrollActiveRef.current = false;
+                setActive(index);
+              }}
             >
               <span className="data-menu__check">{option.value === value && <Icon name="check" size={14} />}</span>
               {option.label}

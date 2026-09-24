@@ -18,6 +18,7 @@ describe("DataContextMenu", () => {
     expect(markup).toContain('aria-haspopup="listbox"');
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain("aria-controls");
+    expect(markup).not.toContain('role="listbox"');
   });
 
   it("mientras carga, lo dice al lector de pantalla, en el icono y en la etiqueta emergente", () => {
