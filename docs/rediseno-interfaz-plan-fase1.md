@@ -2040,6 +2040,8 @@ Ejecútalo en segundo plano. El backend de la usuaria, en `127.0.0.1:8420`, acep
 
 - [ ] **Step 3: comprobar en un navegador sin interfaz (Playwright)**
 
+Regla: todo lo que genere la prueba (capturas, JPEG, el directorio `.playwright-mcp` si aparece) va a una carpeta nueva del scratchpad. En la copia principal de la usuaria (`/home/dae/PycharmProjects/Neurograph/Neurograph`) no se escribe nada. Al terminar, comprueba que su `git status` sigue limpio.
+
 Datos para la prueba:
 - Al arrancar, el cerebro 3D ya está en la vista grande (`mainView` empieza en `"brain3d"`). Para verlo en grande de nuevo, pulsa su miniatura.
 - Los JPEG se descargan. En Playwright, espera el evento `download` al pulsar «Exportar JPEG», guarda el archivo con `download.saveAs(...)` en el scratchpad y ábrelo para mirarlo.
@@ -2091,7 +2093,9 @@ En `docs/rediseno-interfaz-diseno.md`:
   Con Escape o con su botón, el foco vuelve al engranaje. Con un clic fuera, el foco se queda donde se hizo clic.
   ```
 
-- En la sección 9, tras «Unidades nuevas», añade un párrafo **Fase 1** que resuma las diferencias de la sección «Diferencias con el spec en esta fase» de este plan.
+- En la sección 9, tras «Unidades nuevas», añade un párrafo **Fase 1** que resuma las diferencias de la sección «Diferencias con el spec en esta fase» de este plan. Incluye la vista previa de Ajustes, que toma sus colores de `index.css` mediante `data-theme-preview`.
+- En la tabla 4.1, `success` de Claro pasa de `#227a4d` a `#1f6e45`. Las etiquetas van sobre `--bg` con su fondo tintado, y así superan 4,5:1. El fondo de síntesis de Claro queda en `rgba(185, 61, 10, 0.06)`.
+- En la sección 7, añade que también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos. Añade también que `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio.
 
 - [ ] **Step 6: escribir la decisión 77 al final de `docs/analisis-arquitectura.md`**
 
