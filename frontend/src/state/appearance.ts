@@ -22,19 +22,19 @@ export const APPEARANCE_STORAGE_KEY = "neurograph.apariencia";
 const DEFAULT_APPEARANCE: Appearance = { theme: DEFAULT_THEME, paletteMode: null };
 
 export function readAppearance(storage: StorageLike | null): Appearance {
-  if (!storage) return DEFAULT_APPEARANCE;
+  if (!storage) return { ...DEFAULT_APPEARANCE };
   try {
     const raw = storage.getItem(APPEARANCE_STORAGE_KEY);
-    if (!raw) return DEFAULT_APPEARANCE;
+    if (!raw) return { ...DEFAULT_APPEARANCE };
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return DEFAULT_APPEARANCE;
+    if (typeof parsed !== "object" || parsed === null) return { ...DEFAULT_APPEARANCE };
     const { theme, paletteMode } = parsed as Record<string, unknown>;
     return {
       theme: isThemeId(theme) ? theme : DEFAULT_THEME,
       paletteMode: paletteMode === "suave" || paletteMode === "original" ? paletteMode : null,
     };
   } catch {
-    return DEFAULT_APPEARANCE;
+    return { ...DEFAULT_APPEARANCE };
   }
 }
 

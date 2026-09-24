@@ -4,8 +4,11 @@ import './index.css'
 import App from './App.tsx'
 import { applyThemeToDocument, useAppearanceStore } from './state/appearance'
 
-// Tema antes del primer render (decisión 77): sin esto se vería un instante
-// el tema por defecto de index.css antes del elegido.
+// Único sitio que aplica el tema al arrancar (decisión 77): no es solo un
+// parpadeo que evitar. Sin esta llamada la interfaz se quedaría fija en el
+// tema por defecto de index.css, mientras que los colores de dibujo (que
+// leen el store, no el DOM) sí siguen el tema guardado -- un desajuste
+// permanente, no un instante.
 applyThemeToDocument(useAppearanceStore.getState().theme)
 
 createRoot(document.getElementById('root')!).render(

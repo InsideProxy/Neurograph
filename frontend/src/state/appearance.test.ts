@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   APPEARANCE_STORAGE_KEY,
   readAppearance,
@@ -67,9 +67,25 @@ describe("writeAppearance", () => {
 // En node no hay window ni document: el store no guarda nada ni toca el
 // documento, así que se puede probar sin efectos secundarios.
 describe("useAppearanceStore", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("cambiar de tema conserva el modo de paleta elegido (spec 4.5)", () => {
     useAppearanceStore.setState({ theme: "grafito", paletteMode: "original" });
     useAppearanceStore.getState().setTheme("claro");
     expect(useAppearanceStore.getState()).toMatchObject({ theme: "claro", paletteMode: "original" });
+  });
+
+  it("setTheme guarda en localStorage (con paletteMode) y aplica data-theme al documento", () => {
+    const storage = memoryStorage();
+    vi.stubGlobal("window", { localStorage: storage });
+    vi.stubGlobal("document", { documentElement: { dataset: {} as Record<string, string> } });
+
+    useAppearanceStore.setState({ theme: "grafito", paletteMode: "original" });
+    useAppearanceStore.getState().setTheme("claro");
+
+    expect(JSON.parse(storage.data[APPEARANCE_STORAGE_KEY])).toEqual({ theme: "claro", paletteMode: "original" });
+    expect(document.documentElement.dataset.theme).toBe("claro");
   });
 });
