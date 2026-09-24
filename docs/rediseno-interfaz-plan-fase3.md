@@ -2,18 +2,20 @@
 
 > **Para agentes:** OBLIGATORIO: usar superpowers:subagent-driven-development (si hay subagentes) o superpowers:executing-plans para ejecutar este plan. Los pasos usan casillas (`- [ ]`) para seguir el avance.
 
-**Objetivo:** la estructura nueva de la interfaz, igual en los cuatro temas. Comprende la barra superior (marca, pestañas con icono, contexto de datos accesible, estado de los datos, Importar y Ajustes), los filtros con recuentos, las cabeceras de las vistas y las miniaturas, los recuadros de lectura con región, hemisferio, red y recuento, el panel de detalle de una región con jerarquía, los avisos flotantes en lugar de las franjas de error, y deshacer y rehacer. No cambia lo que representan los gráficos ni la paleta.
+**Objetivo:** la estructura nueva de la interfaz, igual en los cuatro temas. Comprende la barra superior (marca, pestañas con icono, contexto de datos accesible, estado de los datos, Importar y Ajustes), los filtros con recuentos, las cabeceras de las vistas y las miniaturas, los recuadros de lectura con región, hemisferio, red y recuento, el panel de detalle de una región con jerarquía, los avisos flotantes en lugar de las franjas de error, deshacer y rehacer, y el buscador de regiones. No cambia lo que representan los gráficos ni la paleta.
 
 **Arquitectura:**
 
-- **Solo presentación.** El estado, los stores y los manejadores siguen siendo los del desarrollador principal (spec 5.1: «El estado y los manejadores son los actuales»). Se añaden las unidades y props que nombra el spec: `TopBar`, `DataContextMenu`, `Toast`, `Icon`, `NETWORK_SOURCE_SHORT_LABELS`, `WORKSPACE_VIEW_DESCRIPTIONS`, `connectionCountsByType`, los totales de conexiones, el historial `state/history.ts` y `logic/historyStep.ts`. El historial se suscribe a los stores de selección y de filtros sin cambiar su código ni su API. Lo demás está justificado en «Desviaciones».
-- **Lógica pura aparte.** Los recuentos, los nombres cortos, los títulos de región y de conexión, el teclado de la lista, el plegado de la barra, la cola de avisos, el orden de las conexiones, la comprobación de Tauri y los pasos del historial van en módulos de `logic/` sin React. Se prueban con TDD en node, como el store del historial.
-- **Colores solo del tema.** Los colores de interfaz salen de las variables de `index.css` (`--bg`, `--panel-bg`, `--text`, `--accent`, `--border`, `--success`...). Los de red salen de `useDrawColors().networkColor` en los componentes nuevos (`NetworkTag` y las filas de conexiones del detalle), y de `resolveNetworkColor(clave)` donde ya se usaba (las muestras de los filtros). Hoy los dos dan el color original del atlas, con un solo argumento; la fase 2 los amplía.
+- **Solo presentación.** El estado, los stores y los manejadores siguen siendo los del desarrollador principal (spec 5.1: «El estado y los manejadores son los actuales»). Se añaden las unidades y props que nombra el spec: `TopBar`, `DataContextMenu`, `Toast`, `Icon`, `NETWORK_SOURCE_SHORT_LABELS`, `WORKSPACE_VIEW_DESCRIPTIONS`, `connectionCountsByType`, los totales de conexiones, el historial `state/history.ts`, `logic/historyStep.ts`, `logic/regionSearch.ts` y `RegionSearch`. El historial se suscribe a los stores de selección y de filtros sin cambiar su código ni su API. Lo demás está justificado en «Desviaciones».
+- **Lógica pura aparte.** Los recuentos, los nombres cortos, los títulos de región y de conexión, el teclado de la lista, el plegado de la barra, la cola de avisos, el orden de las conexiones, la comprobación de Tauri, los pasos del historial y la búsqueda de regiones van en módulos de `logic/` sin React. Se prueban con TDD en node, como el store del historial.
+- **Colores solo del tema.** Los colores de interfaz salen de las variables de `index.css` (`--bg`, `--panel-bg`, `--text`, `--accent`, `--border`, `--success`...). Los de red salen de `useDrawColors().networkColor` en los componentes nuevos (`NetworkTag`, las filas de conexiones del detalle y las sugerencias del buscador), y de `resolveNetworkColor(clave)` donde ya se usaba (las muestras de los filtros). Hoy los dos dan el color original del atlas, con un solo argumento; la fase 2 los amplía.
 - **Estilos** en `App.css`: una sección nueva al final, «Estructura». Las reglas que se quedan sin uso se borran.
 
 **Tecnología:** React 19, TypeScript 6 estricto, Vite 8, zustand 5, vitest 4 (entorno node, sin DOM; `react-dom/server` para comprobar marcado) y oxlint.
 
-**Spec:** `docs/rediseno-interfaz-diseno.md` (commit `51644c9`), secciones 5.1 y 5.3 a 5.7, con las reglas generales de las secciones 3, 7, 8, 9, 10, 11 y 12. La barra de estado que se valoró para 5.7 quedó descartada por la usuaria: no está en este plan.
+**Spec:** `docs/rediseno-interfaz-diseno.md` (commit `1f524db`), secciones 5.1 y 5.3 a 5.8, con las reglas generales de las secciones 3, 7, 8, 9, 10, 11 y 12. La barra de estado que se valoró para 5.7 quedó descartada por la usuaria: no está en este plan. El buscador de regiones (5.8) se añadió después, a petición de la usuaria: es la Task 11.
+
+**Numeración.** Las Tasks 1 a 10 se escribieron antes que el buscador y no se han tocado. En su texto, «Task 11», «Task 12» y «Task 13» son las que ahora son la 12, la 13 y la 14: la verificación en la app real (dos tareas) y la D4 con los retoques del spec.
 
 **Referencia visual:** la maqueta aprobada `/home/dae/.config/superpowers/worktrees/Neurograph/rediseno-referencias/maqueta-claude-design/Main.dc.html`, pantalla principal a 1440×900. Sirve para la disposición, el espaciado, la jerarquía, el logotipo y los iconos. Donde no coincide con el spec, manda el spec.
 
@@ -21,7 +23,7 @@
 
 **Lo que la fase 1 dejó para esta** (D3 de `docs/decisiones-diseno.md`, «Limitaciones conocidas», y spec 12):
 
-- La barra superior ocupa dos o tres filas a 1280 y 1024 px desde que lleva el engranaje. La barra nueva va en una fila y, si no cabe, pliega lo secundario por pasos (Task 2). La verificación (Tasks 11 y 12) lo mide.
+- La barra superior ocupa dos o tres filas a 1280 y 1024 px desde que lleva el engranaje. La barra nueva va en una fila y, si no cabe, pliega lo secundario por pasos (Task 2). La verificación (Tasks 12 y 13) lo mide.
 - La leyenda de la selección múltiple es un SVG de 260 px de ancho y en pantalla corta las etiquetas largas. Al exportarla ya se ensancha: `exportSvgAsJpeg` recibe un cuarto parámetro, `{ fitWidthToContent: true }` (commit `cea7df2`), y nunca estrecha la imagen (`fittedWidth`, commit `2ca8f7d`). En pantalla lo resuelve la Task 8, que deja esa llamada tal cual y el `<svg>` sin `viewBox`.
 - Los anillos neutros de las muestras de color de red, que en Claro pierden los amarillos sobre blanco: los llevan todas las muestras de esta fase y `.legend-swatch` (Task 4).
 - El anillo de foco del color de acento en toda la interfaz: una regla `:focus-visible` general (Task 1).
@@ -41,10 +43,10 @@
 
 **Convenciones:**
 
-- Identificadores en inglés y comentarios en castellano, como el código actual. Los comentarios nuevos citan «D4 de docs/decisiones-diseno.md»; el Step 0 de la Task 1 y el Step 1 de la Task 13 comprueban que ese número está libre.
+- Identificadores en inglés y comentarios en castellano, como el código actual. Los comentarios nuevos citan «D4 de docs/decisiones-diseno.md»; el Step 0 de la Task 1 y el Step 1 de la Task 14 comprueban que ese número está libre.
 - **Rutas absolutas en todos los comandos.** Las órdenes de `frontend/` empiezan con `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend`.
 - Órdenes, desde `frontend/`:
-  - Una prueba: `npx vitest run <ruta>`. Todas: `npm test`. Al escribir este plan había 115 pruebas. El Step 0 de la Task 1 anota las que haya al empezar: es la **BASE**, y cada tarea da sus cuentas como «BASE + N».
+  - Una prueba: `npx vitest run <ruta>`. Todas: `npm test`. Al escribir este plan había 115 pruebas. El Step 0 de la Task 1 anota las que haya al empezar: es la **BASE**, y cada tarea da sus cuentas como «BASE + N». Son las cuentas de este plan: si la revisión de una tarea añade pruebas, se suman (la de la Task 1 añadió 3, en `DataContextMenu.test.tsx`, commit `fdfd932`).
   - Tipos: `npx tsc -b`.
   - Lint: `npm run lint`. La línea base da **9 avisos** (3 `set-state-in-effect`, 4 `preserve-manual-memoization`, 2 `exhaustive-deps`) y ningún error; oxlint no imprime un resumen, así que se cuentan con `npm run lint 2>&1 | grep -oE ": (warning|error) " | sort | uniq -c`. No pueden aumentar. Si aparece un aviso nuevo, no se silencia: se reestructura el código (por ejemplo, se quita la memoización manual o el cálculo pasa a una función pura). Si no hay forma de volver a 9, la tarea se detiene y se informa como BLOQUEADA.
   - Compilación: `npm run build`. El aviso de tamaño de bloque (más de 500 kB) ya estaba.
@@ -55,7 +57,7 @@
 - `tsconfig.app.json` exige `import type` para los tipos (`verbatimModuleSyntax`) y da error por imports o variables sin usar (`noUnusedLocals`).
 - **Commits:** uno o más por tarea. Mensaje en castellano sin tildes ni eñes, que empieza por `Estructura: ` y termina con la línea `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`. `git add` solo de los archivos que nombra la tarea. Nada de `git stash`.
 - **Estado y manejadores.** No cambies el estado, los stores ni los manejadores de App ni de los componentes salvo lo que dice cada tarea.
-- `docs/` lo está tocando otra sesión: solo la Task 13 lo modifica.
+- `docs/` lo está tocando otra sesión: solo la Task 14 lo modifica.
 - **Letra mínima de 0,7rem** en todo lo nuevo, también en rótulos, recuentos y etiquetas pequeñas (la revisión final de la fase 1 subió así los de Ajustes). La jerarquía la dan el peso y el color, no letras más pequeñas.
 
 ## Mapa de archivos
@@ -77,28 +79,31 @@ Nuevos, todos en `frontend/src/`:
 | `logic/desktopOnly.ts` | Ejecutar algo solo en la aplicación de escritorio (`isTauri()`) |
 | `logic/filterCounts.ts` | Recuentos por tipo de conectividad, visibles y cargadas |
 | `logic/regionConnections.ts` | Conexiones de una región por peso, con su sentido, y las cinco primeras |
-| `logic/clipboard.ts` | Copiar al portapapeles sin lanzar errores, y cómo se llama el atajo de copiar (⌘C o Ctrl+C) |
-| `logic/historyStep.ts` | Qué cambia entre dos instantáneas del historial, cómo se dice, si merece el aviso con «Deshacer», qué dicen los botones y qué atajo deshace o rehace |
+| `logic/clipboard.ts` | Copiar al portapapeles sin lanzar errores, y cómo se escribe un atajo en cada sistema (⌘C o Ctrl+C; desde la Task 11, `shortcutLabel`) |
+| `logic/historyStep.ts` | Qué cambia entre dos instantáneas del historial, cómo se dice, si merece el aviso con «Deshacer», qué dicen los botones y qué atajo deshace o rehace. Desde la Task 11, también si el foco está donde se escribe (`isTextEntry`), que comparten los dos atajos |
 | `state/history.ts` | Historial de deshacer y rehacer: instantáneas de la selección y de los filtros |
 | `components/HistoryButtons.tsx` | Botones «Deshacer» y «Rehacer» de la fila de selección de Filtros: `HistoryButtons`, con el historial, y `HistoryButtonsView`, sin él |
 | `components/useHistoryShortcuts.ts` | Atajos de teclado del historial y aviso de puntero pulsado para el deslizador |
-| Pruebas | Un `*.test.ts` por módulo de `logic/` y por el historial, más `components/TopBar.test.tsx`, `components/Toast.test.tsx`, `components/FilterPanel.test.tsx`, `components/Connectogram.test.tsx`, `components/DetailPanel.test.tsx` y `components/HistoryButtons.test.tsx` |
+| `logic/regionSearch.ts` | Qué regiones sugiere el buscador y en qué orden, cuándo avisa de las redes ocultas, la sugerencia activa, las teclas del campo y el atajo Ctrl+K |
+| `components/RegionSearch.tsx` | Buscador de regiones con autocompletado: `RegionSearch`, con los stores, y `RegionSearchView`, sin ellos |
+| `components/useRegionSearchShortcut.ts` | Atajo Ctrl+K (⌘K) del buscador, y llevar el foco a su campo |
+| Pruebas | Un `*.test.ts` por módulo de `logic/` y por el historial, más `components/TopBar.test.tsx`, `components/Toast.test.tsx`, `components/FilterPanel.test.tsx`, `components/Connectogram.test.tsx`, `components/DetailPanel.test.tsx`, `components/HistoryButtons.test.tsx` y `components/RegionSearch.test.tsx` |
 
 Modificados:
 
-- `App.tsx`: barra superior, contexto de datos, avisos, recuentos para los filtros, cabeceras de las vistas y deshacer (atajos, aviso y `resetHistory()` al cambiar de atlas y al llegar otra clasificación).
+- `App.tsx`: barra superior, contexto de datos, avisos, recuentos para los filtros, cabeceras de las vistas, deshacer (atajos, aviso y `resetHistory()` al cambiar de atlas y al llegar otra clasificación) y Ctrl+K, que lleva al buscador.
 - `App.css`: sección «Estructura» nueva y borrado de las reglas que se quedan sin uso.
-- `components/FilterPanel.tsx`: presentación nueva (5.3) y la prop `historyControls` para los botones de deshacer. La lógica y los comentarios del desarrollador principal se quedan.
+- `components/FilterPanel.tsx`: presentación nueva (5.3), la prop `historyControls` para los botones de deshacer y el buscador de regiones sobre la selección. La lógica y los comentarios del desarrollador principal se quedan.
 - `components/DetailPanel.tsx`: presentación nueva (5.5). Exporta `RegionDetail` para su prueba de marcado.
 - `components/Connectogram.tsx`: la lupa pasa a botón de alternar y el recuadro de lectura muestra región, hemisferio y red, y con una sola región seleccionada, su recuento. Una conexión lleva «↔», o «→» si es efectiva.
 - `components/Hemisferios.tsx`: solo el recuadro de lectura, con la misma flecha.
-- Documentos, en la Task 13: `docs/decisiones-diseno.md` (D4) y `docs/rediseno-interfaz-diseno.md` (retoques).
+- Documentos, en la Task 14: `docs/decisiones-diseno.md` (D4) y `docs/rediseno-interfaz-diseno.md` (retoques).
 
 Sin cambios: `index.css`, `theme/*`, los stores que ya había en `state/` (el historial es un archivo nuevo que se suscribe a ellos), `SettingsMenu.tsx`, `Brain3D.tsx` (sus controles cambian solo por CSS) y los valores de `theme/networks.ts`. `ATLASES` está en `App.tsx`, no en `data/`, y ahí se queda.
 
 ## Desviaciones del spec en esta fase
 
-La Task 13 las anota en el spec y en la D4.
+La Task 14 las anota en el spec y en la D4.
 
 1. **Pestañas: un `<nav>` con `aria-current`, no un `tablist`.** Cada pestaña cambia la pantalla entera, como una página. Un `tablist` solo puede contener elementos `tab`, así que el botón de cerrar de cada síntesis no podría ir junto a su pestaña. Además pediría un `tabpanel` y moverse entre pestañas con las flechas. Con `<nav aria-label="Vistas">` y `aria-current="page"` en la activa, los roles son los que corresponden a una navegación, y el botón de cerrar es un `<button>` hermano del de la pestaña, no anidado.
 2. **Si la barra no cabe en una fila, se pliega lo secundario, por pasos.** El spec no dice qué pasa cuando no cabe (la maqueta está dibujada a 1440 px). Las pestañas de las vistas son la navegación principal, así que son lo último que se pliega. El orden es este, y solo se aplica lo que haga falta:
@@ -117,7 +122,7 @@ La Task 13 las anota en el spec y en la D4.
    - A 1400 px con dos o tres síntesis de nombre largo: «Datos reales», «Importar» y los nombres de las síntesis inactivas (1279 y 1334 px).
    - Los nombres de las vistas se ven en todos esos casos.
 
-   Si ni así cabe, la barra pasa a dos filas. Son estimaciones: la verificación (Task 11) mide la barra real, y la D4 cita lo medido, no estas cifras.
+   Si ni así cabe, la barra pasa a dos filas. Son estimaciones: la verificación (Task 12) mide la barra real, y la D4 cita lo medido, no estas cifras.
 3. **Los avisos van en una cola con clave, en lugar de `synthesisImportError` y `networkSourceError`.** Cada aviso necesita dos textos, el mensaje comprensible y los «Detalles», y el de «solo en la aplicación de escritorio» es nuevo. El flujo de los manejadores no cambia:
    - Cada `setSynthesisImportError(texto)` pasa a un aviso con la clave `importar`, y cada `setNetworkSourceError(texto)` a uno con la clave `redes`.
    - Cada `…(null)` pasa a retirar el aviso de esa clave.
@@ -142,6 +147,7 @@ La Task 13 las anota en el spec y en la D4.
     - `NetworkTag.tsx`: `NetworkTag` y `RegionSummary`, que comparten los recuadros de lectura y el detalle.
     - `DataStatus`, en `TopBar.tsx`.
     - `HistoryButtons.tsx` y `useHistoryShortcuts.ts`, los botones y los atajos de deshacer. `HistoryButtonsView` pinta los botones sin el historial, para probarlos con cualquier estado. `FilterPanel` recibe los botones en una prop nueva, `historyControls`: el panel no sabe nada del historial.
+    - `RegionSearchView`, el buscador sin estado, para probar su marcado con cualquier resultado, y `useRegionSearchShortcut.ts`, el atajo Ctrl+K. Tres piezas que el buscador comparte con tareas anteriores: `isTextEntry`, en `logic/historyStep.ts`, dice si el foco está donde se escribe, para los dos atajos; `shortcutLabel`, en `logic/clipboard.ts`, escribe un atajo como en cada sistema, para el de copiar y el del buscador; y `SIDE_IN_ABBREVIATION`, en `logic/displayText.ts`, pasa a exportarse.
     - Nueve módulos de lógica pura, para poder probarla sin DOM (sección 10): `topBarFit.ts`, `listbox.ts`, `dataContext.ts`, `displayText.ts`, `toastQueue.ts`, `desktopOnly.ts`, `filterCounts.ts`, `regionConnections.ts` y `clipboard.ts`.
 12. **Título de una conexión y sentido de las efectivas.** El spec pide la misma jerarquía que en una región, sin decir el título. Es «IFJa ↔ 8C»: la flecha «→» queda para la conectividad efectiva, porque el principio 1 del spec reserva la flecha para ella. Más detalles:
     - La misma regla (`connectionArrow`, en `logic/displayText.ts`) vale donde la interfaz nombra una conexión: el título del detalle, los recuadros de lectura del connectograma y de los hemisferios, y la lista de conectividad inducida, que conserva los nombres completos (30/08). Es presentación: los datos y el orden de las regiones no cambian.
@@ -161,6 +167,17 @@ La Task 13 las anota en el spec y en la D4.
     - El peso se escribe como en Filtros (`formatMinWeight`): «peso mínimo de 1.0e-3 a 4.0e-3», y no «de 0,001 a 0,004» como en el ejemplo del spec.
     - El teclado no actúa con la tecla repetida por mantenerla pulsada, si otro ya atendió el evento, ni mientras está abierta una lista desplegable o el panel de Ajustes, que tienen su propio teclado. Con un teclado sin letras latinas, mira la tecla física (`event.code`).
 15. **El recuento del recuadro de lectura (5.4) va solo en el del connectograma**, como en la maqueta, junto a la pista «pasa el ratón por otra región para verla», y solo con exactamente una región seleccionada. Sin umbral de peso, no lleva el paréntesis «(peso ≥ …)». El umbral se escribe como el valor de «Peso mínimo» en Filtros (`formatMinWeight`: «0.02» o «4.0e-3»), y no «0,02» como en el ejemplo del spec: así el mismo número se ve igual en los dos sitios.
+16. **Buscador de regiones (5.8): lo que el spec no fija.**
+    - Con la lista abierta, las teclas son las de la lista del contexto de datos (`listboxKey`), salvo espacio, Inicio y Fin, que son del campo: escriben o mueven el cursor, como en cualquier campo de texto. Con la lista cerrada, la flecha abajo la vuelve a abrir. Sin lista (solo el aviso de las redes ocultas, o «Ninguna región coincide.»), el primer Escape ya vacía el campo.
+    - La sugerencia activa al escribir es la primera que no está ya seleccionada; si todas lo están, la primera. El spec dice «la primera»: así, escribir «te1m» e Intro dos veces añade las dos TE1m, en lugar de que el segundo Intro no haga nada.
+    - La activa lleva el contorno del color de acento (8), porque el foco se queda en el campo y el fondo solo no se distingue lo bastante, y sus textos grises pasan a `--text`. Se desplaza a la vista al abrir la lista, al escribir y con el teclado, no con el ratón; el ratón sí la cambia, como en `DataContextMenu`.
+    - Los avisos van en una línea bajo el campo, y la lista, que flota, bajo ella: una lista (`listbox`) no puede llevar botones. Sin ninguna coincidencia, dice «Ninguna región coincide.».
+    - El aviso de las redes ocultas sale si nada visible coincide, y también si la abreviatura exacta (sin el lado) solo está en redes ocultas, aunque haya otras sugerencias: «pf» con la red de PF oculta dice «PF está en la red Frontoparietal, que está oculta.» junto a PFm o PFop. Nombra la región, si todas las coincidencias ocultas son la misma, o «Lo escrito», y sus redes, hasta tres, o cuántas son. «Mostrar la red», o «Mostrar las redes», las muestra todas a la vez, vuelve a abrir la lista y devuelve el foco al campo: ninguna coincidencia se queda escondida sin decirlo.
+    - Las abreviaturas que llevan el lado (Brainnetome, Gordon) se buscan y se ordenan sin él, y los números en su orden: «sfg» da `L_SFG_7_1`, `R_SFG_7_1`, `L_SFG_7_2`… Escrita entera, con el lado, también se encuentra.
+    - A igualdad de nivel y abreviatura, el orden es izquierdo, derecho y sin hemisferio.
+    - La lista solo está en la página mientras está abierta, y el campo apunta a ella con `aria-controls` solo entonces, como `DataContextMenu`: la guarda de los atajos de deshacer busca listas abiertas, y una lista oculta pero presente la bloquearía.
+    - Ctrl+K funciona en la vista Atlas, como los atajos de deshacer: en las demás pestañas no hay buscador. En el propio buscador, selecciona lo escrito. No actúa con Mayús, ni mientras está abierta otra lista desplegable o el panel de Ajustes. El marcador de posición lo dice: «Buscar región (Ctrl+K)», o «(⌘K)» en macOS.
+    - Con el foco en el buscador, Ctrl+Z es del campo, como en cualquier campo de texto (5.7): la región añadida se deshace con ↶, o con Ctrl+Z fuera del campo.
 
 De la maqueta no se toman:
 
@@ -5835,14 +5852,992 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Chunk 9: verificación en la app real, primera parte
+## Chunk 9: buscador de regiones
 
-### Task 11: verificación en la app real: preparación, barra, temas, síntesis, teclado y avisos
+### Task 11: buscador de regiones
+
+Spec 5.8 (commit `1f524db`), petición de la usuaria: con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
+- Un campo con autocompletado en Filtros, justo encima de la selección (5.3), con el patrón *combobox*: el campo (`role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-activedescendant` y, mientras la lista está abierta, `aria-controls`) y su lista (`role="listbox"`). Las teclas de la lista son las de la lista del contexto de datos (`logic/listbox.ts`, Task 1). La sugerencia activa lleva el contorno del color de acento y se desplaza a la vista al moverse con el teclado, como en `DataContextMenu` tras su revisión (commit `fdfd932`). El ratón también la cambia, pero no desplaza la lista.
+- Busca en la abreviatura y en el nombre completo, sin distinguir mayúsculas ni tildes. Las abreviaturas que llevan el lado (Brainnetome, Gordon) se buscan y se ordenan sin él. Orden: abreviatura exacta, abreviatura que empieza por lo escrito, abreviatura que lo contiene y nombre que lo contiene; a igualdad, por abreviatura, con los números en su orden, y por lado. Como mucho, 8 sugerencias.
+- Solo sugiere regiones de redes visibles. Si lo escrito solo está en redes ocultas, o si la abreviatura exacta solo está en redes ocultas aunque haya otras sugerencias, lo dice en una línea bajo el campo («TE1m está en la red Auditiva, que está oculta.») con «Mostrar la red», o «Mostrar las redes» si son varias. Los botones llaman a `toggleNetwork` del store de filtros.
+- Cada sugerencia lleva el color de su red con el anillo neutro, la abreviatura con su lado cuando no lo lleva, el nombre sin «(hemisferio …)» y «seleccionada» si ya lo está. Los nombres salen de `regionNameWithSide` y `regionTitleParts` (Tasks 6 y 8).
+- Elegir una región llama a `addNodes([id])` del store de selección, que no cambia, así que el historial (Task 9) la registra y se puede deshacer. El campo se vacía y conserva el foco. Si ya estaba seleccionada, no cambia nada.
+- Ctrl+K (⌘K en macOS) lleva el foco al buscador desde cualquier sitio de la vista Atlas, y despliega Filtros si está plegado. Sigue el diseño de los atajos de la Task 10: un escuchador en `window`, la decisión en una función pura, la misma guarda de los campos de texto (`isTextEntry`, que esta tarea saca de `logic/historyStep.ts`) y nada mientras está abierta otra lista desplegable o el panel de Ajustes.
+- Detalles que el spec no fija: la desviación 16.
+
+Las Tasks 1 a 10 ya están escritas (la 1 y la 2, también hechas), y esta parte de lo que dejan. Toca código de cinco de ellas, con sus propios pasos: `logic/clipboard.ts` (Task 7), `logic/displayText.ts` (Task 8), `logic/historyStep.ts` (Task 9), `FilterPanel.tsx` (Tasks 4 y 10) y `App.tsx` (Tasks 4 y 10).
+
+**Files:**
+- Modify: `frontend/src/logic/historyStep.ts` (exporta `ShortcutTarget` e `isTextEntry`), `frontend/src/logic/clipboard.ts` (`shortcutLabel`) y `frontend/src/logic/displayText.ts` (exporta `SIDE_IN_ABBREVIATION`)
+- Create: `frontend/src/logic/regionSearch.ts`, `frontend/src/components/RegionSearch.tsx` y `frontend/src/components/useRegionSearchShortcut.ts`
+- Test: `frontend/src/logic/regionSearch.test.ts` y `frontend/src/components/RegionSearch.test.tsx`
+- Modify: `frontend/src/components/FilterPanel.tsx` (el buscador, sobre la selección), `frontend/src/App.tsx` (import y Ctrl+K) y `frontend/src/App.css` (el buscador, al final)
+
+- [ ] **Step 1: lo que el buscador comparte con tareas anteriores**
+
+Tres cambios pequeños, sin cambiar lo que hacen:
+
+1. En `frontend/src/logic/historyStep.ts` (Task 9), los dos atajos, el del historial y el del buscador, no actúan donde se escribe:
+   - El comentario `// Tipos de <input> en los que se escribe: ahí Ctrl+Z es del campo.` pasa a decir «ahí los atajos de teclado son del campo», en dos líneas si hace falta.
+
+   - Justo después de la línea `const TEXT_INPUT_TYPES = new Set(["text", "search", "email", "number", "password", "tel", "url"]);` añade:
+
+     ```ts
+
+     // Dónde está el foco cuando llega un atajo de teclado.
+     export interface ShortcutTarget {
+       tagName: string;
+       type?: string;
+       isContentEditable?: boolean;
+     }
+
+     // Si el foco está donde se escribe: ahí los atajos de teclado son del campo.
+     // La comparten los del historial y el del buscador de regiones (5.8).
+     export function isTextEntry(target: ShortcutTarget | null): boolean {
+       return (
+         target !== null &&
+         (target.isContentEditable === true ||
+           target.tagName === "TEXTAREA" ||
+           (target.tagName === "INPUT" && TEXT_INPUT_TYPES.has(target.type ?? "text")))
+       );
+     }
+     ```
+
+   - En `historyShortcut`, el parámetro `target: { tagName: string; type?: string; isContentEditable?: boolean } | null,` pasa a `target: ShortcutTarget | null,`, y en su cuerpo, el `if (target && (target.isContentEditable || …)) { return null; }` de diez líneas, el único que mira si el foco está donde se escribe, pasa a `  if (isTextEntry(target)) return null;`.
+
+2. En `frontend/src/logic/clipboard.ts` (Task 7), el atajo de copiar y el del buscador se escriben igual en cada sistema. Justo antes del comentario de `copyShortcutLabel` añade lo de abajo, y el cuerpo de `copyShortcutLabel` pasa a `  return shortcutLabel("C", userAgent);`.
+
+   ```ts
+   // Cómo se escribe un atajo de teclado en cada sistema: «⌘C» en macOS y
+   // «Ctrl+C» en los demás. Lo usan el ID científico y el buscador de
+   // regiones (Ctrl+K, logic/regionSearch.ts).
+   export function shortcutLabel(key: string, userAgent: string): string {
+     return /Mac/i.test(userAgent) ? `⌘${key}` : `Ctrl+${key}`;
+   }
+
+   ```
+
+3. En `frontend/src/logic/displayText.ts` (Task 8), `const SIDE_IN_ABBREVIATION = /^[lr]_|_[lr]$/i;` pasa a `export const SIDE_IN_ABBREVIATION = /^[lr]_|_[lr]$/i;`: el buscador busca y ordena esas abreviaturas sin el lado.
+
+Run: `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/historyStep.test.ts src/logic/clipboard.test.ts src/logic/displayText.test.ts`
+Expected: PASS (38 pruebas): nada cambia de comportamiento.
+
+- [ ] **Step 2: escribir las pruebas de `logic/regionSearch.ts`**
+
+`frontend/src/logic/regionSearch.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import type { GraphNode } from "../types/domain";
+import {
+  SEARCH_LIMIT,
+  defaultActiveIndex,
+  normalizeSearch,
+  regionSearchShortcut,
+  searchKey,
+  searchRegions,
+  searchShortcutLabel,
+} from "./regionSearch";
+
+const AUDITORY = "cole-anticevic.auditory";
+const VISUAL = "cole-anticevic.visual";
+const FRONTOPARIETAL = "cole-anticevic.frontoparietal";
+const DEFAULT = "cole-anticevic.default";
+
+// Regiones con el nombre que da la ingesta: el completo y, al final, su
+// hemisferio.
+function region(id: string, abbreviation: string | null, hemisphere: "L" | "R" | null, name: string, network = AUDITORY): GraphNode {
+  const side = hemisphere === "L" ? " (hemisferio izquierdo)" : hemisphere === "R" ? " (hemisferio derecho)" : "";
+  return { id, label: `${name}${side}`, abbreviation, hemisphere, network, position3d: [0, 0, 0], referenceSpace: null };
+}
+
+const NODES = [
+  region("r_te1m", "TE1m", "R", "Area TE1 Middle"),
+  region("a5", "A5", "L", "Auditory 5 Complex next to TE1"),
+  region("l_pte1", "PTE1", "L", "Area PTE1"),
+  region("l_te1m", "TE1m", "L", "Area TE1 Middle"),
+  region("l_te1a", "TE1a", "L", "Area TE1 anterior"),
+  region("l_te1", "TE1", "L", "Area TE1"),
+  region("l_v1", "V1", "L", "Primary Visual Cortex", VISUAL),
+];
+const NONE_HIDDEN = new Set<string>();
+
+const labels = (query: string, hidden: ReadonlySet<string> = NONE_HIDDEN, nodes = NODES) =>
+  searchRegions(nodes, query, hidden).suggestions.map((suggestion) => suggestion.label);
+
+describe("searchRegions", () => {
+  it("ordena: abreviatura exacta, que empieza por lo escrito, que lo contiene y nombre que lo contiene", () => {
+    expect(labels("te1")).toEqual(["TE1 (izq.)", "TE1a (izq.)", "TE1m (izq.)", "TE1m (der.)", "PTE1 (izq.)", "A5 (izq.)"]);
+  });
+
+  it("no distingue mayúsculas ni tildes, ni en lo escrito ni en el nombre", () => {
+    expect(normalizeSearch("  Área   TE1m ")).toBe("area te1m");
+    expect(labels("ÁREA te1 MIDDLE")).toEqual(["TE1m (izq.)", "TE1m (der.)"]);
+    expect(labels("area de", NONE_HIDDEN, [region("x1", "X1", "L", "Área de prueba")])).toEqual(["X1 (izq.)"]);
+  });
+
+  it(`sugiere como mucho ${SEARCH_LIMIT} regiones`, () => {
+    const many = Array.from({ length: 12 }, (_, i) => region(`r${i}`, `R${i}`, "L", `Región ${i}`));
+    expect(labels("r", NONE_HIDDEN, many)).toHaveLength(SEARCH_LIMIT);
+  });
+
+  it("cada sugerencia lleva el nombre sin «(hemisferio …)», y el lado solo si la abreviatura no lo lleva", () => {
+    expect(searchRegions(NODES, "te1m", NONE_HIDDEN).suggestions).toEqual([
+      { id: "l_te1m", label: "TE1m (izq.)", name: "Area TE1 Middle", network: AUDITORY },
+      { id: "r_te1m", label: "TE1m (der.)", name: "Area TE1 Middle", network: AUDITORY },
+    ]);
+    expect(labels("brain", NONE_HIDDEN, [region("bs", "BS", null, "Brain Stem")])).toEqual(["BS"]);
+  });
+
+  it("las abreviaturas con el lado se buscan y se ordenan sin él, con los números en su orden: el par queda junto", () => {
+    const brainnetome = [
+      region("sfg_10_1_l", "L_SFG_10_1", "L", "Superior frontal gyrus, area 10"),
+      region("sfg_7_2_r", "R_SFG_7_2", "R", "Superior frontal gyrus, area 7"),
+      region("sfg_7_1_r", "R_SFG_7_1", "R", "Superior frontal gyrus, area 7"),
+      region("sfg_7_2_l", "L_SFG_7_2", "L", "Superior frontal gyrus, area 7"),
+      region("sfg_7_1_l", "L_SFG_7_1", "L", "Superior frontal gyrus, area 7"),
+    ];
+    expect(labels("sfg", NONE_HIDDEN, brainnetome)).toEqual(["L_SFG_7_1", "R_SFG_7_1", "L_SFG_7_2", "R_SFG_7_2", "L_SFG_10_1"]);
+    expect(labels("l_sfg_7_1", NONE_HIDDEN, brainnetome)).toEqual(["L_SFG_7_1"]);
+    const gordon = [region("g12", "l_default_12", "L", "Default 12"), region("g2", "l_default_2", "L", "Default 2")];
+    expect(labels("default", NONE_HIDDEN, gordon)).toEqual(["l_default_2", "l_default_12"]);
+  });
+
+  it("solo sugiere regiones de redes visibles", () => {
+    expect(labels("1", new Set([AUDITORY]))).toEqual(["V1 (izq.)"]);
+  });
+
+  it("si lo escrito solo está en redes ocultas, lo dice y nombra la red", () => {
+    expect(searchRegions(NODES, "te1m", new Set([AUDITORY]))).toEqual({
+      suggestions: [],
+      hidden: { message: "TE1m está en la red Auditiva, que está oculta.", networks: [AUDITORY] },
+      noMatch: false,
+    });
+  });
+
+  it("una abreviatura exacta que solo está en redes ocultas se avisa aunque haya sugerencias visibles", () => {
+    const nodes = [
+      region("l_pf", "PF", "L", "Area PF Complex", FRONTOPARIETAL),
+      region("r_pf", "PF", "R", "Area PF Complex", FRONTOPARIETAL),
+      region("l_pfm", "PFm", "L", "Area PFm Complex", DEFAULT),
+    ];
+    expect(searchRegions(nodes, "pf", new Set([FRONTOPARIETAL]))).toEqual({
+      suggestions: [{ id: "l_pfm", label: "PFm (izq.)", name: "Area PFm Complex", network: DEFAULT }],
+      hidden: { message: "PF está en la red Frontoparietal, que está oculta.", networks: [FRONTOPARIETAL] },
+      noMatch: false,
+    });
+    expect(searchRegions(nodes, "pf", NONE_HIDDEN).hidden).toBeNull();
+  });
+
+  it("con coincidencias en varias redes ocultas, las nombra; con más de tres, dice cuántas", () => {
+    const split = [region("l_te1m", "TE1m", "L", "Area TE1 Middle"), region("r_te1m", "TE1m", "R", "Area TE1 Middle", VISUAL)];
+    expect(searchRegions(split, "te1m", new Set([AUDITORY, VISUAL])).hidden).toEqual({
+      message: "TE1m está en las redes Auditiva y Visual, que están ocultas.",
+      networks: [AUDITORY, VISUAL],
+    });
+    const spread = [AUDITORY, VISUAL, FRONTOPARIETAL, DEFAULT].map((network, i) => region(`r${i}`, `R${i}`, "L", `Región ${i}`, network));
+    expect(searchRegions(spread, "r", new Set([AUDITORY, VISUAL, FRONTOPARIETAL, DEFAULT])).hidden).toEqual({
+      message: "Lo escrito está en 4 redes ocultas.",
+      networks: [AUDITORY, VISUAL, FRONTOPARIETAL, DEFAULT],
+    });
+  });
+
+  it("sin nada escrito no busca, y sin ninguna coincidencia lo dice", () => {
+    expect(searchRegions(NODES, "   ", NONE_HIDDEN)).toEqual({ suggestions: [], hidden: null, noMatch: false });
+    expect(searchRegions(NODES, "zzz", NONE_HIDDEN)).toEqual({ suggestions: [], hidden: null, noMatch: true });
+  });
+});
+
+describe("defaultActiveIndex", () => {
+  const suggestions = ["a", "b", "c"].map((id) => ({ id, label: id, name: null, network: VISUAL }));
+
+  it("la primera sugerencia que no está ya seleccionada; si todas lo están, la primera", () => {
+    expect(defaultActiveIndex(suggestions, new Set())).toBe(0);
+    expect(defaultActiveIndex(suggestions, new Set(["a"]))).toBe(1);
+    expect(defaultActiveIndex(suggestions, new Set(["a", "b", "c"]))).toBe(0);
+  });
+});
+
+describe("searchKey", () => {
+  const open = { open: true, active: 1, count: 3, hasText: true };
+  const closed = { open: false, active: 0, count: 3, hasText: true };
+
+  it("con la lista abierta: flechas, Intro, Escape y Tab, como la lista del contexto de datos", () => {
+    expect(searchKey("ArrowDown", open)).toEqual({ kind: "move", index: 2 });
+    expect(searchKey("ArrowUp", open)).toEqual({ kind: "move", index: 0 });
+    expect(searchKey("Enter", open)).toEqual({ kind: "choose", index: 1 });
+    expect(searchKey("Escape", open)).toEqual({ kind: "close", keepDefault: false });
+    expect(searchKey("Tab", open)).toEqual({ kind: "close", keepDefault: true });
+    for (const key of [" ", "Home", "End", "a"]) expect(searchKey(key, open)).toEqual({ kind: "ignore" });
+  });
+
+  it("sin lista: la flecha abajo la abre y Escape vacía el campo a la primera", () => {
+    expect(searchKey("ArrowDown", closed)).toEqual({ kind: "open" });
+    expect(searchKey("ArrowDown", { ...closed, count: 0 })).toEqual({ kind: "ignore" });
+    expect(searchKey("Escape", closed)).toEqual({ kind: "clear" });
+    expect(searchKey("Escape", { ...closed, count: 0 })).toEqual({ kind: "clear" });
+    expect(searchKey("Escape", { ...closed, hasText: false })).toEqual({ kind: "ignore" });
+    expect(searchKey("Enter", closed)).toEqual({ kind: "ignore" });
+  });
+});
+
+describe("regionSearchShortcut", () => {
+  const NO_KEYS = { ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, repeat: false, defaultPrevented: false };
+  const key = (k: string, mods: Partial<KeyboardEvent> = {}) => ({ key: k, code: `Key${k.toUpperCase()}`, ...NO_KEYS, ...mods });
+  const body = { tagName: "BODY" };
+
+  it("Ctrl+K y ⌘K, también con un teclado sin letras latinas", () => {
+    expect(regionSearchShortcut(key("k", { ctrlKey: true }), body)).toBe(true);
+    expect(regionSearchShortcut(key("k", { metaKey: true }), body)).toBe(true);
+    expect(regionSearchShortcut({ ...key("л", { ctrlKey: true }), code: "KeyK" }, body)).toBe(true);
+  });
+
+  it("no con Mayús o Alt, repetida, ya atendida o dentro de otro campo de texto; en el propio buscador, sí", () => {
+    expect(regionSearchShortcut(key("k"), body)).toBe(false);
+    expect(regionSearchShortcut(key("K", { ctrlKey: true, shiftKey: true }), body)).toBe(false);
+    expect(regionSearchShortcut(key("k", { ctrlKey: true, altKey: true }), body)).toBe(false);
+    expect(regionSearchShortcut(key("k", { ctrlKey: true, repeat: true }), body)).toBe(false);
+    expect(regionSearchShortcut(key("k", { ctrlKey: true, defaultPrevented: true }), body)).toBe(false);
+    const field = { tagName: "INPUT", type: "text" };
+    expect(regionSearchShortcut(key("k", { ctrlKey: true }), field)).toBe(false);
+    expect(regionSearchShortcut(key("k", { ctrlKey: true }), field, true)).toBe(true);
+  });
+
+  it("el atajo se nombra como en cada sistema, igual que el de copiar", () => {
+    expect(searchShortcutLabel("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe("⌘K");
+    expect(searchShortcutLabel("Mozilla/5.0 (X11; Linux x86_64)")).toBe("Ctrl+K");
+  });
+});
+```
+
+Run: `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/regionSearch.test.ts`
+Expected: FAIL, porque no existe `./regionSearch`.
+
+- [ ] **Step 3: implementar `frontend/src/logic/regionSearch.ts`**
+
+Las tildes se quitan con `normalize("NFD")` y `\p{Mn}` (marcas que no ocupan espacio), con la bandera `u`, que `tsconfig.app.json` admite (`target` ES2023). El orden compara con `localeCompare(…, "es", { numeric: true })`, que pone 7 antes que 10.
+
+```ts
+// Buscador de regiones (D4 de docs/decisiones-diseno.md;
+// docs/rediseno-interfaz-diseno.md, 5.8): qué regiones sugiere lo escrito y
+// en qué orden, cuándo avisa de las redes ocultas, cuál queda activa, qué
+// hace cada tecla en el campo y cuándo Ctrl+K lleva a él. Funciones puras:
+// se prueban sin DOM.
+import type { GraphNode } from "../types/domain";
+import { shortcutLabel } from "./clipboard";
+import { SIDE_IN_ABBREVIATION, networkShortLabel, regionNameWithSide, regionTitleParts } from "./displayText";
+import { isTextEntry, type ShortcutTarget } from "./historyStep";
+import { listboxKey, type ListboxKeyResult } from "./listbox";
+
+// Como mucho, 8 sugerencias (spec 5.8).
+export const SEARCH_LIMIT = 8;
+
+// Sin mayúsculas ni tildes: «Área» y «area» son lo mismo. NFD separa cada
+// letra de su tilde, y \p{Mn} quita las tildes. Los espacios de más no
+// cuentan.
+export function normalizeSearch(text: string): string {
+  return text.normalize("NFD").replace(/\p{Mn}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+export interface RegionSuggestion {
+  id: string;
+  // La abreviatura, con su lado si no lo lleva: «TE1m (izq.)»
+  // (regionNameWithSide, logic/displayText.ts).
+  label: string;
+  // El nombre completo sin «(hemisferio …)», o null si no dice nada más
+  // (regionTitleParts).
+  name: string | null;
+  network: string;
+}
+
+// Aviso de las redes ocultas: qué dice y qué redes muestra su botón.
+export interface HiddenHint {
+  message: string;
+  networks: string[];
+}
+
+export interface RegionSearchResult {
+  // Sugerencias de las redes visibles, como mucho SEARCH_LIMIT.
+  suggestions: RegionSuggestion[];
+  // Aviso de las redes ocultas, si lo hay.
+  hidden: HiddenHint | null;
+  // Lo escrito no coincide con ninguna región, ni visible ni oculta.
+  noMatch: boolean;
+}
+
+interface Match {
+  node: GraphNode;
+  level: number;
+  // Abreviatura sin el lado (o nombre, si no la tiene), para ordenar.
+  sortKey: string;
+}
+
+// El nombre completo, sin «(hemisferio …)».
+function fullName(node: GraphNode): string {
+  const { main, secondary } = regionTitleParts(node);
+  return secondary ?? main;
+}
+
+// La abreviatura sin el lado que llevan algunas (SIDE_IN_ABBREVIATION):
+// «L_SFG_7_1» se busca y se ordena como «SFG_7_1», así que el par
+// izquierdo y derecho quedan juntos.
+function bareAbbreviation(node: GraphNode): string | null {
+  return node.abbreviation === null ? null : node.abbreviation.replace(SIDE_IN_ABBREVIATION, "");
+}
+
+// Nivel de una abreviatura: 0, exacta; 1, empieza por lo escrito; 2, lo
+// contiene. null si no coincide.
+function abbreviationLevel(abbreviation: string, query: string): number | null {
+  if (abbreviation === "") return null;
+  if (abbreviation === query) return 0;
+  if (abbreviation.startsWith(query)) return 1;
+  return abbreviation.includes(query) ? 2 : null;
+}
+
+// Nivel de la coincidencia (spec 5.8): el mejor de la abreviatura sin el
+// lado y de la entera (así «l_sfg_7_1» también encuentra L_SFG_7_1); si no,
+// 3, el nombre completo que lo contiene. null si no coincide.
+function matchLevel(node: GraphNode, query: string): number | null {
+  const levels = [bareAbbreviation(node), node.abbreviation]
+    .map((abbreviation) => (abbreviation === null ? null : abbreviationLevel(normalizeSearch(abbreviation), query)))
+    .filter((level): level is number => level !== null);
+  if (levels.length > 0) return Math.min(...levels);
+  return normalizeSearch(fullName(node)).includes(query) ? 3 : null;
+}
+
+// A igualdad de nivel, por abreviatura (con los números en su orden: 7
+// antes que 10) y por lado: izquierdo, derecho y sin hemisferio.
+const SIDE_ORDER = { L: 0, R: 1 } as const;
+const sideOrder = (node: GraphNode) => (node.hemisphere === null ? 2 : SIDE_ORDER[node.hemisphere]);
+
+function compareMatches(a: Match, b: Match): number {
+  return (
+    a.level - b.level ||
+    a.sortKey.localeCompare(b.sortKey, "es", { numeric: true }) ||
+    sideOrder(a.node) - sideOrder(b.node) ||
+    (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0)
+  );
+}
+
+function joinNames(names: readonly string[]): string {
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
+}
+
+// El aviso de las redes ocultas (spec 5.8): nombra la región, si todas las
+// coincidencias ocultas son la misma («TE1m», también las dos de un par), o
+// «Lo escrito», y su red o sus redes; con más de tres, solo cuántas. El
+// botón las muestra todas.
+function hiddenHint(matches: readonly Match[]): HiddenHint {
+  const networks = [...new Set(matches.map(({ node }) => node.network))];
+  const names = new Set(matches.map(({ node }) => bareAbbreviation(node) ?? regionTitleParts(node).main));
+  const who = names.size === 1 ? [...names][0] : "Lo escrito";
+  const where =
+    networks.length === 1
+      ? `la red ${networkShortLabel(networks[0])}, que está oculta`
+      : networks.length <= 3
+        ? `las redes ${joinNames(networks.map(networkShortLabel))}, que están ocultas`
+        : `${networks.length} redes ocultas`;
+  return { message: `${who} está en ${where}.`, networks };
+}
+
+export function searchRegions(
+  nodes: readonly GraphNode[],
+  query: string,
+  hiddenNetworks: ReadonlySet<string>,
+): RegionSearchResult {
+  const wanted = normalizeSearch(query);
+  if (wanted === "") return { suggestions: [], hidden: null, noMatch: false };
+  const matches: Match[] = [];
+  for (const node of nodes) {
+    const level = matchLevel(node, wanted);
+    if (level !== null) matches.push({ node, level, sortKey: normalizeSearch(bareAbbreviation(node) ?? fullName(node)) });
+  }
+  matches.sort(compareMatches);
+  // Solo redes visibles (spec 5.8): las regiones de una red oculta no se
+  // ven en las vistas.
+  const visible = matches.filter(({ node }) => !hiddenNetworks.has(node.network));
+  const inHidden = matches.filter(({ node }) => hiddenNetworks.has(node.network));
+  // El aviso sale si nada visible coincide, o si la abreviatura exacta solo
+  // está en redes ocultas, aunque haya sugerencias visibles: «pf» con la
+  // red de PF oculta lo dice, aunque se vean PFm y PFop.
+  const exact = matches.filter(({ level }) => level === 0);
+  const hidden =
+    visible.length === 0 && inHidden.length > 0
+      ? hiddenHint(inHidden)
+      : exact.length > 0 && exact.every(({ node }) => hiddenNetworks.has(node.network))
+        ? hiddenHint(exact)
+        : null;
+  return {
+    suggestions: visible.slice(0, SEARCH_LIMIT).map(({ node }) => ({
+      id: node.id,
+      label: regionNameWithSide(node),
+      name: regionTitleParts(node).secondary,
+      network: node.network,
+    })),
+    hidden,
+    noMatch: matches.length === 0,
+  };
+}
+
+export const NO_MATCH_TEXT = "Ninguna región coincide.";
+
+// Sugerencia activa al escribir: la primera, salvo que ya esté seleccionada;
+// entonces, la primera que no lo esté. Así, escribir «te1m» e Intro dos
+// veces añade las dos. Si todas lo están, la primera.
+export function defaultActiveIndex(suggestions: readonly RegionSuggestion[], selectedIds: ReadonlySet<string>): number {
+  const index = suggestions.findIndex((suggestion) => !selectedIds.has(suggestion.id));
+  return index === -1 ? 0 : index;
+}
+
+// Qué hace cada tecla en el campo (patrón combobox, spec 5.8). Con la lista
+// abierta, como en la lista del contexto de datos (logic/listbox.ts): las
+// flechas se mueven, Intro elige, Escape cierra y Tab cierra y sigue.
+// Espacio, Inicio y Fin son del campo: escriben o mueven el cursor. Sin
+// lista, la flecha abajo la abre y Escape vacía el campo a la primera.
+export type SearchKeyResult = ListboxKeyResult | { kind: "open" } | { kind: "clear" };
+
+export function searchKey(
+  key: string,
+  state: { open: boolean; active: number; count: number; hasText: boolean },
+): SearchKeyResult {
+  if (state.open) {
+    if (key === " " || key === "Home" || key === "End") return { kind: "ignore" };
+    return listboxKey(key, state.active, state.count);
+  }
+  if (key === "ArrowDown" && state.count > 0) return { kind: "open" };
+  if (key === "Escape" && state.hasText) return { kind: "clear" };
+  return { kind: "ignore" };
+}
+
+// Atajo del buscador (spec 5.8): Ctrl+K, o ⌘K en macOS, con la tecla física
+// si el teclado no tiene letras latinas. Las mismas reglas que los atajos
+// del historial (logic/historyStep.ts): no con Alt ni Mayús, ni con la tecla
+// repetida, ni si otro ya atendió el evento, ni dentro de otro campo de
+// texto. En el propio buscador sí (inRegionSearch): selecciona lo escrito.
+export function regionSearchShortcut(
+  event: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey" | "repeat" | "defaultPrevented">,
+  target: ShortcutTarget | null,
+  inRegionSearch = false,
+): boolean {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.repeat || event.defaultPrevented) return false;
+  const letter = /^[a-z]$/i.test(event.key) ? event.key.toLowerCase() : event.code === "KeyK" ? "k" : "";
+  return letter === "k" && (inRegionSearch || !isTextEntry(target));
+}
+
+// Cómo se escribe el atajo en cada sistema, como el de copiar
+// (logic/clipboard.ts): «⌘K» en macOS, «Ctrl+K» en los demás.
+export function searchShortcutLabel(userAgent: string): string {
+  return shortcutLabel("K", userAgent);
+}
+```
+
+Run: `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/regionSearch.test.ts`
+Expected: PASS (16 pruebas).
+
+- [ ] **Step 4: el componente**
+
+`frontend/src/components/RegionSearch.test.tsx`. Con `renderToStaticMarkup`, el buscador de verdad sale cerrado; la lista abierta, los avisos de las redes ocultas y «Ninguna región coincide.» se prueban con `RegionSearchView`, que recibe el estado, como en la Task 10.
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { RegionSearchResult } from "../logic/regionSearch";
+import { RegionSearch, RegionSearchView } from "./RegionSearch";
+
+const noop = () => {};
+const AUDITORY = "cole-anticevic.auditory";
+const VISUAL = "cole-anticevic.visual";
+const TE1M: RegionSearchResult["suggestions"] = [
+  { id: "l_te1m", label: "TE1m (izq.)", name: "Area TE1 Middle", network: AUDITORY },
+  { id: "r_te1m", label: "TE1m (der.)", name: "Area TE1 Middle", network: AUDITORY },
+];
+
+const HANDLERS = { onQueryChange: noop, onKeyDown: noop, onFocusChange: noop, onChoose: noop, onHover: noop, onShowNetworks: noop };
+
+function view(result: RegionSearchResult, open: boolean, selected: string[] = []) {
+  const state = { baseId: "busca", query: "te1m", result, open, active: 0, selectedIds: new Set(selected), shortcutLabel: "Ctrl+K" };
+  return renderToStaticMarkup(<RegionSearchView {...state} {...HANDLERS} />);
+}
+
+describe("RegionSearch", () => {
+  it("es un combobox con nombre y con su atajo, y empieza cerrado y sin lista", () => {
+    const html = renderToStaticMarkup(<RegionSearch nodes={[]} />);
+    const input = html.match(/<input[^>]*>/)?.[0] ?? "";
+    for (const attribute of ['role="combobox"', 'aria-autocomplete="list"', 'aria-expanded="false"', 'aria-keyshortcuts="Control+K Meta+K"']) {
+      expect(input).toContain(attribute);
+    }
+    expect(input).not.toContain("aria-controls");
+    expect(input).not.toContain("aria-activedescendant");
+    const id = input.match(/ id="([^"]+)"/)?.[1];
+    expect(html).toContain(`<label class="visually-hidden" for="${id}">Buscar una región</label>`);
+    expect(html).not.toContain('role="listbox"');
+  });
+
+  it("abierto, el campo controla la lista y apunta a la sugerencia activa", () => {
+    const html = view({ suggestions: TE1M, hidden: null, noMatch: false }, true, ["l_te1m"]);
+    expect(html).toContain('aria-expanded="true" aria-controls="busca-list" aria-activedescendant="busca-option-0"');
+    expect(html).toContain('<ul id="busca-list" class="region-search__list" role="listbox" aria-label="Regiones sugeridas">');
+    expect(html).toContain('<li id="busca-option-0" class="region-search__option region-search__option--active" role="option" aria-selected="true">');
+    expect(html).toContain('<li id="busca-option-1" class="region-search__option" role="option" aria-selected="false">');
+    expect(html).toContain('<span class="region-search__label">TE1m (izq.)</span><span class="region-search__name"> Area TE1 Middle</span>');
+    expect(html.match(/seleccionada/g)).toHaveLength(1);
+  });
+
+  it("los avisos van en una línea bajo el campo: el de las redes ocultas, con su botón, también junto a la lista", () => {
+    const one = view(
+      { suggestions: [], hidden: { message: "TE1m está en la red Auditiva, que está oculta.", networks: [AUDITORY] }, noMatch: false },
+      false,
+    );
+    expect(one).toContain(
+      '<div class="region-search__status" role="status"><span>TE1m está en la red Auditiva, que está oculta.</span><button type="button" class="filters__text-btn filters__text-btn--strong">Mostrar la red</button></div>',
+    );
+    expect(one).not.toContain('role="listbox"');
+    const both = view(
+      {
+        suggestions: TE1M,
+        hidden: { message: "TE1m está en las redes Auditiva y Visual, que están ocultas.", networks: [AUDITORY, VISUAL] },
+        noMatch: false,
+      },
+      true,
+    );
+    expect(both).toContain(">Mostrar las redes</button></div><ul");
+    expect(view({ suggestions: [], hidden: null, noMatch: true }, false)).toContain(
+      '<div class="region-search__status" role="status"><span>Ninguna región coincide.</span></div>',
+    );
+  });
+});
+```
+
+Run: `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/components/RegionSearch.test.tsx`
+Expected: FAIL, porque no existe `./RegionSearch`.
+
+`frontend/src/components/RegionSearch.tsx`. Tres detalles:
+- La lista solo está en la página mientras está abierta: la guarda de los atajos de la Task 10 mira si hay alguna lista abierta (`[role="listbox"]`), y una lista oculta pero presente la bloquearía siempre. `aria-controls` apunta a ella solo entonces, como en `DataContextMenu`.
+- Con dos líneas por sugerencia, ocho no caben en la lista. Un efecto desplaza la activa a la vista al abrir la lista, al escribir y con el teclado, y no con el ratón (la marca `scrollActiveRef`, como en `DataContextMenu`). Ajusta `list.scrollTop` a mano, con lo visible medido sin el borde (`clientTop`, `clientHeight`): `scrollIntoView` desplazaría también a `.app--workspace`, que tiene `overflow: hidden`.
+- El estado (`role="status"`) está siempre, para que se anuncie lo que aparezca en él. Va bajo el campo; la lista, que flota, bajo él.
+
+```tsx
+// Buscador de regiones (D4 de docs/decisiones-diseno.md;
+// docs/rediseno-interfaz-diseno.md, 5.8): un campo con autocompletado en
+// Filtros, sobre la selección, con el patrón combobox. Sugiere regiones de
+// las redes visibles (logic/regionSearch.ts). Elegir una la añade a la
+// selección con addNodes, del store de selección, así que es un paso que se
+// puede deshacer (5.7). El campo se vacía y conserva el foco, para seguir
+// añadiendo. Si lo buscado está en redes ocultas, lo dice en una línea bajo
+// el campo, con un botón para mostrarlas: una lista (listbox) no puede
+// llevar botones. Ctrl+K lleva aquí (useRegionSearchShortcut, desde App).
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import {
+  NO_MATCH_TEXT,
+  defaultActiveIndex,
+  searchKey,
+  searchRegions,
+  searchShortcutLabel,
+  type RegionSearchResult,
+} from "../logic/regionSearch";
+import { useFiltersStore } from "../state/filters";
+import { useSelectionStore } from "../state/selection";
+import { useDrawColors } from "../theme/useDrawColors";
+import type { GraphNode } from "../types/domain";
+import { Icon } from "./Icon";
+
+interface RegionSearchViewProps {
+  baseId: string;
+  query: string;
+  result: RegionSearchResult;
+  // La lista está abierta y active es la sugerencia activa.
+  open: boolean;
+  active: number;
+  selectedIds: ReadonlySet<string>;
+  shortcutLabel: string;
+  inputRef?: Ref<HTMLInputElement>;
+  listRef?: Ref<HTMLUListElement>;
+  onQueryChange: (query: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onFocusChange: (focused: boolean) => void;
+  onChoose: (index: number) => void;
+  // El ratón pasa por una sugerencia: pasa a ser la activa.
+  onHover: (index: number) => void;
+  onShowNetworks: (networks: readonly string[]) => void;
+}
+
+// El buscador sin estado: se prueba con cualquier resultado.
+export function RegionSearchView(props: RegionSearchViewProps) {
+  const { baseId, query, result, open, active, selectedIds, shortcutLabel, inputRef, listRef } = props;
+  const { onQueryChange, onKeyDown, onFocusChange, onChoose, onHover, onShowNetworks } = props;
+  const { networkColor } = useDrawColors();
+  const inputId = `${baseId}-input`;
+  const listId = `${baseId}-list`;
+  const optionId = (index: number) => `${baseId}-option-${index}`;
+  const hint = result.hidden;
+  return (
+    <div className="region-search">
+      <label className="visually-hidden" htmlFor={inputId}>Buscar una región</label>
+      <div className="region-search__field">
+        <Icon name="search" size={14} className="region-search__icon" />
+        <input
+          ref={inputRef}
+          id={inputId}
+          className="region-search__input"
+          type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-activedescendant={open ? optionId(active) : undefined}
+          aria-keyshortcuts="Control+K Meta+K"
+          placeholder={`Buscar región (${shortcutLabel})`}
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={onKeyDown}
+          onFocus={() => onFocusChange(true)}
+          onBlur={() => onFocusChange(false)}
+        />
+      </div>
+      {/* Siempre presente, para que se anuncie lo que aparezca en ella. Va
+          bajo el campo; la lista, que flota, bajo ella. */}
+      <div className="region-search__status" role="status">
+        {hint && (
+          <>
+            <span>{hint.message}</span>
+            <button
+              type="button"
+              className="filters__text-btn filters__text-btn--strong"
+              onClick={() => onShowNetworks(hint.networks)}
+            >
+              {hint.networks.length === 1 ? "Mostrar la red" : "Mostrar las redes"}
+            </button>
+          </>
+        )}
+        {result.noMatch && <span>{NO_MATCH_TEXT}</span>}
+      </div>
+      {/* La lista solo está en la página mientras está abierta: la guarda de
+          los atajos de deshacer busca listas abiertas ([role="listbox"]).
+          Un clic en ella no se lleva el foco del campo. */}
+      {open && (
+        <ul
+          ref={listRef}
+          id={listId}
+          className="region-search__list"
+          role="listbox"
+          aria-label="Regiones sugeridas"
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          {result.suggestions.map((suggestion, index) => (
+            <li
+              key={suggestion.id}
+              id={optionId(index)}
+              className={`region-search__option${index === active ? " region-search__option--active" : ""}`}
+              role="option"
+              aria-selected={index === active}
+              onClick={() => onChoose(index)}
+              onMouseMove={() => onHover(index)}
+            >
+              <span className="region-search__dot" style={{ backgroundColor: networkColor(suggestion.network) }} aria-hidden="true" />
+              <span className="region-search__text">
+                <span className="region-search__label">{suggestion.label}</span>
+                {suggestion.name && <span className="region-search__name"> {suggestion.name}</span>}
+              </span>
+              {selectedIds.has(suggestion.id) && (
+                <span className="region-search__selected">
+                  <span className="visually-hidden">, </span>seleccionada
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
+  const hiddenNetworks = useFiltersStore((state) => state.hiddenNetworks);
+  const toggleNetwork = useFiltersStore((state) => state.toggleNetwork);
+  const selectedNodeIds = useSelectionStore((state) => state.selectedNodeIds);
+  const addNodes = useSelectionStore((state) => state.addNodes);
+  const [query, setQuery] = useState("");
+  // null: la sugerencia activa por defecto (defaultActiveIndex).
+  const [active, setActive] = useState<number | null>(null);
+  // Escape cerró la lista; se vuelve a abrir al escribir o con la flecha abajo.
+  const [dismissed, setDismissed] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // Si la sugerencia activa debe desplazarse a la vista: al abrir la lista,
+  // al escribir y con el teclado, nunca al pasar el ratón (como en
+  // DataContextMenu).
+  const scrollActiveRef = useRef(true);
+  const baseId = useId();
+
+  const result = useMemo(() => searchRegions(nodes, query, hiddenNetworks), [nodes, query, hiddenNetworks]);
+  const { suggestions } = result;
+  const open = focused && !dismissed && suggestions.length > 0;
+  const current = Math.min(active ?? defaultActiveIndex(suggestions, selectedNodeIds), Math.max(suggestions.length - 1, 0));
+
+  // La sugerencia activa, a la vista: con dos líneas cada una, ocho no caben
+  // en la lista. Se ajusta list.scrollTop a mano, porque scrollIntoView
+  // desplazaría también a .app--workspace, que tiene overflow: hidden. Lo
+  // visible se mide sin el borde (clientTop, clientHeight).
+  useEffect(() => {
+    if (!open || !scrollActiveRef.current) return;
+    scrollActiveRef.current = false;
+    const list = listRef.current;
+    const option = document.getElementById(`${baseId}-option-${current}`);
+    if (!list || !option) return;
+    const top = list.getBoundingClientRect().top + list.clientTop;
+    const bottom = top + list.clientHeight;
+    const box = option.getBoundingClientRect();
+    if (box.top < top) list.scrollTop -= top - box.top;
+    else if (box.bottom > bottom) list.scrollTop += box.bottom - bottom;
+  }, [open, current, baseId]);
+
+  const restart = (text: string) => {
+    scrollActiveRef.current = true;
+    setQuery(text);
+    setActive(null);
+    setDismissed(false);
+  };
+
+  // Elegir una región la añade a la selección (spec 5.8). Si ya estaba, no
+  // cambia nada: ni siquiera se llama a addNodes, que crearía otro Set.
+  const choose = (index: number) => {
+    const suggestion = suggestions[index];
+    if (!suggestion) return;
+    if (!selectedNodeIds.has(suggestion.id)) addNodes([suggestion.id]);
+    restart("");
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const action = searchKey(event.key, { open, active: current, count: suggestions.length, hasText: query !== "" });
+    switch (action.kind) {
+      case "ignore":
+        return;
+      case "move":
+        event.preventDefault();
+        scrollActiveRef.current = true;
+        setActive(action.index);
+        return;
+      case "choose":
+        event.preventDefault();
+        choose(action.index);
+        return;
+      case "close":
+        if (!action.keepDefault) event.preventDefault();
+        setDismissed(true);
+        return;
+      case "open":
+        event.preventDefault();
+        scrollActiveRef.current = true;
+        setActive(null);
+        setDismissed(false);
+        return;
+      case "clear":
+        event.preventDefault();
+        restart("");
+        return;
+      default: {
+        // Comprobación exhaustiva, como en DataContextMenu: un resultado
+        // nuevo de searchKey que no se trate aquí no compila.
+        const exhaustive: never = action;
+        return exhaustive;
+      }
+    }
+  };
+
+  const onFocusChange = (isFocused: boolean) => {
+    if (isFocused) scrollActiveRef.current = true;
+    setFocused(isFocused);
+  };
+
+  const onHover = (index: number) => {
+    scrollActiveRef.current = false;
+    setActive(index);
+  };
+
+  // «Mostrar la red» o «Mostrar las redes»: dejan de estar ocultas, la lista
+  // vuelve a abrirse y el foco vuelve al campo, donde ya salen sus regiones.
+  const showNetworks = (networks: readonly string[]) => {
+    for (const network of networks) toggleNetwork(network);
+    scrollActiveRef.current = true;
+    setDismissed(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <RegionSearchView
+      baseId={baseId}
+      query={query}
+      result={result}
+      open={open}
+      active={current}
+      selectedIds={selectedNodeIds}
+      shortcutLabel={searchShortcutLabel(typeof navigator === "undefined" ? "" : navigator.userAgent)}
+      inputRef={inputRef}
+      listRef={listRef}
+      onQueryChange={restart}
+      onKeyDown={onKeyDown}
+      onFocusChange={onFocusChange}
+      onChoose={choose}
+      onHover={onHover}
+      onShowNetworks={showNetworks}
+    />
+  );
+}
+```
+
+Run: `cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/components/RegionSearch.test.tsx`
+Expected: PASS (3 pruebas).
+
+- [ ] **Step 5: el atajo**
+
+`frontend/src/components/useRegionSearchShortcut.ts`. Es un `.ts`, como `useHistoryShortcuts.ts`, por la misma razón (`only-export-components`). La guarda de listas abiertas deja fuera la del propio buscador: con el foco en el campo, Ctrl+K selecciona lo escrito.
+
+```ts
+// Atajo del buscador de regiones (D4 de docs/decisiones-diseno.md;
+// docs/rediseno-interfaz-diseno.md, 5.8): Ctrl+K (⌘K) lleva el foco al
+// buscador desde cualquier sitio de la vista Atlas. El mismo diseño que los
+// atajos del historial (useHistoryShortcuts): un escuchador en window, solo
+// en la vista Atlas, con la decisión en una función pura
+// (logic/regionSearch.ts, regionSearchShortcut). No actúa mientras está
+// abierta una lista desplegable, salvo la del propio buscador, o el panel de
+// Ajustes. Anula lo que haría el navegador con Ctrl+K.
+import { useEffect, useRef } from "react";
+import { regionSearchShortcut } from "../logic/regionSearch";
+
+const OPEN_POPUP = '[role="listbox"]:not(.region-search__list), .settings__panel';
+
+// Lleva el foco al campo del buscador que haya en container y selecciona lo
+// escrito, para poder sustituirlo.
+export function focusRegionSearch(container: ParentNode | null) {
+  const input = container?.querySelector<HTMLInputElement>(".region-search__input");
+  input?.focus();
+  input?.select();
+}
+
+export function useRegionSearchShortcut(enabled: boolean, onShortcut: () => void) {
+  // La función más reciente, sin volver a poner el escuchador en cada render.
+  const onShortcutRef = useRef(onShortcut);
+  useEffect(() => {
+    onShortcutRef.current = onShortcut;
+  });
+  useEffect(() => {
+    if (!enabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (document.querySelector(OPEN_POPUP)) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (!regionSearchShortcut(event, target, target?.classList.contains("region-search__input") ?? false)) return;
+      event.preventDefault();
+      onShortcutRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [enabled]);
+}
+```
+
+- [ ] **Step 6: el buscador en `frontend/src/components/FilterPanel.tsx`**
+
+1. Tras `import { Icon } from "./Icon";` añade `import { RegionSearch } from "./RegionSearch";`.
+2. Justo antes de `      <div className="filters__selection">` (la fila de la selección, que la Task 10 dejó con «Limpiar» y los botones de deshacer), añade:
+
+   ```tsx
+         {/* Buscador de regiones (D4; spec 5.8), justo encima de la selección,
+             porque ahí se arma el montaje. */}
+         <RegionSearch nodes={nodes} />
+
+   ```
+
+   El panel ya recibe los nodos cargados (`nodes`).
+
+- [ ] **Step 7: Ctrl+K en `frontend/src/App.tsx`**
+
+1. Tras `import { useHistoryShortcuts } from "./components/useHistoryShortcuts";` (Task 10) añade `import { focusRegionSearch, useRegionSearchShortcut } from "./components/useRegionSearchShortcut";`.
+2. Justo después del efecto del aviso con «Deshacer» de la Task 10, el único de `App.tsx` que termina con `  }, [source]);`, añade lo de abajo. Con Filtros plegado, el atajo lo despliega con `setFiltersCollapsed(false)` y no con `toggleFilters` (Task 4), que dejaría el foco en el botón de plegar: aquí va al buscador, cuando ya está en la página. `filtersRef` es el de la Task 4.
+
+   ```tsx
+     // Ctrl+K (⌘K) lleva al buscador de regiones, en la vista Atlas (D4 de
+     // docs/decisiones-diseno.md; spec 5.8). Con Filtros plegado, primero lo
+     // despliega, y el foco llega cuando el buscador ya está en la página.
+     const focusSearchAfterExpand = useRef(false);
+     useEffect(() => {
+       if (filtersCollapsed || !focusSearchAfterExpand.current) return;
+       focusSearchAfterExpand.current = false;
+       focusRegionSearch(filtersRef.current);
+     }, [filtersCollapsed]);
+     useRegionSearchShortcut(view === "atlas", () => {
+       if (!filtersCollapsed) {
+         focusRegionSearch(filtersRef.current);
+         return;
+       }
+       focusSearchAfterExpand.current = true;
+       setFiltersCollapsed(false);
+     });
+   ```
+
+- [ ] **Step 8: estilos en `frontend/src/App.css`**
+
+Añade al final del archivo:
+
+```css
+
+/* Buscador de regiones (spec 5.8), en Filtros sobre la selección. La lista
+   de sugerencias flota sobre el panel, con su ancho. El anillo de foco lo
+   lleva el recuadro del campo, que incluye la lupa. */
+.region-search { position: relative; margin-bottom: 10px; }
+.region-search__field { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--code-bg); color: var(--text-muted); }
+.region-search__field:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.region-search__icon { flex-shrink: 0; }
+.region-search__input { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0; border: none; background: transparent; color: var(--text-h); font: inherit; font-size: 0.72rem; }
+.region-search__input:focus-visible { outline: none; }
+.region-search__input::placeholder { color: var(--text-muted); opacity: 1; }
+.region-search__list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 18rem; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--panel-bg); box-shadow: var(--shadow); }
+.region-search__option { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 0.72rem; line-height: 1.35; color: var(--text); cursor: pointer; }
+.region-search__option:hover { background: var(--hover); }
+/* El foco se queda en el campo: la sugerencia activa lleva el contorno del
+   foco (spec 8), porque el fondo --hover solo no se distingue lo bastante,
+   y sus textos grises pasan a --text, que sí llega a 4,5:1 sobre él. */
+.region-search__option--active { background: var(--hover); color: var(--text-h); outline: 2px solid var(--accent); outline-offset: -2px; }
+.region-search__option--active .region-search__name, .region-search__option--active .region-search__selected { color: var(--text); }
+.region-search__dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.region-search__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.region-search__label { font-weight: 600; color: var(--text-h); }
+.region-search__name { color: var(--text-muted); overflow-wrap: anywhere; }
+.region-search__selected { flex-shrink: 0; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+.region-search__status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+.region-search__status:not(:empty) { margin-top: 6px; }
+```
+
+- [ ] **Step 9: comprobar**
+
+```bash
+cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npm test && npx tsc -b && npm run lint && npm run build
+grep -nE "#[0-9a-fA-F]{3,8}\b|rgba?\(" src/App.css src/components/RegionSearch.tsx
+```
+
+Expected: BASE + 129 pruebas en verde (244 con una BASE de 115). El `grep`, como en la Task 4. Lo demás, como antes. En la aplicación real lo comprueba la Task 13 (fase `buscador`).
+
+- [ ] **Step 10: commit**
+
+```bash
+cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/logic/historyStep.ts frontend/src/logic/clipboard.ts frontend/src/logic/displayText.ts frontend/src/logic/regionSearch.ts frontend/src/logic/regionSearch.test.ts frontend/src/components/RegionSearch.tsx frontend/src/components/RegionSearch.test.tsx frontend/src/components/useRegionSearchShortcut.ts frontend/src/components/FilterPanel.tsx frontend/src/App.tsx frontend/src/App.css
+git commit -m "Estructura: buscador de regiones con autocompletado y Ctrl+K
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+## Chunk 10: verificación en la app real, primera parte
+
+### Task 12: verificación en la app real: preparación, barra, temas, síntesis, teclado y avisos
 
 **Files:**
 - Create: una carpeta nueva en el scratchpad, con los scripts de verificación, una copia de la versión anterior a esta fase y lo que generen. Nada de esto entra en el repositorio.
 
-La verificación ocupa dos tareas. Esta prepara la carpeta, los dos servidores y los ayudantes, y hace las fases de la barra, los temas, las síntesis, el teclado y los avisos. La Task 12 hace las vistas, los filtros, la exportación y el deshacer, y revisa todo. La Task 13 escribe la D4 con lo que se haya visto.
+La verificación ocupa dos tareas. Esta prepara la carpeta, los dos servidores y los ayudantes, y hace las fases de la barra, los temas, las síntesis, el teclado y los avisos. La Task 13 hace las vistas, los filtros, la exportación, el deshacer y el buscador, y revisa todo. La Task 14 escribe la D4 con lo que se haya visto.
 
 **Reglas del navegador.**
 
@@ -5854,7 +6849,7 @@ La verificación ocupa dos tareas. Esta prepara la carpeta, los dos servidores y
 - Si Playwright falla, la alternativa es `google-chrome --headless=new --user-data-dir=<carpeta del scratchpad>`. Nunca Chrome con el perfil de la usuaria.
 - Los puertos 5173 (el de la usuaria) y 5199 (el que mira la usuaria) no se usan.
 - Cada fase se lanza en su propia orden, con `timeout` y un tiempo límite largo, o en segundo plano. Al terminar cada una no deben quedar navegadores sueltos (Step 6).
-- Los servidores de desarrollo se paran al terminar la Task 12.
+- Los servidores de desarrollo se paran al terminar la Task 13.
 - La plantilla de la fase 1 es `/tmp/claude-1000/-home-dae-PycharmProjects-Neurograph-Neurograph/6f1cd430-11e0-4483-a66a-eec44d813eed/scratchpad/task9-final-20260924-194434/` (`final.cjs`, con la versión anterior servida aparte y los JSON guardados). Si ya no existe, los scripts de abajo bastan.
 
 **Honestidad.**
@@ -5871,7 +6866,7 @@ La verificación ocupa dos tareas. Esta prepara la carpeta, los dos servidores y
 cd /home/dae/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npm test && npx tsc -b && npm run lint && npm run build
 ```
 
-Expected: BASE + 110 pruebas en verde (225 con una BASE de 115); `tsc` limpio; lint sin errores y con los mismos 9 avisos; `✓ built`.
+Expected: BASE + 127 pruebas en verde (242 con una BASE de 115); `tsc` limpio; lint sin errores y con los mismos 9 avisos; `✓ built`.
 
 - [ ] **Step 2: carpeta de trabajo, versión anterior y estado de la copia principal**
 
@@ -5897,7 +6892,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 // Copia de la rama antes de la fase 3, solo para comparar las
-// exportaciones (Task 12). cacheDir propio, fuera del worktree.
+// exportaciones (Task 13). cacheDir propio, fuera del worktree.
 export default defineConfig({
   plugins: [react()],
   cacheDir: '<ruta de $D>/vite-cache-antes',
@@ -5916,9 +6911,9 @@ ss -ltn | grep -E ':(5241|5242) ' || echo "5241 y 5242 libres"
 Si alguno está ocupado, elige otros dos libres y cámbialos en todos estos sitios:
 - el `server.port` del `vite.config.ts` de la copia anterior (Step 2);
 - las dos órdenes de arranque de abajo;
-- `PORT` y `PORT_ANTES` en cada orden que lanza una fase (Step 6 de esta tarea y Step 3 de la Task 12);
-- la comprobación de puertos del Step 0 de la Task 12;
-- las órdenes que paran los servidores y el `ss` del Step 6 de la Task 12.
+- `PORT` y `PORT_ANTES` en cada orden que lanza una fase (Step 6 de esta tarea y Step 3 de la Task 13);
+- la comprobación de puertos del Step 0 de la Task 13;
+- las órdenes que paran los servidores y el `ss` del Step 6 de la Task 13.
 
 Arranca los dos en segundo plano (`run_in_background`), cada uno en su orden, y apunta el identificador de tarea de cada uno:
 
@@ -5937,7 +6932,7 @@ Los datos reales los sirve el backend de la usuaria, en `127.0.0.1:8420`, que ac
 Crea `$D/lib-fase3.cjs`. Los usan los dos scripts de fases:
 
 ```js
-// Ayudantes de la verificación de la fase 3 (Tasks 11 y 12 de
+// Ayudantes de la verificación de la fase 3 (Tasks 12 y 13 de
 // docs/rediseno-interfaz-plan-fase3.md). Playwright 1.55 de
 // /home/dae/PycharmProjects/gh3.2 (solo se carga), Chromium sin interfaz y
 // perfil desechable. Todo lo que se genera va a la carpeta de este archivo.
@@ -6302,7 +7297,7 @@ module.exports = {
 Crea `$D/verify-fase3.cjs`:
 
 ```js
-// Verificación de la fase 3, primera parte (Task 11 de
+// Verificación de la fase 3, primera parte (Task 12 de
 // docs/rediseno-interfaz-plan-fase3.md): barra superior, temas, síntesis,
 // teclado y avisos.
 //   PORT=5241 PORT_ANTES=5242 TMPDIR=<carpeta>/tmp node verify-fase3.cjs <fase>
@@ -6744,7 +7739,7 @@ Primero «preflight», que espera a los dos servidores, guarda `regions.json` y 
 cd "$D" && PORT=5241 PORT_ANTES=5242 TMPDIR="$D/tmp" timeout 300 node verify-fase3.cjs preflight
 ```
 
-Si termina con código 2, mira `preflight.json`. Si falta el backend o HCP-MMP1.0, no lances las demás fases, que necesitan datos reales: dilo en el informe y en la D4, y pasa a la Task 12 solo para parar los servidores. Si falta un servidor, revisa el Step 3. Con código 3 solo falta Brainnetome: lanza las demás fases igualmente, y el cambio de atlas de `teclado` y de `deshacer` quedará «sin comprobar».
+Si termina con código 2, mira `preflight.json`. Si falta el backend o HCP-MMP1.0, no lances las demás fases, que necesitan datos reales: dilo en el informe y en la D4, y pasa a la Task 13 solo para parar los servidores. Si falta un servidor, revisa el Step 3. Con código 3 solo falta Brainnetome: lanza las demás fases igualmente, y el cambio de atlas de `teclado` y de `deshacer` quedará «sin comprobar».
 
 Después, cada fase en su propia orden, con un tiempo límite de 15 minutos (`temas` abre doce navegadores; mejor en segundo plano):
 
@@ -6764,45 +7759,45 @@ Expected: «sin navegadores sueltos». Si lista alguno, ciérralos y vuelve a co
 pkill -f "$D/tm[p]"
 ```
 
-Si una fase falla por una suposición del script (un selector, un tiempo de espera), corrígela, anótalo y repite esa fase. Si falla por la app, sigue: la Task 12 revisa todo y corrige.
+Si una fase falla por una suposición del script (un selector, un tiempo de espera), corrígela, anótalo y repite esa fase. Si falla por la app, sigue: la Task 13 revisa todo y corrige.
 
 ---
 
-## Chunk 10: verificación en la app real, segunda parte
+## Chunk 11: verificación en la app real, segunda parte
 
-### Task 12: verificación en la app real: vistas, filtros, exportación, deshacer y revisión
+### Task 13: verificación en la app real: vistas, filtros, exportación, deshacer, buscador y revisión
 
 **Files:**
-- Create: más archivos en la carpeta `$D` de la Task 11. Nada de esto entra en el repositorio.
+- Create: más archivos en la carpeta `$D` de la Task 12. Nada de esto entra en el repositorio.
 - Modify: solo los arreglos del Step 5, si hacen falta.
 
-Siguen las reglas del navegador y de honestidad de la Task 11.
+Siguen las reglas del navegador y de honestidad de la Task 12.
 
-- [ ] **Step 0: la carpeta y los servidores de la Task 11**
+- [ ] **Step 0: la carpeta y los servidores de la Task 12**
 
-Si esta tarea empieza en otra sesión, o si la Task 11 terminó hace rato, recupera la carpeta, la más reciente:
+Si esta tarea empieza en otra sesión, o si la Task 12 terminó hace rato, recupera la carpeta, la más reciente:
 
 ```bash
 D=$(ls -dt /tmp/claude-1000/-home-dae-PycharmProjects-Neurograph-Neurograph/6f1cd430-11e0-4483-a66a-eec44d813eed/scratchpad/fase3-verif-* | head -1) && echo "$D"
 ss -ltn | grep -E ':(5241|5242) ' || echo "no hay ningún servidor en marcha"
 ```
 
-Apunta la ruta, que sustituye a `$D` en lo que sigue, como en la Task 11. Tienen que salir los dos puertos. Si falta alguno, arráncalo con su orden del Step 3 de la Task 11. Después, vuelve a lanzar «preflight», que espera a los dos servidores y guarda otra vez los datos:
+Apunta la ruta, que sustituye a `$D` en lo que sigue, como en la Task 12. Tienen que salir los dos puertos. Si falta alguno, arráncalo con su orden del Step 3 de la Task 12. Después, vuelve a lanzar «preflight», que espera a los dos servidores y guarda otra vez los datos:
 
 ```bash
 cd "$D" && PORT=5241 PORT_ANTES=5242 TMPDIR="$D/tmp" timeout 300 node verify-fase3.cjs preflight
 ```
 
-Con código 2 o 3, lo mismo que en el Step 6 de la Task 11.
+Con código 2 o 3, lo mismo que en el Step 6 de la Task 12.
 
 - [ ] **Step 1: las fases de la segunda parte**
 
 Crea `$D/verify-fase3-b.cjs`:
 
 ```js
-// Verificación de la fase 3, segunda parte (Task 12 de
-// docs/rediseno-interfaz-plan-fase3.md): vistas, filtros, exportación y
-// deshacer.
+// Verificación de la fase 3, segunda parte (Task 13 de
+// docs/rediseno-interfaz-plan-fase3.md): vistas, filtros, exportación,
+// deshacer y buscador.
 //   PORT=5241 PORT_ANTES=5242 TMPDIR=<carpeta>/tmp node verify-fase3-b.cjs <fase> [argumentos]
 const {
   BASE, BASE_ANTES, CONNECTOGRAM,
@@ -7283,7 +8278,198 @@ async function phaseDeshacer() {
   });
 }
 
-run({ vistas: phaseVistas, filtros: phaseFiltros, exportar: phaseExportar, deshacer: phaseDeshacer });
+// Buscador de regiones (spec 5.8), con HCP-MMP1.0: las sugerencias de
+// «te1m»; Intro dos veces, con el foco en el campo; Ctrl+Z; las flechas con
+// ocho sugerencias y Escape; los avisos de redes ocultas (las de TE1m, una
+// abreviatura exacta oculta con otras visibles y varias redes a la vez);
+// Ctrl+K desde el connectograma, con Filtros desplegado y plegado; y tildes.
+// En Claro, la lista con una región ya seleccionada, para la captura.
+async function phaseBuscador() {
+  const r = {};
+  await recording("buscador.json", r, async () => {
+    const regions = readJson("regions.json");
+    const te1m = regions.filter((row) => row.abbreviation === "TE1m");
+    r.te1m = te1m.map((row) => ({ id: row.id, hemisferio: row.hemisphere, red: row.network }));
+    // Nombres con tildes en la base: NFD los cambia. Si no hay ninguno, las
+    // tildes se prueban escribiéndolas sobre nombres que no las llevan.
+    const accented = regions.filter((row) => row.label.normalize("NFD") !== row.label);
+    r.nombresConTilde = accented.length;
+    // Para el aviso de la abreviatura exacta oculta: una abreviatura que es
+    // el principio de otras de otras redes. PF si vale (PFm, PFop, PFt…).
+    const bare = (abbreviation) => abbreviation.replace(/^[lr]_|_[lr]$/i, "").toLowerCase();
+    const groups = new Map();
+    for (const row of regions.filter((item) => item.abbreviation)) {
+      groups.set(bare(row.abbreviation), [...(groups.get(bare(row.abbreviation)) ?? []), row]);
+    }
+    const candidates = [...groups.keys()].sort((a, b) => (a === "pf" ? -1 : b === "pf" ? 1 : a < b ? -1 : 1));
+    r.exactaOculta = null;
+    for (const key of candidates) {
+      const networks = [...new Set(groups.get(key).map((row) => row.network))];
+      const weaker = regions.filter((row) => row.abbreviation && bare(row.abbreviation) !== key && bare(row.abbreviation).startsWith(key) && !networks.includes(row.network));
+      if (weaker.length === 0) continue;
+      r.exactaOculta = { abreviatura: groups.get(key)[0].abbreviation, redes: networks, visibles: weaker.map((row) => row.abbreviation) };
+      break;
+    }
+    for (const theme of ["grafito", "claro"]) {
+      const { browser, page, errors } = await launch(1440, 900);
+      const t = (r[theme] = { errores: errors });
+      const input = page.locator(".region-search__input");
+      const labels = () => page.locator(".region-search__label").allTextContents();
+      const selectionText = () => page.locator(".filters__selection > span").first().textContent();
+      // El campo: su valor, si tiene el foco, si la lista está abierta, la
+      // sugerencia activa, las que dicen «seleccionada» y el texto del estado
+      // (sin el botón).
+      const field = () =>
+        page.evaluate(() => {
+          const el = document.querySelector(".region-search__input");
+          const active = document.getElementById(el.getAttribute("aria-activedescendant") ?? "");
+          return {
+            valor: el.value,
+            foco: document.activeElement === el,
+            abierta: el.getAttribute("aria-expanded"),
+            activa: active?.querySelector(".region-search__label")?.textContent ?? null,
+            seleccionadas: [...document.querySelectorAll(".region-search__option")]
+              .filter((option) => option.querySelector(".region-search__selected"))
+              .map((option) => option.querySelector(".region-search__label").textContent),
+            estado: document.querySelector(".region-search__status > span")?.textContent ?? "",
+            boton: document.querySelector(".region-search__status button")?.textContent ?? null,
+          };
+        });
+      const type = async (text) => {
+        await input.fill("");
+        await input.click();
+        await page.keyboard.type(text);
+        await page.waitForTimeout(200);
+      };
+      const hideNetworks = (keys) =>
+        page.evaluate(async (list) => {
+          const { NETWORK_LABELS } = await import("/src/theme/networks.ts");
+          for (const key of list) {
+            const name = NETWORK_LABELS[key] ?? key;
+            const label = [...document.querySelectorAll(".filters__network label")].find((l) => l.title.startsWith(`${name} — `));
+            const box = label?.querySelector("input");
+            if (box?.checked) box.click();
+          }
+        }, keys);
+      try {
+        await load(page, theme);
+        await enlarge(page, "Connectograma");
+        await type("te1m");
+        t.sugerencias = await labels();
+        t.alEscribir = await field();
+        if (theme === "claro") {
+          // Con una ya seleccionada, para ver «seleccionada» en este tema.
+          await page.keyboard.press("Enter");
+          await page.keyboard.type("te1m");
+          await page.waitForTimeout(200);
+          t.otraVez = await field();
+          await page.screenshot({ path: out("buscador-claro-1-sugerencias.png") });
+          continue;
+        }
+        await page.screenshot({ path: out("buscador-grafito-1-sugerencias.png") });
+        // Intro añade la activa; el campo se vacía y conserva el foco.
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(200);
+        t.trasIntro = { seleccion: await selectionText(), ...(await field()) };
+        // Otra vez «te1m»: la activa es la primera que no está seleccionada.
+        await page.keyboard.type("te1m");
+        await page.waitForTimeout(200);
+        t.otraVez = await field();
+        await page.screenshot({ path: out("buscador-grafito-2-seleccionada.png") });
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(200);
+        t.trasSegundoIntro = { seleccion: await selectionText(), ...(await field()) };
+        // En el campo, Ctrl+Z es del campo (spec 5.7): se sale con Tab.
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Control+z");
+        await page.waitForTimeout(300);
+        t.trasCtrlZ = { seleccion: await selectionText(), ids: (await selectionState(page)).nodes };
+        // Flechas: «1» da ocho sugerencias, más de las que caben en la lista;
+        // la activa sigue a la vista. Escape cierra y deja lo escrito; otro,
+        // vacía el campo.
+        await type("1");
+        t.flechas = { sugerencias: (await labels()).length };
+        for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        t.flechas.activa = await page.evaluate(() => {
+          const list = document.querySelector(".region-search__list");
+          const option = document.querySelector(".region-search__option--active");
+          if (!list || !option) return null;
+          const top = list.getBoundingClientRect().top + list.clientTop;
+          const bottom = top + list.clientHeight;
+          const box = option.getBoundingClientRect();
+          return {
+            posicion: [...list.children].indexOf(option),
+            aLaVista: box.top >= top - 0.5 && box.bottom <= bottom + 0.5,
+            desplazada: list.scrollTop > 0,
+          };
+        });
+        await page.screenshot({ path: out("buscador-grafito-3-flechas.png") });
+        await page.keyboard.press("Escape");
+        t.flechas.trasEscape = await field();
+        await page.keyboard.press("Escape");
+        t.flechas.trasOtroEscape = await field();
+        // Las redes de TE1m, ocultas: el aviso, sin lista, y su botón.
+        const networks = [...new Set(te1m.map((row) => row.network))];
+        t.redEsperada = await page.evaluate(
+          async (key) => (await import("/src/logic/displayText.ts")).networkShortLabel(key),
+          (te1m.find((row) => row.hemisphere === "L") ?? te1m[0]).network,
+        );
+        await hideNetworks(networks);
+        await type("te1m");
+        t.redOculta = { ...(await field()), lista: await page.locator(".region-search__list").count() };
+        await page.screenshot({ path: out("buscador-grafito-4-red-oculta.png") });
+        await page.locator(".region-search__status button").click();
+        await page.waitForTimeout(300);
+        t.trasMostrar = { sugerencias: await labels(), ...(await field()) };
+        // Una abreviatura exacta oculta, con otras más débiles visibles.
+        await page.locator(".ws-filters button", { hasText: "Todas" }).click();
+        if (r.exactaOculta) {
+          await hideNetworks(r.exactaOculta.redes);
+          await type(r.exactaOculta.abreviatura.toLowerCase());
+          t.exactaOculta = { sugerencias: await labels(), ...(await field()) };
+          await page.screenshot({ path: out("buscador-grafito-5-exacta-oculta.png") });
+          await page.locator(".ws-filters button", { hasText: "Todas" }).click();
+        }
+        // Varias redes ocultas: con «Ninguna», «1» está en muchas.
+        await page.locator(".ws-filters button", { hasText: "Ninguna" }).click();
+        await type("1");
+        t.variasRedes = await field();
+        await page.locator(".region-search__status button").click();
+        await page.waitForTimeout(300);
+        t.trasMostrarLasRedes = { sugerencias: (await labels()).length, ...(await field()) };
+        // Ctrl+K desde el connectograma, con Filtros desplegado y plegado.
+        const heading = page.locator(".ws-view--main .ws-view__header h2");
+        await heading.focus();
+        await page.keyboard.press("Control+k");
+        await page.waitForTimeout(200);
+        t.ctrlK = { foco: (await field()).foco };
+        await page.locator(".filters__collapse").click();
+        await page.waitForTimeout(300);
+        await heading.focus();
+        await page.keyboard.press("Control+k");
+        await page.waitForTimeout(400);
+        t.ctrlKPlegado = {
+          desplegado: (await page.locator(".filters__collapse").count()) === 1,
+          foco: await page.evaluate(() => document.activeElement?.classList.contains("region-search__input") ?? false),
+        };
+        // Tildes y mayúsculas, con todas las redes visibles.
+        await page.locator(".ws-filters button", { hasText: "Todas" }).click();
+        await type("ÁREA TE1 MIDDLE");
+        t.conTildes = await labels();
+        if (accented.length > 0) {
+          const plain = accented[0].label.normalize("NFD").replace(/\p{Mn}/gu, "").slice(0, 12);
+          await type(plain);
+          t.sinTildes = { buscado: plain, original: accented[0].label, opciones: await page.locator(".region-search__option").allTextContents() };
+        }
+      } finally {
+        await browser.close();
+      }
+    }
+  });
+}
+
+run({ vistas: phaseVistas, filtros: phaseFiltros, exportar: phaseExportar, deshacer: phaseDeshacer, buscador: phaseBuscador });
 ```
 
 - [ ] **Step 2: el análisis de las exportaciones**
@@ -7291,7 +8477,7 @@ run({ vistas: phaseVistas, filtros: phaseFiltros, exportar: phaseExportar, desha
 Crea `$D/analizar-exportaciones.py`. Usa PIL y numpy, que ya están instalados (los usó la verificación de la fase 1):
 
 ```python
-"""Exportaciones de la verificación de la fase 3 (Task 12 de docs/rediseno-interfaz-plan-fase3.md).
+"""Exportaciones de la verificación de la fase 3 (Task 13 de docs/rediseno-interfaz-plan-fase3.md).
 
 Cada JPEG: que se decodifica, que tiene las esquinas blancas y que mide lo
 esperado (el SVG por 3; el lienzo 3D, lo que mide el lienzo; la leyenda,
@@ -7372,13 +8558,13 @@ for key, value in report.items():
 
 - [ ] **Step 3: ejecutar**
 
-Cada fase en su propia orden, como en la Task 11, y sin navegadores sueltos al terminar cada una (la misma comprobación con `pgrep`):
+Cada fase en su propia orden, como en la Task 12, y sin navegadores sueltos al terminar cada una (la misma comprobación con `pgrep`):
 
 ```bash
 cd "$D" && PORT=5241 PORT_ANTES=5242 TMPDIR="$D/tmp" timeout 900 node verify-fase3-b.cjs vistas
 ```
 
-Lo mismo con `filtros` y `deshacer`, y con la exportación en las dos versiones y los dos temas: `exportar nueva grafito`, `exportar nueva original`, `exportar anterior grafito` y `exportar anterior original`. Después:
+Lo mismo con `filtros`, `deshacer` y `buscador`, y con la exportación en las dos versiones y los dos temas: `exportar nueva grafito`, `exportar nueva original`, `exportar anterior grafito` y `exportar anterior original`. Después:
 
 ```bash
 cd "$D" && python3 analizar-exportaciones.py "$D"
@@ -7461,15 +8647,27 @@ Abre las capturas (`$D/*.png`) con la herramienta Read y los `$D/*.json`. Cada p
   - ◎ sustituye el montaje por las regiones de esa red, con el aviso «Se sustituyó la selección de 3 regiones» (`trasResaltar`). «Limpiar» deja «Ninguna región seleccionada», con «Se vació la selección de 3 regiones» (`trasLimpiar`).
   - Un arrastre del deslizador cambia el valor; «Deshacer» lo describe como «Deshacer: peso mínimo de 0 (sin filtro, se muestra todo) a …», y un solo Ctrl+Z lo devuelve al de antes (`arrastreDeshecho` igual a `antes`).
   - Cuando llega Yeo 7, los dos botones vuelven a llevar `aria-disabled="true"` (`trasCambiarClasificacion`). Tras «Limpiar», «Deshacer» vuelve a estar activo (`antesDeCambiarAtlas`), y tras cambiar de atlas, los dos vuelven a llevar `aria-disabled="true"`.
+- **Buscador** (`buscador.json` y `buscador-*.png`), con HCP-MMP1.0. El texto del estado (`estado`) es el del aviso sin el botón, que va aparte (`boton`):
+  - Al escribir «te1m», las dos primeras sugerencias son «TE1m (izq.)» y «TE1m (der.)» (`grafito.sugerencias` y `claro.sugerencias`), la lista está abierta (`alEscribir.abierta` `"true"`) y la activa es la primera (`alEscribir.activa`).
+  - Intro añade la activa: «1 región seleccionada», el campo vacío (`trasIntro.valor` `""`) y con el foco (`trasIntro.foco`).
+  - Otra vez «te1m»: «TE1m (izq.)» dice «seleccionada» (`otraVez.seleccionadas`) y la activa es «TE1m (der.)», la primera que no está seleccionada. Intro la añade: «2 regiones seleccionadas», con el foco en el campo.
+  - Fuera del campo (con Tab, porque en él Ctrl+Z es del campo), Ctrl+Z quita la última: «1 región seleccionada», y queda la TE1m izquierda (`trasCtrlZ.ids`, contra `te1m`).
+  - Flechas: «1» da 8 sugerencias (`flechas.sugerencias`), más de las que caben en la lista. Tras siete flechas abajo, la activa es la octava (`flechas.activa.posicion` 7) y sigue a la vista (`aLaVista`), con la lista desplazada (`desplazada`). Escape cierra la lista y deja «1» (`trasEscape`: `abierta` `"false"`, `valor` `"1"`); otro Escape vacía el campo (`trasOtroEscape.valor` `""`).
+  - Con las redes de TE1m ocultas, «te1m» no abre lista (`redOculta.lista` 0) y el estado empieza por «TE1m está en la red X» (o «en las redes», si TE1m está en dos), con X = `redEsperada` (Auditiva, si `te1m` dice que su red es la auditiva de Cole-Anticevic). Tras su botón, TE1m vuelve a salir (`trasMostrar.sugerencias`) y el foco está en el campo.
+  - Abreviatura exacta oculta: con las redes de `exactaOculta.abreviatura` ocultas (PF, si alguna abreviatura que empieza por PF está en otra red), su búsqueda sugiere las visibles que empiezan igual (`grafito.exactaOculta.sugerencias`, de `exactaOculta.visibles`) y, a la vez, el estado dice «PF está en la red X, que está oculta.», con «Mostrar la red». Si `exactaOculta` es null, «sin comprobar».
+  - Varias redes: con todas ocultas («Ninguna»), «1» no sugiere nada y el estado dice «Lo escrito está en …», con las redes (hasta tres) o cuántas son, y el botón «Mostrar las redes» (`variasRedes`). Tras pulsarlo, 8 sugerencias y el foco en el campo (`trasMostrarLasRedes`).
+  - Ctrl+K desde el connectograma deja el foco en el campo (`ctrlK.foco`); con Filtros plegado, lo despliega y también (`ctrlKPlegado`).
+  - Tildes y mayúsculas: «ÁREA TE1 MIDDLE» sugiere las dos TE1m (`conTildes`). Si `nombresConTilde` es 0, la base no tiene nombres con tildes: dilo, y esa búsqueda, con tildes sobre nombres que no las llevan, es la prueba. Si es mayor que 0, el nombre con tildes aparece también al buscarlo sin ellas (`sinTildes`).
+  - Capturas: en Grafito y en Claro (este, con TE1m izquierda ya seleccionada), la lista se lee, con el punto de color de la red y su anillo, la abreviatura con su lado, el nombre y «seleccionada», y ningún texto por debajo de 0,7rem. La sugerencia activa lleva el contorno del color de acento, y su nombre y su «seleccionada» se leen sobre el fondo. En `buscador-grafito-3-flechas.png`, la octava a la vista; en `buscador-grafito-4-red-oculta.png` y `buscador-grafito-5-exacta-oculta.png`, el aviso bajo el campo, con su botón, y en la segunda también la lista, bajo el aviso.
 - **Consola:** ningún error fuera de los esperados: el 500 simulado de `avisos` y los de la tractografía de `otras`. El aviso de three.js sobre `THREE.Clock` no es un error.
 
 - [ ] **Step 5: si algo no cuadra**
 
-Corrígelo en el código, con las reglas de la tarea de la que venga, y vuelve a pasar el Step 1 de la Task 11. Haz un commit aparte con los archivos que cambies, con un mensaje `Estructura: …`. Repite la fase que lo mostró; si el arreglo toca `App.tsx` o `App.css`, repite todas las fases de las Tasks 11 y 12. Apúntalo para la D4.
+Corrígelo en el código, con las reglas de la tarea de la que venga, y vuelve a pasar el Step 1 de la Task 12. Haz un commit aparte con los archivos que cambies, con un mensaje `Estructura: …`. Repite la fase que lo mostró; si el arreglo toca `App.tsx` o `App.css`, repite todas las fases de las Tasks 12 y 13. Apúntalo para la D4.
 
 - [ ] **Step 6: parar los servidores y comprobar la copia principal**
 
-Para los dos `vite` que arrancaste en la Task 11: por su identificador de tarea en segundo plano, o, si ya no lo tienes, con estas dos órdenes. En el patrón, `524[1]` encuentra `5241` en la línea de órdenes de `vite`, pero no en la de la propia búsqueda:
+Para los dos `vite` que arrancaste en la Task 12: por su identificador de tarea en segundo plano, o, si ya no lo tienes, con estas dos órdenes. En el patrón, `524[1]` encuentra `5241` en la línea de órdenes de `vite`, pero no en la de la propia búsqueda:
 
 ```bash
 pkill -f "vite --port 524[1]"; pkill -f "vite --port 524[2]"
@@ -7487,9 +8685,9 @@ Expected: «servidores parados», «sin navegadores sueltos» y «copia principa
 
 ---
 
-## Chunk 11: decisión y spec
+## Chunk 12: decisión y spec
 
-### Task 13: D4, retoques del spec y commit
+### Task 14: D4, retoques del spec y commit
 
 **Files:**
 - Modify: `docs/decisiones-diseno.md` (la D4, al final)
@@ -7536,7 +8734,7 @@ En `docs/rediseno-interfaz-diseno.md`, añade o cambia lo siguiente, con el mism
   - La barra va en una fila. Si no cabe, pliega lo secundario por este orden, y solo lo que haga falta: «Datos reales» se queda en su punto, «Importar» en su icono, las síntesis inactivas en el suyo y, al final, las vistas inactivas.
   - «Datos de demostración» nunca se pliega. Lo plegado conserva su nombre para los lectores de pantalla y su etiqueta emergente, que aparece también con el foco del teclado. El punto de «Datos reales» no se enfoca.
   - La barra mide si cabe (`logic/topBarFit.ts`, atributo `data-collapse`), porque lo que ocupa depende del contenido. Si ni así cabe, pasa a dos filas.
-  - Añade los valores medidos en la Task 11 (fases `barra` y `sintesis`, revisadas en la Task 12): 1400, 1280 y 1024 px y con dos síntesis de nombre largo.
+  - Añade los valores medidos en la Task 12 (fases `barra` y `sintesis`, revisadas en la Task 13): 1400, 1280 y 1024 px y con dos síntesis de nombre largo.
 - **5.1, punto 3 (contexto de datos):**
   - El botón «Redes» solo aparece si el atlas tiene más de una clasificación cargada, como hasta ahora.
   - La lista marca la opción elegida con ✓, y Tab también la cierra.
@@ -7583,16 +8781,24 @@ En `docs/rediseno-interfaz-diseno.md`, añade o cambia lo siguiente, con el mism
   - Las regiones se nombran con su lado, «añadir IFJa (der.) a la selección», salvo si la abreviatura ya lo dice. Quitar la única región seleccionada es «quitar IFJa (der.) de la selección», no «limpiar la selección».
   - El peso se escribe como en Filtros: el ejemplo pasa a «peso mínimo de 1.0e-3 a 4.0e-3».
   - El teclado no actúa con la tecla repetida por mantenerla pulsada, si otro ya atendió el evento, ni mientras está abierta una lista desplegable o el panel de Ajustes. Con un teclado sin letras latinas, mira la tecla física.
+- **5.8** (la desviación 16):
+  - Con la lista abierta, espacio, Inicio y Fin son del campo; con la lista cerrada, la flecha abajo la vuelve a abrir. Sin lista, el primer Escape ya vacía el campo.
+  - La sugerencia activa al escribir es la primera que no está ya seleccionada (si todas lo están, la primera): así, «te1m» e Intro dos veces añade las dos TE1m. Lleva el contorno del color de acento, se desplaza a la vista con el teclado y el ratón también la cambia.
+  - Los avisos van en una línea bajo el campo, y la lista bajo ella. Sin coincidencias: «Ninguna región coincide.». El de las redes ocultas sale también si la abreviatura exacta solo está en redes ocultas, aunque haya otras sugerencias; nombra sus redes, hasta tres, o cuántas son, y «Mostrar la red» o «Mostrar las redes» las muestra todas y devuelve el foco al campo.
+  - Las abreviaturas con el lado (Brainnetome, Gordon) se buscan y se ordenan sin él, con los números en su orden. A igualdad de nivel y abreviatura: izquierdo, derecho y sin hemisferio.
+  - La lista solo está en la página mientras está abierta, y `aria-controls` solo entonces.
+  - Ctrl+K funciona en la vista Atlas; en el propio buscador, selecciona lo escrito; no actúa con Mayús ni con otra lista desplegable o el panel de Ajustes abiertos. El marcador de posición lo dice: «Buscar región (Ctrl+K)», o «(⌘K)» en macOS.
+  - Con el foco en el buscador, Ctrl+Z es del campo (5.7): la región añadida se deshace con ↶, o con Ctrl+Z fuera del campo.
 - **9, tras el párrafo «Fase 1.»:** un párrafo **Fase 3** con las unidades que el spec no nombraba:
-  - `NetworkTag.tsx` (`NetworkTag`, `RegionSummary`), `DataStatus` en `TopBar.tsx`, `HistoryButtons.tsx` (con `HistoryButtonsView`) y `useHistoryShortcuts.ts`.
+  - `NetworkTag.tsx` (`NetworkTag`, `RegionSummary`), `DataStatus` en `TopBar.tsx`, `HistoryButtons.tsx` (con `HistoryButtonsView`), `useHistoryShortcuts.ts`, `RegionSearchView` en `RegionSearch.tsx`, `useRegionSearchShortcut.ts`, e `isTextEntry` en `logic/historyStep.ts`, la guarda de los campos de texto que comparten los dos atajos.
   - Los nueve módulos de `logic/`: `topBarFit`, `listbox`, `dataContext`, `displayText`, `toastQueue`, `desktopOnly`, `filterCounts`, `regionConnections` y `clipboard`.
   - `SettingsPopover` es el `SettingsMenu` de la fase 1.
   - `ATLASES` sigue en `App.tsx`.
-- **10:** las pruebas de la fase 3 son de lógica pura (los módulos de arriba, `historyStep` y el store `history`) y de marcado con `renderToStaticMarkup` (`TopBar`, `Toast`, `FilterPanel`, `Connectogram`, `DetailPanel` y `HistoryButtons`).
+- **10:** las pruebas de la fase 3 son de lógica pura (los módulos de arriba, `historyStep`, `regionSearch` y el store `history`) y de marcado con `renderToStaticMarkup` (`TopBar`, `Toast`, `FilterPanel`, `Connectogram`, `DetailPanel`, `HistoryButtons` y `RegionSearch`).
 - **11:** la frase del orden de implementación ya está (commit `51644c9`); añade «(D4)» tras ella.
-- **12, «Fuente en el JPEG»:** la frase «En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3» pasa a decir que desde la fase 3 (D4) la leyenda mide su texto en pantalla y ensancha su `<svg>`, y que su recuadro se desplaza en horizontal si no cabe en el panel. Añade la consecuencia en la exportación: con etiquetas cortas el JPEG sale igual que antes; con largas, del ancho mayor de los dos, el de la pantalla o el de la fuente de la exportación, así que puede salir algo más ancho que antes, pero nunca cortado. Pon los anchos medidos en la Task 12.
+- **12, «Fuente en el JPEG»:** la frase «En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3» pasa a decir que desde la fase 3 (D4) la leyenda mide su texto en pantalla y ensancha su `<svg>`, y que su recuadro se desplaza en horizontal si no cabe en el panel. Añade la consecuencia en la exportación: con etiquetas cortas el JPEG sale igual que antes; con largas, del ancho mayor de los dos, el de la pantalla o el de la fuente de la exportación, así que puede salir algo más ancho que antes, pero nunca cortado. Pon los anchos medidos en la Task 13.
 
-Si en el Step 5 de la Task 12 cambiaste algo que el spec describe, retócalo también.
+Si en el Step 5 de la Task 13 cambiaste algo que el spec describe, retócalo también.
 
 - [ ] **Step 3: escribir la D4 al final de `docs/decisiones-diseno.md`**
 
@@ -7602,10 +8808,10 @@ Toma la D3 de ese mismo archivo como modelo: su forma, sus encabezados en negrit
 - Párrafos con encabezado en negrita:
   - **Motivación.** La interfaz tenía aspecto de alfa: la barra superior mezclaba navegación, datos y acciones, y la información no tenía jerarquía. Es la estructura común a los cuatro temas de la D3.
   - **Orden de las fases.** La fase 3 se hizo antes que la 2 (paleta suave). Lo propusimos nosotros, porque lo que más pesaba en la petición inicial era la estructura (el menú superior, el logo y la jerarquía), y la usuaria nos dejó seguir en autónomo. No digas que lo eligió ella. La fase 3 no depende de la 2: los colores de red siguen saliendo de `resolveNetworkColor(clave)`, con un solo argumento.
-  - **Decidido por la usuaria** (24/09/2026). Pidió deshacer y rehacer, porque un clic de más le hacía perder un montaje. Se valoró también una barra de estado fija al pie, y ella la descartó el mismo día: la maqueta ya da ese feedback donde se usa (la selección y el recuento de Filtros, el recuadro de lectura y el panel de detalle), y el pie lo repetiría. En la misma revisión del spec se añadieron el recuento del recuadro de lectura y los nombres de ◎ y +.
-  - **Qué cambia.** Una lista, con una línea por cada parte: la barra superior y cómo se pliega, con los valores medidos en la Task 11 a 1400, 1280 y 1024 px y con dos síntesis; el contexto de datos accesible con el teclado; el estado de los datos; los avisos, arriba a la derecha, e Importar solo en la aplicación de escritorio; los filtros con recuentos; las cabeceras, las herramientas, la lupa como botón de alternar y «Ampliar»; los recuadros de lectura, con el recuento; el panel de detalle; deshacer y rehacer, con sus botones, sus atajos y su aviso (anunciado por una región viva, con un tiempo que se para con el ratón o el foco encima); y lo que la D3 dejó para esta fase: la barra (di que cabe en una fila y a qué altura solo si la Task 11 lo midió), los anillos neutros de las muestras, el foco del color de acento y la leyenda de la selección múltiple, que en pantalla ya no corta las etiquetas largas.
-  - **Qué no cambia.** El estado, los stores y los manejadores del desarrollador principal, con estas excepciones, que se dicen una a una: la cola de avisos sustituye a las dos franjas con el mismo flujo; `handleImportSynthesis` pregunta antes a `isTauri()` y separa sus mensajes en texto comprensible y «Detalles», con los mensajes nuevos; `handleChangeAtlas` llama además a `resetHistory()`, y un efecto nuevo lo llama cuando llega otra clasificación (el menú de redes no cambia). Los stores de selección y de filtros no cambian: el historial se suscribe a ellos. Tampoco cambian `NETWORK_COLORS`, la lógica de representación, la disposición de la D1 (una vista grande, dos miniaturas, filtros a la izquierda y detalle a la derecha, con sus secciones de filtros plegables) ni los gráficos, que son la fase 4.
-  - **Desviaciones del spec.** Las de este plan, incluido el cambio de «Se ven N de M» por «N de M conexiones pasan los filtros», y las que añadiera el Step 5 de la Task 12.
+  - **Decidido por la usuaria** (24/09/2026). Pidió deshacer y rehacer, porque un clic de más le hacía perder un montaje. Se valoró también una barra de estado fija al pie, y ella la descartó el mismo día: la maqueta ya da ese feedback donde se usa (la selección y el recuento de Filtros, el recuadro de lectura y el panel de detalle), y el pie lo repetiría. En la misma revisión del spec se añadieron el recuento del recuadro de lectura y los nombres de ◎ y +. El mismo día pidió un buscador de regiones, porque localizar a ojo una región entre 360 es muy difícil: decidió que fuera en Filtros, sobre la selección, y que solo sugiriera regiones de las redes visibles.
+  - **Qué cambia.** Una lista, con una línea por cada parte: la barra superior y cómo se pliega, con los valores medidos en la Task 12 a 1400, 1280 y 1024 px y con dos síntesis; el contexto de datos accesible con el teclado; el estado de los datos; los avisos, arriba a la derecha, e Importar solo en la aplicación de escritorio; los filtros con recuentos; las cabeceras, las herramientas, la lupa como botón de alternar y «Ampliar»; los recuadros de lectura, con el recuento; el panel de detalle; deshacer y rehacer, con sus botones, sus atajos y su aviso (anunciado por una región viva, con un tiempo que se para con el ratón o el foco encima); el buscador de regiones, con su autocompletado, el aviso de las redes ocultas y Ctrl+K; y lo que la D3 dejó para esta fase: la barra (di que cabe en una fila y a qué altura solo si la Task 12 lo midió), los anillos neutros de las muestras, el foco del color de acento y la leyenda de la selección múltiple, que en pantalla ya no corta las etiquetas largas.
+  - **Qué no cambia.** El estado, los stores y los manejadores del desarrollador principal, con estas excepciones, que se dicen una a una: la cola de avisos sustituye a las dos franjas con el mismo flujo; `handleImportSynthesis` pregunta antes a `isTauri()` y separa sus mensajes en texto comprensible y «Detalles», con los mensajes nuevos; `handleChangeAtlas` llama además a `resetHistory()`, y un efecto nuevo lo llama cuando llega otra clasificación (el menú de redes no cambia); y Ctrl+K despliega Filtros con su `setFiltersCollapsed` de siempre. Los stores de selección y de filtros no cambian: el historial se suscribe a ellos, y el buscador usa sus `addNodes` y `toggleNetwork`. Un comentario de `state/selection.ts`, que no se toca, queda desfasado: dice que el botón «Añadir a selección» de `FilterPanel` es el único sitio que llama a `addNodes`, y el buscador también lo llama. Dilo en la D4, para que lo sepa el desarrollador principal. Tampoco cambian `NETWORK_COLORS`, la lógica de representación, la disposición de la D1 (una vista grande, dos miniaturas, filtros a la izquierda y detalle a la derecha, con sus secciones de filtros plegables) ni los gráficos, que son la fase 4.
+  - **Desviaciones del spec.** Las de este plan, incluido el cambio de «Se ven N de M» por «N de M conexiones pasan los filtros», y las que añadiera el Step 5 de la Task 13.
   - **Limitaciones conocidas:**
     - la ventana real de Tauri no se ha comprobado;
     - comprobación manual pendiente para la usuaria: Importar en la aplicación de escritorio, con el diálogo real (aquí se probó con Tauri simulado en el navegador, con la validación de siempre);
@@ -7613,12 +8819,12 @@ Toma la D3 de ese mismo archivo como modelo: su forma, sus encabezados en negrit
     - quien usa el teclado sin lector de pantalla no ve la etiqueta emergente del punto de «Datos reales», que no se enfoca;
     - con movimiento reducido, el indicador de carga de «Redes» no gira (queda un arco quieto) y no hay ningún «cargando…» a la vista: el texto solo lo oyen los lectores de pantalla;
     - los errores de carga de las pestañas de tractografía, si los hubo en la fase `otras`, son de la base de datos, no de esta fase;
-    - lo que las Tasks 11 y 12 dejaran sin ver, con las regiones que los scripts no pudieron seleccionar (`sinComprobar`).
+    - lo que las Tasks 12 y 13 dejaran sin ver, con las regiones que los scripts no pudieron seleccionar (`sinComprobar`).
   - **Pregunta abierta para la usuaria:** el peso de las conexiones conserva su formato de siempre, que puede llegar a 22 cifras. ¿Redondearlo, con el valor exacto en la etiqueta emergente?
-  - **Verificación.** Describe el método aquí mismo, como la D3, sin remitir al scratchpad, que se borra con la sesión: Chromium sin interfaz (Playwright), un servidor de desarrollo propio y el backend local con datos reales, solo con peticiones GET; la versión anterior a la fase servida aparte y los mismos datos guardados para las dos, porque `GET /connections` no devuelve siempre el mismo orden; y cada región se selecciona comprobando, en el recuadro de lectura y en la selección, que es la buscada. Después, lo que se vio en las Tasks 11 y 12: temas y anchos, barra, síntesis, teclado, avisos, vistas, filtros contra la referencia, exportaciones comparadas con las de la versión anterior y deshacer. Añade el número de pruebas, `tsc` limpio, lint con los mismos 9 avisos y la compilación.
+  - **Verificación.** Describe el método aquí mismo, como la D3, sin remitir al scratchpad, que se borra con la sesión: Chromium sin interfaz (Playwright), un servidor de desarrollo propio y el backend local con datos reales, solo con peticiones GET; la versión anterior a la fase servida aparte y los mismos datos guardados para las dos, porque `GET /connections` no devuelve siempre el mismo orden; y cada región se selecciona comprobando, en el recuadro de lectura y en la selección, que es la buscada. Después, lo que se vio en las Tasks 12 y 13: temas y anchos, barra, síntesis, teclado, avisos, vistas, filtros contra la referencia, exportaciones comparadas con las de la versión anterior, deshacer y el buscador. Añade el número de pruebas, `tsc` limpio, lint con los mismos 9 avisos y la compilación.
   - **Queda para las fases 2 y 4.** Fase 2: la paleta suave y «Colores de las redes» en Ajustes; los consumidores nuevos de color de red (`NetworkTag` y las filas del detalle, con `useDrawColors().networkColor`, y las muestras de los filtros, con `resolveNetworkColor`) pasan a la versión con tema y modo. Fase 4: la leyenda del connectograma (5.4), los gráficos (sección 6), la atenuación por profundidad y la captura del 3D sin parpadeo.
 - Al final, la línea con las secciones del spec retocadas en el Step 2, como la de la D3.
-- Enlaza `docs/rediseno-interfaz-diseno.md` (secciones 5.1 y 5.3 a 5.7) y este plan, `docs/rediseno-interfaz-plan-fase3.md`.
+- Enlaza `docs/rediseno-interfaz-diseno.md` (secciones 5.1 y 5.3 a 5.8) y este plan, `docs/rediseno-interfaz-plan-fase3.md`.
 
 - [ ] **Step 4: commit**
 
