@@ -365,7 +365,7 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 
 ## 11. Fases
 
-Cada fase es una decisión de `docs/analisis-arquitectura.md` (la siguiente libre es la 77), con su propio commit. Todas dejan la aplicación correcta.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D; la primera libre es la D3), con su propio commit. Todas dejan la aplicación correcta.
 
 1. **Base de temas.**
    - Tokens de interfaz y de dibujo conectados en todos los componentes.

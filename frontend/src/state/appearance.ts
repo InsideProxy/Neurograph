@@ -1,4 +1,4 @@
-// Tema elegido y modo de la paleta de redes (decisión 77;
+// Tema elegido y modo de la paleta de redes (D3 de docs/decisiones-diseno.md;
 // docs/rediseno-interfaz-diseno.md, 4.5). paletteMode null = automático:
 // "original" con el tema 1 y "suave" con los demás. La paleta suave llega
 // en la fase 2, pero el formato guardado ya la incluye para no tener que

@@ -53,13 +53,13 @@ Modificados:
 - `main.tsx`, `index.css`, `App.css` y `App.tsx` (en `App.tsx` solo se añade el engranaje a la barra).
 - `logic/exportImage.ts` y `logic/surfaceParcels.ts`, con su prueba.
 - Componentes: `Connectogram.tsx`, `Hemisferios.tsx`, `DetailPanel.tsx`, `FilterPanel.tsx`, `FunctionSynthesisTab.tsx`, `Brain3D.tsx`, `PaintedCortex.tsx`, `ReferenceMesh.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx`.
-- Documentos: `docs/analisis-arquitectura.md` (decisión 77) y `docs/rediseno-interfaz-diseno.md` (dos filas nuevas).
+- Documentos: `docs/decisiones-diseno.md` (decisión de diseño D3) y `docs/rediseno-interfaz-diseno.md` (retoques del spec).
 
 **No se toca ningún valor de `theme/networks.ts`.**
 
 ## Diferencias con el spec en esta fase
 
-La Task 9 las anota en el spec (sección 9) y en la decisión 77:
+La Task 9 las anota en el spec (sección 9) y en la D3:
 
 - **`UI_TOKENS`:** no existe en TypeScript. Los tokens de interfaz viven solo en `index.css`. La vista previa de cada tema en Ajustes los toma de ahí: cada bloque de tema se aplica también a `[data-theme-preview="<id>"]`, así que no se repiten en TypeScript.
 - **Modo de paleta:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` todavía no lo reciben (`kind` es el tipo de atributo, color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2.
@@ -203,7 +203,7 @@ Expected: FAIL, porque no existen `./themes` ni `./colors`.
 - [ ] **Step 3: implementar `frontend/src/theme/themes.ts`**
 
 ```ts
-// Temas de NeuroGraph (decisión 77; docs/rediseno-interfaz-diseno.md,
+// Temas de NeuroGraph (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md,
 // secciones 4.1 y 4.2). Los colores de interfaz viven en index.css, un
 // bloque por `data-theme`. Aquí están los de DIBUJO: lo que se pinta dentro
 // de los SVG y del lienzo 3D, que no pueden leer variables CSS. En
@@ -569,7 +569,7 @@ Expected: FAIL, porque no existe `./appearance`.
 - [ ] **Step 3: implementar `frontend/src/state/appearance.ts`**
 
 ```ts
-// Tema elegido y modo de la paleta de redes (decisión 77;
+// Tema elegido y modo de la paleta de redes (D3 de docs/decisiones-diseno.md;
 // docs/rediseno-interfaz-diseno.md, 4.5). paletteMode null = automático:
 // "original" con el tema 1 y "suave" con los demás. La paleta suave llega
 // en la fase 2, pero el formato guardado ya la incluye para no tener que
@@ -658,7 +658,7 @@ import './index.css'
 import App from './App.tsx'
 import { applyThemeToDocument, useAppearanceStore } from './state/appearance'
 
-// Tema antes del primer render (decisión 77): sin esto se vería un instante
+// Tema antes del primer render (D3 de docs/decisiones-diseno.md): sin esto se vería un instante
 // el tema por defecto de index.css antes del elegido.
 applyThemeToDocument(useAppearanceStore.getState().theme)
 
@@ -730,7 +730,7 @@ La fuente Mono se pide igual.
 Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cierra ese bloque, justo antes de `#root {`. En su lugar va este texto. El resto del archivo (`#root`, `body`, `h1`, `h2`, `p` y `code`) no cambia.
 
 ```css
-/* Tipografía (decisión 77; docs/rediseno-interfaz-diseno.md, sección 7):
+/* Tipografía (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, sección 7):
    Atkinson Hyperlegible Next y Mono, instaladas con la aplicación para que
    la versión de escritorio funcione sin conexión (licencia SIL OFL 1.1, ver
    public/licenses/OFL-*.txt). Son fuentes variables: un archivo por
@@ -768,7 +768,7 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Temas (decisiones 18 y 77; docs/rediseno-interfaz-diseno.md, 4.1).
+/* Temas (decisión 18 y D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.1).
    main.tsx pone data-theme en <html> antes del primer render; sin él se
    usa el tema 1. Todos los bloques definen las mismas variables. Los
    mismos bloques se aplican a cualquier elemento con
@@ -965,7 +965,7 @@ Esa se queda como está, con este comentario encima:
 Hay que actualizar también el comentario de las líneas 2 a 6 de `App.css`, que empieza por `/* Tema oscuro (30/08/2026, decisión 18): los badges nunca se exportan`. Dice que basta con que las etiquetas se vean sobre fondo oscuro, y con el tema Claro deja de ser cierto. Sustitúyelo entero, hasta su `*/`, por:
 
 ```css
-/* Etiquetas de datos reales y de demostración (decisiones 18 y 77): nunca
+/* Etiquetas de datos reales y de demostración (decisión 18 y D3 de docs/decisiones-diseno.md): nunca
    se exportan. Sus colores (--success y --warning, con sus fondos -bg) los
    define cada tema en index.css. */
 ```
@@ -1101,7 +1101,7 @@ Expected: FAIL, porque no existe `./exportPalette`.
 - [ ] **Step 3: implementar `frontend/src/logic/exportPalette.ts`**
 
 ```ts
-// Colores de la exportación JPEG (decisión 77; docs/rediseno-interfaz-diseno.md, 4.4).
+// Colores de la exportación JPEG (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.4).
 // exportSvgAsJpeg clona el SVG tal como se ve en pantalla. Con temas, el
 // clon llevaría los colores del tema de pantalla, que sobre el blanco de
 // la exportación pueden no leerse. Cada elemento con color de tema lleva
@@ -1174,7 +1174,7 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
 Justo después de las dos líneas `clone.setAttribute("width", ...)` y `clone.setAttribute("height", ...)` añade:
 
 ```ts
-  // Paleta de exportación (decisión 77): colores legibles sobre el blanco
+  // Paleta de exportación (D3 de docs/decisiones-diseno.md): colores legibles sobre el blanco
   // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
   // avisa de cada referencia sin color de exportación: quedaría con el
   // color de pantalla.
@@ -1246,7 +1246,7 @@ Expected: FAIL, porque no existe `./useDrawColors`.
 - [ ] **Step 2: implementar `frontend/src/theme/useDrawColors.ts`**
 
 ```ts
-// Colores de dibujo (SVG y 3D) del tema activo (decisión 77). forExport:
+// Colores de dibujo (SVG y 3D) del tema activo (D3 de docs/decisiones-diseno.md). forExport:
 // los de la exportación (docs/rediseno-interfaz-diseno.md, 4.4). Solo lo
 // usa Brain3D, con su estado local «exportando».
 import { useMemo } from "react";
@@ -1356,7 +1356,7 @@ Expected: PASS.
 
 10. **Comentarios que quedan desfasados.**
     - En el comentario que empieza por `{/* Resaltado al pasar el ratón por un nodo (decisión 76c`, cambia `HOVER_HIGHLIGHT_COLOR` por `el color de resaltado del tema (token hoverHighlight)`.
-    - En el que empieza por `{/* El relleno es SIEMPRE el color de red real`, cambia la frase `NEUTRAL_COLOR es legible sobre oscuro y sobre el blanco de la exportación por igual.` por `El contorno usa el token nodeRing del tema; al exportar, applyExportColors lo cambia por uno legible sobre blanco (decisión 77).`.
+    - En el que empieza por `{/* El relleno es SIEMPRE el color de red real`, cambia la frase `NEUTRAL_COLOR es legible sobre oscuro y sobre el blanco de la exportación por igual.` por `El contorno usa el token nodeRing del tema; al exportar, applyExportColors lo cambia por uno legible sobre blanco (D3 de docs/decisiones-diseno.md).`.
 
 11. **Comprobación:**
 
@@ -1371,7 +1371,7 @@ Expected: PASS.
 1. **Imports.**
    - Quita del import de `"../theme/networks"` estos nombres: `NETWORK_COLORS`, `NEUTRAL_COLOR`, `ACCENT_SELECTED_COLOR`, `INTRA_HEMISPHERE_COLOR` e `INTER_HEMISPHERE_COLOR`. Quedan `CONNECTION_TYPE_LABELS` y `EVIDENCE_LEVEL_LABELS`.
    - Añade los mismos imports que en el connectograma: `exportResolverFor`, `ngFill`, `ngStroke` y `ngStrokeOpacity` de `"../theme/colors"`, `useDrawColors` y `useAppearanceStore`. `type DrawColors` no hace falta.
-   - Borra `const INTRA_COLOR = INTRA_HEMISPHERE_COLOR;` y `const INTER_COLOR = INTER_HEMISPHERE_COLOR;`, y también el comentario que los precede, desde `// INTRA_COLOR/INTER_COLOR vivían aquí como constantes locales` hasta la línea anterior a las constantes. Pon en su lugar: `// Los colores intra- e interhemisférico son tokens del tema (intra, inter: theme/themes.ts, decisión 77).`
+   - Borra `const INTRA_COLOR = INTRA_HEMISPHERE_COLOR;` y `const INTER_COLOR = INTER_HEMISPHERE_COLOR;`, y también el comentario que los precede, desde `// INTRA_COLOR/INTER_COLOR vivían aquí como constantes locales` hasta la línea anterior a las constantes. Pon en su lugar: `// Los colores intra- e interhemisférico son tokens del tema (intra, inter: theme/themes.ts, D3 de docs/decisiones-diseno.md).`
 2. **Hook.** Al principio del componente `Hemisferios`, junto a los demás hooks, añade `const colors = useDrawColors();`.
 3. **Exportar.** `handleExport` pasa `exportResolverFor(useAppearanceStore.getState().theme)` como tercer argumento de `exportSvgAsJpeg`, igual que en el connectograma.
 4. **Marcadores.** En los dos marcadores de `<defs>`:
@@ -1381,7 +1381,7 @@ Expected: PASS.
 6. **Línea media.** En el `<line` de la línea media, `stroke={NEUTRAL_COLOR}` → `stroke={colors.edge} {...ngStroke("edge")}`.
 7. **Elipses.** En las dos elipses, `fill="none" stroke={NEUTRAL_COLOR}` → `fill={colors.hemiFill} {...ngFill("hemiFill")} stroke={colors.edge} {...ngStroke("edge")}`.
 
-   El comentario que empieza por `{/* Elipses sin relleno (decisión 18, 30/08/2026)` queda desfasado. Añade al final, antes del `*/}`, esta frase: `Desde la decisión 77 el relleno es el token hemiFill del tema: "none" en el tema Original, como hasta ahora, y un tono apenas más claro que el panel en los demás; la exportación lo cambia por el de su paleta.`
+   El comentario que empieza por `{/* Elipses sin relleno (decisión 18, 30/08/2026)` queda desfasado. Añade al final, antes del `*/}`, esta frase: `Desde la D3 de docs/decisiones-diseno.md el relleno es el token hemiFill del tema: "none" en el tema Original, como hasta ahora, y un tono apenas más claro que el panel en los demás; la exportación lo cambia por el de su paleta.`
 8. **Conexiones.** Sustituye `const color = !isClassified ? NEUTRAL_COLOR : isInter ? INTER_COLOR : INTRA_COLOR;` por:
 
    ```ts
@@ -1442,7 +1442,7 @@ Expected: PASS.
    ```
 
    En el `<text x={14}`, `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
-5. **Comentario.** En el que empieza por `{/* Mismo criterio que Connectogram.tsx/Hemisferios.tsx (decisión`, cambia la frase final `El círculo de red mantiene su color real sin tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible sobre los dos fondos.` por `El círculo usa el color de red y el texto el token label del tema; al exportar, applyExportColors los cambia por los de la paleta de exportación (decisión 77).`
+5. **Comentario.** En el que empieza por `{/* Mismo criterio que Connectogram.tsx/Hemisferios.tsx (decisión`, cambia la frase final `El círculo de red mantiene su color real sin tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible sobre los dos fondos.` por `El círculo usa el color de red y el texto el token label del tema; al exportar, applyExportColors los cambia por los de la paleta de exportación (D3 de docs/decisiones-diseno.md).`
 
 `FilterPanel.tsx`:
 - **Imports.** `import { CONNECTION_TYPE_LABELS, NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR } from "../theme/networks";` pasa a ser:
@@ -1653,7 +1653,7 @@ export function ReferenceMesh({ url, color }: { url: string; color: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf]);
 
-  // Color del tema (decisión 77): se actualiza en los materiales existentes.
+  // Color del tema (D3 de docs/decisiones-diseno.md): se actualiza en los materiales existentes.
   useEffect(() => {
     scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) (obj.material as THREE.MeshStandardMaterial).color.set(color);
@@ -1697,12 +1697,12 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
 
    ```tsx
    // Puente para exportar el frame actual del canvas WebGL a JPEG en color
-   // sobre fondo blanco (sección 20; decisiones 11, 18 y 77).
+   // sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
    // react-three-fiber no expone gl, scene ni camera fuera del árbol de
    // <Canvas>, así que este componente vive dentro de él y deja la función
    // de exportación en el ref que le pasa Brain3D.
    //
-   // Decisión 77: antes de capturar, el cerebro se vuelve a dibujar con los
+   // D3 (docs/decisiones-diseno.md): antes de capturar, el cerebro se vuelve a dibujar con los
    // colores de EXPORTACIÓN (estado local «exportando» de Brain3D), no con
    // los del tema de pantalla. Si no, en un tema oscuro la selección (casi
    // blanca) desaparecería sobre el blanco del JPEG. La captura espera un
@@ -1758,7 +1758,7 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
      ```
 
    - En el `<meshBasicMaterial` del contorno, `color={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}` → `color={isSelected ? colors.selected : colors.nodeRing}`.
-   - El comentario del contorno (el que empieza por `{/* Halo de contorno neutro (decisión 18, 30/08/2026)`) menciona `NETWORK_COLORS` y `NEUTRAL_COLOR/ACCENT_SELECTED_COLOR (theme/ networks.ts)`. Cambia la frase que empieza por `Usa NEUTRAL_COLOR/ACCENT_SELECTED_COLOR` hasta el final del comentario por: `Usa los tokens nodeRing/selected del tema (decisión 77); al exportar, ExportBridge vuelve a dibujar con los de la paleta de exportación, así que el contorno también se ve en la figura exportada.`
+   - El comentario del contorno (el que empieza por `{/* Halo de contorno neutro (decisión 18, 30/08/2026)`) menciona `NETWORK_COLORS` y `NEUTRAL_COLOR/ACCENT_SELECTED_COLOR (theme/ networks.ts)`. Cambia la frase que empieza por `Usa NEUTRAL_COLOR/ACCENT_SELECTED_COLOR` hasta el final del comentario por: `Usa los tokens nodeRing/selected del tema (D3 de docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a dibujar con los de la paleta de exportación, así que el contorno también se ve en la figura exportada.`
    - Los `emissive="#ffffff"` y `"#000000"` se quedan: son el brillo de la esfera seleccionada, no un color de tema.
 
 5. **`ConnectionLine`.**
@@ -1771,7 +1771,7 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
    ```ts
    const [exporting, setExporting] = useState(false);
    // Colores de dibujo; durante la exportación, los de la paleta de
-   // exportación (decisión 77). El fondo de la escena usa siempre los de
+   // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
    // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
    // de fondo claro en los temas oscuros.
    const screenColors = useDrawColors();
@@ -1850,7 +1850,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - [ ] **Step 1: crear `frontend/src/components/SettingsMenu.tsx`**
 
 ```tsx
-// Engranaje de Ajustes (decisión 77; docs/rediseno-interfaz-diseno.md, 5.2).
+// Engranaje de Ajustes (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.2).
 // Fase 1: solo el tema. La opción «Colores de las redes» llega con la
 // paleta suave, en la fase 2.
 import { useEffect, useRef, useState } from "react";
@@ -1941,7 +1941,7 @@ export function SettingsMenu() {
                   onClick={() => setTheme(id)}
                 >
                   {/* data-theme-preview: index.css aplica a este elemento las
-                      variables del tema que representa (decisión 77). */}
+                      variables del tema que representa (D3 de docs/decisiones-diseno.md). */}
                   <span className="settings__preview" data-theme-preview={id} aria-hidden="true">
                     <span className="settings__preview-side" />
                     <span className="settings__preview-main">
@@ -1973,7 +1973,7 @@ export function SettingsMenu() {
 - [ ] **Step 3: estilos (al final de `App.css`)**
 
 ```css
-/* Ajustes (decisión 77): engranaje a la derecha de la barra y panel
+/* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
    emergente con los cuatro temas. */
 .topbar .settings { margin-left: auto; position: relative; }
 .topbar .topbar__controls + .settings { margin-left: 0; }
@@ -2011,10 +2011,10 @@ git commit -m "Temas: engranaje y panel de Ajustes con los cuatro temas
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
-### Task 9: verificación en la app real, decisión 77 y spec
+### Task 9: verificación en la app real, decisión D3 y spec
 
 **Files:**
-- Modify: `docs/analisis-arquitectura.md` (añadir la decisión 77 al final)
+- Modify: `docs/decisiones-diseno.md` (añadir la D3 al final)
 - Modify: `docs/rediseno-interfaz-diseno.md` (tabla 4.2: fila `nodeGap`; nota de 4.1 sobre los fondos `*-bg`)
 
 - [ ] **Step 1: pruebas, tipos, lint y compilación**
@@ -2067,7 +2067,7 @@ Exportación:
   - En pantalla no queda nada cambiado después de exportar.
 - **Tema Original:** exporta el connectograma y el cerebro 3D. Los JPEG tienen los colores de siempre.
 
-Si algo no cuadra, corrígelo antes de seguir y apúntalo para la decisión 77.
+Si algo no cuadra, corrígelo antes de seguir y apúntalo para la D3.
 
 - [ ] **Step 4: parar el servidor de desarrollo**
 
@@ -2097,7 +2097,641 @@ En `docs/rediseno-interfaz-diseno.md`:
 - En la tabla 4.1, `success` de Claro pasa de `#227a4d` a `#1f6e45`. Las etiquetas van sobre `--bg` con su fondo tintado, y así superan 4,5:1. El fondo de síntesis de Claro queda en `rgba(185, 61, 10, 0.06)`.
 - En la sección 7, añade que también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos. Añade también que `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio.
 
-- [ ] **Step 6: escribir la decisión 77 al final de `docs/analisis-arquitectura.md`**
+- [ ] **Step 6: escribir la D3 al final de `docs/decisiones-diseno.md`**
+
+Desde el 24/09/2026, las decisiones de interfaz y estética van en `docs/decisiones-diseno.md`, numeradas D1, D2…, y no en `docs/analisis-arquitectura.md`, que queda para lo funcional. Antes de escribir, comprueba en ese archivo cuál es la siguiente D libre. La prevista es la D3, pero otra sesión podría haber añadido alguna. Si no es la D3, cambia también las referencias `D3` del código y del spec.
+
+Sigue el formato de la D1 de ese mismo archivo:
+
+- Un título `## D3. Temas de la interfaz (fase 1 del rediseño) -- dd/mm/aaaa`, con la fecha del día (por ejemplo, `24/09/2026`).
+- Párrafos con encabezado en negrita:
+  - **Motivación.** La interfaz tosca y los colores de red «RGB burdo», pedido por la usuaria.
+  - **Decidido por la usuaria.** Cuatro temas elegibles desde un engranaje. El 1 conserva los colores de hoy. El público son investigadores. Validado por el desarrollador principal.
+  - **Qué cambia.** Una lista: los cuatro temas y los tokens CSS y de dibujo; el store con persistencia; la tipografía local, con cursivas y licencia; la exportación con la paleta de exportación, incluido el redibujo del 3D; y Ajustes.
+  - **Qué no cambia.** `NETWORK_COLORS` y la lógica de representación. En el tema 1, lo único distinto en color es el respaldo de una red desconocida, que pasa a ser siempre el gris de «sin clasificar» (`#8a8a8a`); antes era `#888`, `#888888` o `NEUTRAL_COLOR` según el componente (spec 4.2, «se unifica»).
+  - **Diferencias con el spec en esta fase.** Las de este plan.
+  - **Limitaciones conocidas.** En el navegador puede verse un instante el tema de reserva antes de que `main.tsx` aplique el elegido. En Tauri no pasa, porque la ventana arranca oculta.
+  - **Queda para las fases 2 a 4.** Una línea por fase.
+  - **Verificación.** Lo que se vio en el paso 3, el número de pruebas y `tsc` limpio.
+- Enlaza `docs/rediseno-interfaz-diseno.md` y este plan.
+
+- [ ] **Step 7: commit**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/theme/useDrawColors.ts frontend/src/theme/colors.test.ts frontend/src/components/Connectogram.tsx frontend/src/components/Hemisferios.tsx frontend/src/components/DetailPanel.tsx frontend/src/components/FilterPanel.tsx frontend/src/components/FunctionSynthesisTab.tsx
+git commit -m "Temas: colores de dibujo 2D desde tokens y atributos de exportacion
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+## Chunk 4: 3D, Ajustes y cierre
+
+### Task 6: grises de la corteza por tema
+
+**Files:**
+- Modify: `frontend/src/logic/surfaceParcels.ts` (constantes `GRAY_*`, `fillVertexColors` y `fillVertexColorsByIndex`)
+- Test: `frontend/src/logic/surfaceParcels.test.ts`
+
+- [ ] **Step 1: escribir la prueba que falla**
+
+Añade esta prueba al `describe("fillVertexColors", ...)` de `frontend/src/logic/surfaceParcels.test.ts`. Añade también al import de `./surfaceParcels` los nombres que aún no estén entre `fillVertexColorsByIndex`, `NO_REGION` y `type CortexGrays`. `NO_REGION` ya se importa hoy: no lo repitas.
+
+```ts
+  it("usa los grises del tema: surco, giro, pared medial y sin dato", () => {
+    const grays: CortexGrays = {
+      sulcus: [0.1, 0.2, 0.3],
+      gyrus: [0.5, 0.6, 0.7],
+      noData: [0.4, 0.4, 0.4],
+      medialWall: [0.9, 0.8, 0.7],
+    };
+    // v0 fondo de surco, v1 corona de giro, v2 pared medial, v3 región sin dato de surco.
+    const vertexIndex = new Int32Array([0, 0, NO_REGION, 0]);
+    const sulc = new Float32Array([0, 1, Number.NaN, Number.NaN]);
+    const out = new Float32Array(12);
+    fillVertexColorsByIndex(out, vertexIndex, 1, sulc, () => null, grays);
+    const expected = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.9, 0.8, 0.7, 0.4, 0.4, 0.4];
+    expected.forEach((value, i) => expect(out[i]).toBeCloseTo(value, 5));
+  });
+```
+
+Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/surfaceParcels.test.ts`
+Expected: FAIL, porque no existe el tipo y el sexto parámetro no hace nada.
+
+- [ ] **Step 2: implementar**
+
+En `frontend/src/logic/surfaceParcels.ts`, sustituye las cuatro constantes `GRAY_SULCUS`, `GRAY_GYRUS`, `GRAY_NO_DATA` y `GRAY_MEDIAL_WALL` por lo siguiente. Mantén el comentario largo que las precede, sobre el RGB lineal.
+
+```ts
+// Grises de la corteza en RGB lineal. Cada tema tiene los suyos (decisión
+// 77, DrawTokens de theme/themes.ts). Estos son los de siempre (tema 1).
+export interface CortexGrays {
+  sulcus: RGB;
+  gyrus: RGB;
+  noData: RGB;
+  medialWall: RGB;
+}
+
+function uniformGray(srgb: number): RGB {
+  const v = srgbToLinear(srgb);
+  return [v, v, v];
+}
+
+export const DEFAULT_CORTEX_GRAYS: CortexGrays = {
+  sulcus: uniformGray(0.35),
+  gyrus: uniformGray(0.72),
+  noData: uniformGray(0.55),
+  medialWall: uniformGray(0.25),
+};
+
+// Tokens de un tema (sRGB 0-1) a RGB lineal.
+export function cortexGraysFromSrgb(tokens: {
+  cortexSulcus: readonly [number, number, number];
+  cortexGyrus: readonly [number, number, number];
+  cortexNoData: readonly [number, number, number];
+  cortexMedialWall: readonly [number, number, number];
+}): CortexGrays {
+  const lin = (c: readonly [number, number, number]): RGB => [
+    srgbToLinear(c[0]),
+    srgbToLinear(c[1]),
+    srgbToLinear(c[2]),
+  ];
+  return {
+    sulcus: lin(tokens.cortexSulcus),
+    gyrus: lin(tokens.cortexGyrus),
+    noData: lin(tokens.cortexNoData),
+    medialWall: lin(tokens.cortexMedialWall),
+  };
+}
+```
+
+`type RGB` se declara más arriba en el mismo archivo y `srgbToLinear` es una declaración de función, así que ambos se pueden usar aquí.
+
+Añade el parámetro `grays: CortexGrays = DEFAULT_CORTEX_GRAYS` al final de las dos funciones:
+
+- `fillVertexColors(out, map, sulc, colorForRegion, grays = DEFAULT_CORTEX_GRAYS)` se lo pasa a `fillVertexColorsByIndex(..., colorForRegion, grays)`.
+- En `fillVertexColorsByIndex`, sustituye el cálculo de `gray` y la rama sin color por esto, sin crear arreglos por vértice:
+
+```ts
+    let r: number;
+    let g: number;
+    let b: number;
+    if (t !== null) {
+      r = grays.sulcus[0] + (grays.gyrus[0] - grays.sulcus[0]) * t;
+      g = grays.sulcus[1] + (grays.gyrus[1] - grays.sulcus[1]) * t;
+      b = grays.sulcus[2] + (grays.gyrus[2] - grays.sulcus[2]) * t;
+    } else {
+      const base = category === NO_REGION ? grays.medialWall : grays.noData;
+      [r, g, b] = base;
+    }
+
+    const color = category === NO_REGION ? null : (categoryColors[category] ?? null);
+    if (color) {
+      const shade = t === null ? 1 : 0.7 + 0.3 * t;
+      out[v * 3] = color[0] * shade;
+      out[v * 3 + 1] = color[1] * shade;
+      out[v * 3 + 2] = color[2] * shade;
+    } else {
+      out[v * 3] = r;
+      out[v * 3 + 1] = g;
+      out[v * 3 + 2] = b;
+    }
+```
+
+Deja intacto el comentario sobre el sombreado de las regiones pintadas (el `0.7 + 0.3 * t`).
+
+- [ ] **Step 3: comprobar**
+
+Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/surfaceParcels.test.ts && npx tsc -b`
+Expected: PASS, las pruebas de antes y la nueva, y `tsc` sin errores.
+
+- [ ] **Step 4: commit**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/logic/surfaceParcels.ts frontend/src/logic/surfaceParcels.test.ts
+git commit -m "Temas: grises de la corteza configurables por tema
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+### Task 7: 3D con tokens y exportación del cerebro
+
+**Files:**
+- Modify: `frontend/src/components/Brain3D.tsx`, `PaintedCortex.tsx`, `ReferenceMesh.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx`
+
+- [ ] **Step 1: `ReferenceMesh.tsx`**
+
+Quita el import de `NEUTRAL_COLOR`. La función queda así (añade `useEffect` al import de React):
+
+```tsx
+export function ReferenceMesh({ url, color }: { url: string; color: string }) {
+  const gltf = useLoader(GLTFLoader, url);
+  const scene = useMemo(() => {
+    const cloned = gltf.scene.clone(true);
+    cloned.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.material = new THREE.MeshStandardMaterial({
+          color,
+          transparent: true,
+          opacity: 0.14,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        obj.raycast = () => null;
+      }
+    });
+    return cloned;
+    // Solo al cargar: los cambios de color se aplican en el efecto de abajo,
+    // sin volver a crear los materiales.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gltf]);
+
+  // Color del tema (D3 de docs/decisiones-diseno.md): se actualiza en los materiales existentes.
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) (obj.material as THREE.MeshStandardMaterial).color.set(color);
+    });
+  }, [scene, color]);
+
+  return (
+    <group scale={DISPLAY_SCALE}>
+      <primitive object={scene} />
+    </group>
+  );
+}
+```
+
+Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color llega como prop, desde el token `edge` del tema.
+
+- [ ] **Step 2: `PaintedCortex.tsx`**
+
+- Añade `type CortexGrays` al import de `"../logic/surfaceParcels"`.
+- Añade `grays: CortexGrays;` a `interface Props` y `grays,` a los parámetros.
+- En el efecto que rellena los colores, pasa `grays` como último argumento de `fillVertexColorsByIndex(...)` y de `fillVertexColors(...)`.
+- Añade `grays` a su lista de dependencias: `[geometry, map, sulc, colorForRegion, paintBy, grays]`.
+
+- [ ] **Step 3: `Brain3D.tsx`**
+
+1. **Imports.** El bloque `import { NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOMOLOGY_HIGHLIGHT_COLOR } from "../theme/networks";` pasa a ser:
+
+   ```ts
+   import { NETWORK_LABELS } from "../theme/networks";
+   import { hasNetworkColor } from "../theme/colors";
+   import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
+   ```
+
+   `NETWORK_COLORS` deja de usarse en `Brain3D` y sale del import, porque `noUnusedLocals` daría error.
+
+   Añade `cortexGraysFromSrgb,` al import de `"../logic/surfaceParcels"`.
+
+2. **Fondo de la escena.** Borra `const SCENE_BG = "#1d1e26";` y el comentario que lo precede, que explica que duplica `--panel-bg`. Ahora sale del token `sceneBg`.
+
+3. **`ExportBridge`.** Sustituye la función completa y el comentario largo que la precede, desde `// Puente para exportar el frame actual del canvas WebGL` hasta la línea anterior a `function ExportBridge`, por este texto:
+
+   ```tsx
+   // Puente para exportar el frame actual del canvas WebGL a JPEG en color
+   // sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
+   // react-three-fiber no expone gl, scene ni camera fuera del árbol de
+   // <Canvas>, así que este componente vive dentro de él y deja la función
+   // de exportación en el ref que le pasa Brain3D.
+   //
+   // D3 (docs/decisiones-diseno.md): antes de capturar, el cerebro se vuelve a dibujar con los
+   // colores de EXPORTACIÓN (estado local «exportando» de Brain3D), no con
+   // los del tema de pantalla. Si no, en un tema oscuro la selección (casi
+   // blanca) desaparecería sobre el blanco del JPEG. La captura espera un
+   // fotograma: en él ya están los materiales nuevos y los colores de la
+   // corteza, que PaintedCortex recalcula en un efecto. Como en la decisión
+   // 18, se sustituye tanto el color de "clear" como scene.background, que
+   // gana siempre sobre el primero. Después se restaura el fondo y el modo
+   // normal; los colores de pantalla vuelven en el siguiente render.
+   function ExportBridge({
+     exportRef,
+     exporting,
+     onExportingChange,
+   }: {
+     exportRef: { current: (() => void) | null };
+     exporting: boolean;
+     onExportingChange: (exporting: boolean) => void;
+   }) {
+     const { gl, scene, camera } = useThree();
+     useEffect(() => {
+       exportRef.current = () => onExportingChange(true);
+       return () => {
+         exportRef.current = null;
+       };
+     }, [exportRef, onExportingChange]);
+     useEffect(() => {
+       if (!exporting) return;
+       const frame = requestAnimationFrame(() => {
+         const previousClearColor = gl.getClearColor(new THREE.Color());
+         const previousClearAlpha = gl.getClearAlpha();
+         const previousBackground = scene.background;
+         gl.setClearColor("#ffffff", 1);
+         scene.background = new THREE.Color("#ffffff");
+         gl.render(scene, camera);
+         exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
+         gl.setClearColor(previousClearColor, previousClearAlpha);
+         scene.background = previousBackground;
+         onExportingChange(false);
+       });
+       return () => cancelAnimationFrame(frame);
+     }, [exporting, gl, scene, camera, onExportingChange]);
+     return null;
+   }
+   ```
+
+   El `"#ffffff"` se queda fijo: es el fondo de la exportación (decisión 11), no un color de tema.
+
+4. **`NodeMesh`.**
+   - Añade `colors,` a los parámetros y `colors: DrawColors;` a su tipo de props.
+   - Sustituye el cálculo de `fillColor` por:
+
+     ```ts
+     const fillColor = isHomologyHighlighted ? colors.homology : colors.networkColor(node.network);
+     ```
+
+   - En el `<meshBasicMaterial` del contorno, `color={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}` → `color={isSelected ? colors.selected : colors.nodeRing}`.
+   - El comentario del contorno (el que empieza por `{/* Halo de contorno neutro (decisión 18, 30/08/2026)`) menciona `NETWORK_COLORS` y `NEUTRAL_COLOR/ACCENT_SELECTED_COLOR (theme/ networks.ts)`. Cambia la frase que empieza por `Usa NEUTRAL_COLOR/ACCENT_SELECTED_COLOR` hasta el final del comentario por: `Usa los tokens nodeRing/selected del tema (D3 de docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a dibujar con los de la paleta de exportación, así que el contorno también se ve en la figura exportada.`
+   - Los `emissive="#ffffff"` y `"#000000"` se quedan: son el brillo de la esfera seleccionada, no un color de tema.
+
+5. **`ConnectionLine`.**
+   - Añade `colors` a los parámetros y `colors: DrawColors;` a sus props.
+   - `const color = isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR;` → `const color = isSelected ? colors.selected : colors.edge;`.
+   - En los dos materiales, `opacity={isSelected ? 0.95 : 0.55}` → `opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}`.
+
+6. **Estado de exportación en `Brain3D`.** Justo después de `const handleExport = () => exportRef.current?.();` añade:
+
+   ```ts
+   const [exporting, setExporting] = useState(false);
+   // Colores de dibujo; durante la exportación, los de la paleta de
+   // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
+   // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
+   // de fondo claro en los temas oscuros.
+   const screenColors = useDrawColors();
+   const colors = useDrawColors(exporting);
+   const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
+   ```
+
+7. **`regionColors`.**
+   - `const hex = homologyNodeIds.has(id) ? HOMOLOGY_HIGHLIGHT_COLOR : (NETWORK_COLORS[node.network] ?? "#888888");` → `const hex = homologyNodeIds.has(id) ? colors.homology : colors.networkColor(node.network);`
+   - Añade `colors` a las dependencias de su `useMemo`.
+
+8. **`networkPaint`.** Dentro de su `useMemo` ya hay una variable local llamada `colors`. Si no se renombra, taparía la de los colores del tema: `tsc` daría TS7022, y sin `tsc` fallaría el modo «vértice a vértice». Las dos líneas del final del `useMemo` quedan así:
+
+   ```ts
+   const netColors = networkSurface.networks.map((n) =>
+     hexToLinearRgb(hasNetworkColor(n.slug) ? colors.networkColor(n.slug) : n.color)
+   );
+   return { vertexIndex, categoryCount: netColors.length, colorFor: (i) => netColors[i] ?? null };
+   ```
+
+   Se conserva el respaldo actual al color del propio archivo. Añade `colors` a las dependencias del `useMemo`.
+
+9. **`renderFocus`.** Añade `colors={colors}` a `<NodeMesh` y a `<ConnectionLine`.
+
+10. **Dentro de `<Canvas>`:**
+    - `<color attach="background" args={[SCENE_BG]} />` → `<color attach="background" args={[screenColors.sceneBg]} />`
+    - `<ExportBridge exportRef={exportRef} />` → `<ExportBridge exportRef={exportRef} exporting={exporting} onExportingChange={setExporting} />`
+    - Añade `grays={cortexGrays}` a `<PaintedCortex`.
+    - `<ReferenceMesh url={meshUrl} />` → `<ReferenceMesh url={meshUrl} color={colors.edge} />`
+
+    Actualiza el comentario de `<color attach>`, que menciona `SCENE_BG = --panel-bg`: ahora es el token `sceneBg` del tema.
+
+11. **Comprobación:**
+
+    ```bash
+    grep -n "NEUTRAL_COLOR\|ACCENT_SELECTED_COLOR\|HOMOLOGY_HIGHLIGHT_COLOR\|SCENE_BG\|\"#888" ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend/src/components/Brain3D.tsx
+    ```
+
+    Expected: solo aparecen en comentarios.
+
+- [ ] **Step 4: `Tractography3D.tsx` y `TractographyNodes3D.tsx`**
+
+En cada uno:
+
+- Borra `const SCENE_BG = "#1d1e26";` y su comentario.
+- Añade `import { useDrawColors } from "../theme/useDrawColors";`.
+- Primera línea del componente exportado (`Tractography3D()` / `TractographyNodes3D()`): `const colors = useDrawColors();`.
+- `args={[SCENE_BG]}` → `args={[colors.sceneBg]}`.
+- En cada `<ReferenceMesh url={...} />`, añade `color={colors.edge}`.
+- Los colores de los tractos (`colorForTractIndex`) y el respaldo `"#ffffff"` de `colorById.get(...) ?? "#ffffff"` no cambian: quedan fuera de esta ronda (spec, sección 2).
+
+- [ ] **Step 5: comprobar**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx tsc -b && npm test && npm run lint
+```
+
+Expected: `tsc` sin errores, todas las pruebas en verde y ningún error de lint nuevo.
+
+- [ ] **Step 6: commit**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/components/Brain3D.tsx frontend/src/components/PaintedCortex.tsx frontend/src/components/ReferenceMesh.tsx frontend/src/components/Tractography3D.tsx frontend/src/components/TractographyNodes3D.tsx
+git commit -m "Temas: 3D con tokens y exportacion del cerebro con colores de exportacion
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+### Task 8: engranaje y panel de Ajustes
+
+**Files:**
+- Create: `frontend/src/components/SettingsMenu.tsx`
+- Modify: `frontend/src/App.tsx` (función `renderHeader`)
+- Modify: `frontend/src/App.css` (estilos al final)
+
+- [ ] **Step 1: crear `frontend/src/components/SettingsMenu.tsx`**
+
+```tsx
+// Engranaje de Ajustes (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.2).
+// Fase 1: solo el tema. La opción «Colores de las redes» llega con la
+// paleta suave, en la fase 2.
+import { useEffect, useRef, useState } from "react";
+import { useAppearanceStore } from "../state/appearance";
+import { resolveNetworkColor } from "../theme/colors";
+import { THEME_IDS, THEME_INFO } from "../theme/themes";
+
+// Cinco redes de Cole-Anticevic para la vista previa de cada tema. En la
+// fase 1, con sus colores originales en todos los temas.
+const PREVIEW_NETWORKS = [
+  "cole-anticevic.visual",
+  "cole-anticevic.default",
+  "cole-anticevic.frontoparietal",
+  "cole-anticevic.dorsal-attention",
+  "cole-anticevic.auditory",
+];
+
+export function SettingsMenu() {
+  const [open, setOpen] = useState(false);
+  const theme = useAppearanceStore((state) => state.theme);
+  const setTheme = useAppearanceStore((state) => state.setTheme);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const close = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    panelRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="settings">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="icon-btn settings__trigger"
+        aria-label="Ajustes"
+        title="Ajustes"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="settings__icon">
+          <path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+      {open && (
+        <div ref={panelRef} className="settings__panel" role="dialog" aria-label="Ajustes">
+          <div className="settings__header">
+            <h2>Ajustes</h2>
+            <button type="button" className="icon-btn" aria-label="Cerrar ajustes" onClick={close}>
+              ×
+            </button>
+          </div>
+          <p className="settings__label" id="settings-theme-label">
+            Tema
+          </p>
+          <div className="settings__themes" role="group" aria-labelledby="settings-theme-label">
+            {THEME_IDS.map((id) => {
+              const info = THEME_INFO[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className="settings__theme"
+                  aria-pressed={theme === id}
+                  onClick={() => setTheme(id)}
+                >
+                  {/* data-theme-preview: index.css aplica a este elemento las
+                      variables del tema que representa (D3 de docs/decisiones-diseno.md). */}
+                  <span className="settings__preview" data-theme-preview={id} aria-hidden="true">
+                    <span className="settings__preview-side" />
+                    <span className="settings__preview-main">
+                      {PREVIEW_NETWORKS.map((key) => (
+                        <span key={key} className="settings__preview-dot" style={{ background: resolveNetworkColor(key) }} />
+                      ))}
+                    </span>
+                  </span>
+                  <span className="settings__theme-name">
+                    {info.number} · {info.name}
+                  </span>
+                  <span className="settings__theme-desc">{info.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: ponerlo en la barra (`App.tsx`)**
+
+- Añade `import { SettingsMenu } from "./components/SettingsMenu";` junto a los demás imports de componentes.
+- En `renderHeader`, añade `<SettingsMenu />` como último hijo de `<header className="topbar">`, después de `{controls && ...}`.
+
+- [ ] **Step 3: estilos (al final de `App.css`)**
+
+```css
+/* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
+   emergente con los cuatro temas. */
+.topbar .settings { margin-left: auto; position: relative; }
+.topbar .topbar__controls + .settings { margin-left: 0; }
+.settings__trigger { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; }
+.settings__trigger[aria-expanded="true"] { background: var(--code-bg); border-color: var(--border-strong); color: var(--text-h); }
+.settings__icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.settings__panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 380px; box-sizing: border-box; padding: 16px; border-radius: 14px; background: var(--panel-bg); border: 1px solid var(--border-strong); box-shadow: var(--shadow); text-align: left; }
+.settings__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.settings__header h2 { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--text-h); }
+.settings__label { margin: 0 0 8px; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.settings__themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.settings__theme { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 11px; border: 1px solid var(--border); background: var(--code-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.settings__theme:hover { border-color: var(--border-strong); }
+.settings__theme[aria-pressed="true"] { border-color: var(--accent-border); background: var(--accent-bg); box-shadow: 0 0 0 1px var(--accent-border); }
+.settings__theme:focus-visible, .settings__trigger:focus-visible, .settings__panel .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings__preview { position: relative; display: block; height: 56px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); overflow: hidden; }
+.settings__preview-side { position: absolute; left: 7px; top: 7px; bottom: 7px; width: 28px; border-radius: 4px; background: var(--panel-bg); }
+.settings__preview-main { position: absolute; left: 41px; right: 7px; top: 7px; bottom: 7px; border-radius: 4px; background: var(--panel-bg); display: flex; align-items: center; justify-content: center; gap: 5px; }
+.settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; }
+.settings__theme-name { font-size: 0.72rem; font-weight: 600; color: var(--text-h); }
+.settings__theme-desc { font-size: 0.64rem; line-height: 1.35; color: var(--text-muted); }
+```
+
+- [ ] **Step 4: comprobar**
+
+Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx tsc -b && npm run lint && npm run build`
+Expected: sin errores; el aviso de tamaño de bloque ya estaba.
+
+- [ ] **Step 5: commit**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/components/SettingsMenu.tsx frontend/src/App.tsx frontend/src/App.css
+git commit -m "Temas: engranaje y panel de Ajustes con los cuatro temas
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+### Task 9: verificación en la app real, decisión D3 y spec
+
+**Files:**
+- Modify: `docs/decisiones-diseno.md` (añadir la D3 al final)
+- Modify: `docs/rediseno-interfaz-diseno.md` (tabla 4.2: fila `nodeGap`; nota de 4.1 sobre los fondos `*-bg`)
+
+- [ ] **Step 1: pruebas, tipos, lint y compilación**
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npm test && npx tsc -b && npm run lint && npm run build
+```
+
+Expected:
+- Todas las pruebas en verde: las 55 de antes y las nuevas de esta fase, ninguna fallida.
+- Lint sin errores y con los mismos 9 avisos previos.
+- La compilación termina con `✓ built`.
+
+- [ ] **Step 2: servidor de desarrollo propio, en otro puerto**
+
+No usar el 5173: es el de la usuaria.
+
+```bash
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vite --port 5199 --strictPort
+```
+
+Ejecútalo en segundo plano. El backend de la usuaria, en `127.0.0.1:8420`, acepta cualquier puerto local (`allow_origin_regex` en `backend/api/main.py`). Solo se le hacen peticiones GET de lectura, desde un navegador sin interfaz y aparte, nunca desde el de la usuaria.
+
+- [ ] **Step 3: comprobar en un navegador sin interfaz (Playwright)**
+
+Regla: todo lo que genere la prueba (capturas, JPEG, el directorio `.playwright-mcp` si aparece) va a una carpeta nueva del scratchpad. En la copia principal de la usuaria (`/home/dae/PycharmProjects/Neurograph/Neurograph`) no se escribe nada. Al terminar, comprueba que su `git status` sigue limpio.
+
+Datos para la prueba:
+- Al arrancar, el cerebro 3D ya está en la vista grande (`mainView` empieza en `"brain3d"`). Para verlo en grande de nuevo, pulsa su miniatura.
+- Los JPEG se descargan. En Playwright, espera el evento `download` al pulsar «Exportar JPEG», guarda el archivo con `download.saveAs(...)` en el scratchpad y ábrelo para mirarlo.
+
+Para cada tema (`original`, `grafito`, `noche` y `claro`):
+
+1. Ejecuta `localStorage.setItem("neurograph.apariencia", JSON.stringify({ theme: "<id>", paletteMode: null }))` y recarga.
+2. Espera a que aparezca «DATOS REALES», con el atlas HCP-MMP1.0.
+3. Selecciona una región: con el connectograma en grande y la lupa desactivada, haz clic en un nodo.
+4. Haz una captura de pantalla completa (connectograma en grande) y otra con el cerebro 3D en grande. En esta, la corteza pintada muestra la región y sus vecinas en color y el resto en los grises del tema.
+
+Comprueba en las capturas:
+- **Original:** mismos colores que hoy (fondo `#15161c`, acento morado, redes en colores puros, corteza en los grises de siempre). Solo cambia la tipografía, también en botones y desplegables.
+- **Grafito, Noche y Claro:** fondos, textos y fondo de la escena 3D del tema, sin restos del morado original. Casillas y deslizador con el color de acento del tema.
+- **Engranaje:** abre el panel, que muestra los cuatro temas con el activo marcado. Escape lo cierra y el foco vuelve al engranaje.
+- **Modo vértice a vértice:** con el tema Grafito, elige la clasificación Yeo 7 en «Redes» y, en «Corteza», la opción «Redes originales, vértice a vértice». Se ve la corteza pintada sin errores en la consola.
+
+Exportación:
+- **Tema Grafito:** exporta el connectograma, los hemisferios y el cerebro 3D, cada uno con una región seleccionada, y abre los JPEG.
+  - Fondo blanco.
+  - Líneas y anillos en los grises de Claro.
+  - La selección visible: casi negra, no casi blanca.
+  - En pantalla no queda nada cambiado después de exportar.
+- **Tema Original:** exporta el connectograma y el cerebro 3D. Los JPEG tienen los colores de siempre.
+
+Si algo no cuadra, corrígelo antes de seguir y apúntalo para la D3.
+
+- [ ] **Step 4: parar el servidor de desarrollo**
+
+- [ ] **Step 5: completar el spec**
+
+En `docs/rediseno-interfaz-diseno.md`:
+
+- En la tabla 4.2, tras la fila de `nodeRing`, añade:
+
+  ```
+  | `nodeGap` contorno de los nodos del diagrama de síntesis | `#0b0c10` | `#0f1115` | `#0a0e17` | `#ffffff` |
+  ```
+
+- En las notas de 4.1, añade:
+
+  ```
+  - Cada color de estado tiene su fondo translúcido (`--success-bg`, `--warning-bg`, `--error-bg`, `--synthesis-bg`) en `index.css`.
+  ```
+
+- En 5.2, cambia «Al cerrar, el foco vuelve al engranaje» por:
+
+  ```
+  Con Escape o con su botón, el foco vuelve al engranaje. Con un clic fuera, el foco se queda donde se hizo clic.
+  ```
+
+- En la sección 9, tras «Unidades nuevas», añade un párrafo **Fase 1** que resuma las diferencias de la sección «Diferencias con el spec en esta fase» de este plan. Incluye la vista previa de Ajustes, que toma sus colores de `index.css` mediante `data-theme-preview`.
+- En la tabla 4.1, `success` de Claro pasa de `#227a4d` a `#1f6e45`. Las etiquetas van sobre `--bg` con su fondo tintado, y así superan 4,5:1. El fondo de síntesis de Claro queda en `rgba(185, 61, 10, 0.06)`.
+- En la sección 7, añade que también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos. Añade también que `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio.
+
+- [ ] **Step 6: escribir la D3 de docs/decisiones-diseno.md al final de `docs/analisis-arquitectura.md`**
 
 Sigue el formato de la decisión 76:
 
@@ -2113,8 +2747,8 @@ Sigue el formato de la decisión 76:
 - [ ] **Step 7: commit**
 
 ```bash
-cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add docs/analisis-arquitectura.md docs/rediseno-interfaz-diseno.md
-git commit -m "Decision 77: temas de la interfaz (fase 1 del rediseno)
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add docs/decisiones-diseno.md docs/rediseno-interfaz-diseno.md
+git commit -m "D3: temas de la interfaz (fase 1 del rediseno)
 
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```

@@ -47,7 +47,7 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));
 
-  // Paleta de exportación (decisión 77): colores legibles sobre el blanco
+  // Paleta de exportación (D3 de docs/decisiones-diseno.md): colores legibles sobre el blanco
   // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
   // avisa de cada referencia sin color de exportación: quedaría con el
   // color de pantalla.

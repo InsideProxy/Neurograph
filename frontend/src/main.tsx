@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { applyThemeToDocument, useAppearanceStore } from './state/appearance'
 
-// Único sitio que aplica el tema al arrancar (decisión 77): no es solo un
+// Único sitio que aplica el tema al arrancar (D3 de docs/decisiones-diseno.md): no es solo un
 // parpadeo que evitar. Sin esta llamada la interfaz se quedaría fija en el
 // tema por defecto de index.css, mientras que los colores de dibujo (que
 // leen el store, no el DOM) sí siguen el tema guardado -- un desajuste

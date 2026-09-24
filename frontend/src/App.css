@@ -1,5 +1,5 @@
 .app { font-family: var(--sans); padding: 1rem 1.5rem; color: var(--text); }
-/* Etiquetas de datos reales y de demostración (decisiones 18 y 77): nunca
+/* Etiquetas de datos reales y de demostración (decisión 18 y D3 de docs/decisiones-diseno.md): nunca
    se exportan. Sus colores (--success y --warning, con sus fondos -bg) los
    define cada tema en index.css. */
 .demo-badge { display: inline-block; background: var(--warning-bg); color: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }

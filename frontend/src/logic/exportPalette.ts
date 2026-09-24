@@ -1,4 +1,4 @@
-// Colores de la exportación JPEG (decisión 77; docs/rediseno-interfaz-diseno.md, 4.4).
+// Colores de la exportación JPEG (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.4).
 // exportSvgAsJpeg clona el SVG tal como se ve en pantalla. Con temas, el
 // clon llevaría los colores del tema de pantalla, que sobre el blanco de
 // la exportación pueden no leerse. Cada elemento con color de tema lleva

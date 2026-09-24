@@ -1,4 +1,4 @@
-// Temas de NeuroGraph (decisión 77; docs/rediseno-interfaz-diseno.md,
+// Temas de NeuroGraph (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md,
 // secciones 4.1 y 4.2). Los colores de interfaz viven en index.css, un
 // bloque por `data-theme`. Aquí están los de DIBUJO: lo que se pinta dentro
 // de los SVG y del lienzo 3D, que no pueden leer variables CSS. En

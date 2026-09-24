@@ -1,4 +1,4 @@
-/* Tipografía (decisión 77; docs/rediseno-interfaz-diseno.md, sección 7):
+/* Tipografía (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, sección 7):
    Atkinson Hyperlegible Next y Mono, instaladas con la aplicación para que
    la versión de escritorio funcione sin conexión (licencia SIL OFL 1.1, ver
    public/licenses/OFL-*.txt). Son fuentes variables: un archivo por
@@ -52,7 +52,7 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Temas (decisiones 18 y 77; docs/rediseno-interfaz-diseno.md, 4.1).
+/* Temas (decisión 18 y D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.1).
    main.tsx pone data-theme en <html> antes del primer render; sin él se
    usa el tema 1. Todos los bloques definen las mismas variables.
    Equivalencias con los nombres del spec:
