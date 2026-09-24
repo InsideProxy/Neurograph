@@ -3,8 +3,8 @@ import { formatCount } from "./displayText";
 
 describe("formatCount", () => {
   it("separa los miles con un espacio duro a partir de cinco cifras", () => {
-    expect(formatCount(64620)).toBe("64 620");
-    expect(formatCount(1234567)).toBe("1 234 567");
+    expect(formatCount(64620)).toBe("64\u00a0620");
+    expect(formatCount(1234567)).toBe("1\u00a0234\u00a0567");
   });
 
   it("deja sin separar los números de hasta cuatro cifras", () => {

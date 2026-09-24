@@ -58,7 +58,7 @@ describe("DataStatus", () => {
   it("con datos reales, la etiqueta emergente dice qué es y da las cifras", () => {
     const html = renderToStaticMarkup(<DataStatus kind="real" regionCount={360} connectionCount={64620} />);
     expect(html).toContain('<span class="data-status__text">Datos reales</span>');
-    expect(html).toContain('title="Datos reales · 360 regiones · 64 620 conexiones"');
+    expect(html).toContain('title="Datos reales · 360 regiones · 64\u00a0620 conexiones"');
   });
 
   it("con datos de demostración, lo dice, y la etiqueta emergente conserva el aviso de siempre", () => {

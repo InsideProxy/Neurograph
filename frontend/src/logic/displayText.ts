@@ -7,5 +7,5 @@
 // (1047).
 export function formatCount(value: number): string {
   const digits = String(Math.round(value));
-  return digits.length <= 4 ? digits : digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return digits.length <= 4 ? digits : digits.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
 }
