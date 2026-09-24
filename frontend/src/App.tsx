@@ -9,6 +9,7 @@ import { SpeciesComparisonPanel } from "./components/SpeciesComparisonPanel";
 import { Tractography3D } from "./components/Tractography3D";
 import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
+import { SettingsMenu } from "./components/SettingsMenu";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
 import { NETWORK_SOURCE_LABELS } from "./theme/networks";
@@ -338,6 +339,7 @@ export default function App() {
         <span className="topbar__brand">NeuroGraph</span>
         {viewToggle}
         {controls && <div className="topbar__controls">{controls}</div>}
+        <SettingsMenu />
       </header>
       {synthesisImportBanner}
       {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
