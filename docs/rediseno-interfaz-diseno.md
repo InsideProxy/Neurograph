@@ -220,6 +220,7 @@ Un panel emergente que sale del engranaje:
 ### 5.3 Filtros
 
 - **Cabecera:** «Filtros» y el botón de plegar.
+- **Buscador de regiones** (5.8), justo encima de la selección.
 - **Selección:** «N regiones seleccionadas» y «Limpiar».
 - **Redes:**
   - Cabecera con el número de redes y los botones de texto «Todas» y «Ninguna», que ya no ocupan dos líneas.
@@ -301,6 +302,33 @@ Se valoró una barra de estado fija al pie. La usuaria la descartó el mismo dí
   - Ignora los cambios que provoca él mismo.
 - **Descripción de un paso:** una función pura (`logic/historyStep.ts`) compara dos instantáneas. Ejemplos: «añadir R_SFG_7_2 a la selección», «quitar 3 regiones», «seleccionar la conexión A ↔ B», «limpiar la selección», «ocultar la red Visual», «peso mínimo de 0,001 a 0,004» o, si cambian varias cosas, «varios cambios».
 
+### 5.8 Buscador de regiones
+
+Petición de la usuaria (24/09/2026): con 360 regiones en el círculo, es muy difícil localizar a ojo una región como TE1m.
+
+- **Dónde:** en Filtros, justo encima de la selección (5.3), porque ahí se arma el montaje (decisión de la usuaria). Vale para las tres vistas, que comparten la selección.
+- **Autocompletado:** al escribir aparece una lista de sugerencias bajo el campo (patrón *combobox*, `aria-autocomplete="list"`).
+  - La primera ya está activa, así que Intro la elige.
+  - Las flechas se mueven por la lista.
+  - Escape cierra la lista; un segundo Escape vacía el campo.
+- **Qué busca:** la abreviatura y el nombre completo, sin distinguir mayúsculas ni tildes.
+  - Orden: abreviatura exacta; abreviatura que empieza por lo escrito; abreviatura que lo contiene; nombre que lo contiene.
+  - A igualdad, por abreviatura y por lado (izquierdo antes que derecho).
+  - Como máximo, 8 sugerencias.
+- **Solo redes visibles** (decisión de la usuaria): se sugieren las regiones de las redes que no están ocultas en Filtros, porque las demás no se ven en las vistas. Si lo escrito solo aparece en redes ocultas, la lista lo dice, por ejemplo «TE1m está en la red Auditiva, que está oculta», con un botón «Mostrar la red».
+- **Cada sugerencia** lleva:
+  - el color de su red, con el anillo neutro;
+  - la abreviatura, con su lado cuando la abreviatura no lo lleva («TE1m (izq.)»);
+  - el nombre completo, sin el sufijo «(hemisferio …)»;
+  - «seleccionada», si ya lo está.
+- **Elegir una región:** se añade a la selección con `addNodes`, que nunca quita regiones, así que es un paso que se puede deshacer (5.7).
+  - El campo se vacía y conserva el foco, para seguir añadiendo regiones.
+  - Si la región ya estaba seleccionada, no cambia nada.
+- **Atajo:** Ctrl+K (⌘K en macOS) lleva el foco al buscador desde cualquier sitio. Si Filtros está plegado, lo despliega. No actúa dentro de otro campo de texto.
+- **Arquitectura:**
+  - `logic/regionSearch.ts`: función pura que normaliza, busca, ordena y detecta coincidencias en redes ocultas.
+  - `RegionSearch`: componente que reutiliza la lógica de teclado de `logic/listbox.ts`.
+
 ## 6. Gráficos, sin cambiar lo que representan
 
 ### 6.1 Connectograma
@@ -370,6 +398,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast` e `Icon` (iconos SVG en línea).
 - **`state/history.ts`:** el historial de deshacer (5.7). Es un store propio que se suscribe a los de selección y filtros sin cambiarlos.
 - **`logic/historyStep.ts`:** función pura que describe cada paso (5.7) y decide si merece el aviso con «Deshacer».
+- **`logic/regionSearch.ts` y `RegionSearch`:** el buscador de regiones (5.8).
 
 **Fase 1.** Lo construido difiere de lo anterior en estos puntos (D3 de `docs/decisiones-diseno.md`):
 
@@ -420,6 +449,11 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
   - respeta el límite de 50 pasos.
 - **`historyStep`:** descripciones sobre casos conocidos (una región, varias, una conexión, filtros y varios cambios a la vez) y la regla del aviso: el paso quita dos o más regiones.
 - **Recuadro de lectura:** el texto «N conexiones pasan los filtros (peso ≥ X)», con el singular donde toca.
+- **`regionSearch`:**
+  - sin distinguir mayúsculas ni tildes;
+  - el orden de 5.8 y el límite de 8;
+  - solo redes visibles, con el aviso de la red oculta;
+  - el lado en las abreviaturas que no lo llevan.
 - **Sin romper nada:** las pruebas actuales siguen pasando, incluida `networkSurface.test.ts`, que compara `NETWORK_COLORS` con los JSON.
 
 El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
@@ -436,7 +470,7 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Tipografía local y `accent-color`.
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
-3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, y deshacer y rehacer.
+3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
 
 Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y la usuaria nos dejó seguir en autónomo.
