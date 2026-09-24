@@ -10,7 +10,7 @@
 // Al elegir o al cerrar con el teclado, el foco vuelve al botón. Para que
 // vuelva también al cambiar de atlas, App no desmonta la barra (el
 // Fragment con clave de renderHeader).
-import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { initialActiveIndex, listboxKey } from "../logic/listbox";
 import { Icon } from "./Icon";
 
@@ -49,19 +49,27 @@ export function DataContextMenu({
   const [active, setActive] = useState(0);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  // Marca si la opción activa debe desplazarse a la vista: solo al abrir o
+  // con el teclado, nunca al pasar el ratón (revisión de la Task 1).
+  const scrollActiveRef = useRef(false);
   const baseId = useId();
   const captionId = `${baseId}-caption`;
   const listId = `${baseId}-list`;
-  const optionId = (index: number) => `${baseId}-option-${index}`;
+  const optionId = useCallback((index: number) => `${baseId}-option-${index}`, [baseId]);
+  // Si las opciones se acortan (cambia el atlas) con el menú abierto, el
+  // índice guardado puede quedar fuera de rango: se recorta al pintar, sin
+  // tocar el estado (revisión de la Task 1).
+  const activeIndex = options.length === 0 ? 0 : Math.min(active, options.length - 1);
 
   const openList = () => {
+    scrollActiveRef.current = true;
     setActive(initialActiveIndex(options.findIndex((option) => option.value === value), options.length));
     setOpen(true);
   };
 
   const closeList = () => {
     setOpen(false);
-    triggerRef.current?.focus();
+    triggerRef.current?.focus({ preventScroll: true });
   };
 
   const choose = (index: number) => {
@@ -71,15 +79,26 @@ export function DataContextMenu({
   };
 
   // Al abrir, el foco pasa a la lista: aria-activedescendant señala la
-  // opción activa.
+  // opción activa. preventScroll: la página ya está donde toca.
   useEffect(() => {
-    if (open) listRef.current?.focus();
+    if (open) listRef.current?.focus({ preventScroll: true });
   }, [open]);
 
-  // La opción activa, siempre a la vista.
+  // La opción activa, a la vista solo al abrir o con el teclado
+  // (scrollActiveRef), nunca al pasar el ratón. Ajusta list.scrollTop a
+  // mano: scrollIntoView también desplazaría a .app--workspace, que tiene
+  // overflow: hidden (revisión de la Task 1).
   useEffect(() => {
-    if (open) document.getElementById(`${baseId}-option-${active}`)?.scrollIntoView({ block: "nearest" });
-  }, [open, active, baseId]);
+    if (!open || !scrollActiveRef.current) return;
+    scrollActiveRef.current = false;
+    const list = listRef.current;
+    const option = document.getElementById(optionId(activeIndex));
+    if (!list || !option) return;
+    const listBox = list.getBoundingClientRect();
+    const optionBox = option.getBoundingClientRect();
+    if (optionBox.top < listBox.top) list.scrollTop -= listBox.top - optionBox.top;
+    else if (optionBox.bottom > listBox.bottom) list.scrollTop += optionBox.bottom - listBox.bottom;
+  }, [open, activeIndex, optionId]);
 
   // Un clic fuera la cierra sin mover el foco: se queda donde se hizo clic.
   useEffect(() => {
@@ -101,11 +120,29 @@ export function DataContextMenu({
 
   const handleListKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
     const result = listboxKey(event.key, active, options.length);
-    if (result.kind === "ignore") return;
-    if (result.kind !== "close" || !result.keepDefault) event.preventDefault();
-    if (result.kind === "move") setActive(result.index);
-    else if (result.kind === "choose") choose(result.index);
-    else closeList();
+    switch (result.kind) {
+      case "ignore":
+        return;
+      case "move":
+        event.preventDefault();
+        scrollActiveRef.current = true;
+        setActive(result.index);
+        return;
+      case "choose":
+        event.preventDefault();
+        choose(result.index);
+        return;
+      case "close":
+        if (!result.keepDefault) event.preventDefault();
+        closeList();
+        return;
+      default: {
+        // Comprobación agotadora (revisión de la Task 1): un tipo de
+        // resultado nuevo en listboxKey que no se trate aquí no compila.
+        const exhaustive: never = result;
+        return exhaustive;
+      }
+    }
   };
 
   // Si el foco sale del bloque (un clic que enfoca otro control), la lista
@@ -116,6 +153,11 @@ export function DataContextMenu({
     setOpen(false);
   };
 
+  // El giro del indicador de carga se para con «movimiento reducido»
+  // (App.css) y el arco queda quieto, parecido a un chevron: el title lo
+  // deja explícito también entonces (revisión de la Task 1).
+  const triggerTitle = pending ? (title ? `${title} (cargando…)` : "(cargando…)") : title;
+
   return (
     <div className="data-menu" onBlur={handleBlur}>
       <button
@@ -125,7 +167,7 @@ export function DataContextMenu({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        title={title}
+        title={triggerTitle}
         onClick={() => (open ? closeList() : openList())}
         onKeyDown={handleTriggerKeyDown}
       >
@@ -148,7 +190,7 @@ export function DataContextMenu({
           role="listbox"
           tabIndex={-1}
           aria-labelledby={captionId}
-          aria-activedescendant={options.length > 0 ? optionId(active) : undefined}
+          aria-activedescendant={options.length > 0 ? optionId(activeIndex) : undefined}
           onKeyDown={handleListKeyDown}
         >
           {options.map((option, index) => (
@@ -157,7 +199,7 @@ export function DataContextMenu({
               id={optionId(index)}
               role="option"
               aria-selected={option.value === value}
-              className={index === active ? "data-menu__option data-menu__option--active" : "data-menu__option"}
+              className={index === activeIndex ? "data-menu__option data-menu__option--active" : "data-menu__option"}
               onClick={() => choose(index)}
               onMouseMove={() => setActive(index)}
             >
