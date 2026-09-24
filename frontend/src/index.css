@@ -20,6 +20,22 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-next-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('./assets/fonts/atkinson-hyperlegible-next-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
   font-family: 'Atkinson Hyperlegible Mono';
   font-style: normal;
   font-weight: 200 800;
@@ -149,17 +165,24 @@
   --accent: #16181c;
   --accent-bg: rgba(22, 24, 28, 0.06);
   --accent-border: rgba(22, 24, 28, 0.35);
-  --success: #227a4d;
+  --success: #1f6e45;
   --success-bg: rgba(34, 122, 77, 0.1);
   --warning: #7a5d00;
   --warning-bg: rgba(122, 93, 0, 0.1);
   --error: #b42318;
   --error-bg: rgba(180, 35, 24, 0.08);
   --synthesis: #b93d0a;
-  --synthesis-bg: rgba(185, 61, 10, 0.1);
+  --synthesis-bg: rgba(185, 61, 10, 0.06);
   --shadow:
     rgba(40, 36, 20, 0.12) 0 10px 15px -3px, rgba(40, 36, 20, 0.08) 0 4px 6px -2px;
   color-scheme: light;
+}
+
+/* La vista previa de un tema usa su propio texto y acento, no los
+   heredados del tema activo. */
+[data-theme-preview] {
+  color: var(--text);
+  accent-color: var(--accent);
 }
 
 :root {
