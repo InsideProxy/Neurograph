@@ -164,7 +164,6 @@ La Task 13 las anota en el spec y en la D4.
 
 De la maqueta no se toman:
 
-- Los colores de red en el logotipo: el principio 4 del spec lo quiere monocromo.
 - El botón de ayuda y la línea de fuente «Rosen y Halgren, 2021» del detalle: la sección 2 los deja fuera.
 - Los anchos de columna de 264 y 320 px: se mantienen los 250 y 300 px de la D1, porque la sección 2 conserva su disposición. Sí se toman los 12 px de separación y de margen.
 
@@ -1116,6 +1115,7 @@ export function formatCount(value: number): string {
 import { useEffect, useLayoutEffect, useRef, type ReactNode, type Ref } from "react";
 import { formatCount } from "../logic/displayText";
 import { collapseAttribute, smallestFittingLevel, tabAfterClosing } from "../logic/topBarFit";
+import { useDrawColors } from "../theme/useDrawColors";
 import { Icon, type IconName } from "./Icon";
 import { SettingsMenu } from "./SettingsMenu";
 
@@ -1142,18 +1142,35 @@ interface TopBarProps {
   importRef?: Ref<HTMLButtonElement>;
 }
 
-// Logotipo monocromo (principio 4 del spec): un anillo con cuatro nodos
-// unidos, en los grises del tema. Es el dibujo de la maqueta, sin sus
-// colores de red.
+// Logotipo de la maqueta (decisión de la usuaria, 24/09/2026; principio 4
+// del spec): un anillo con cuatro nodos unidos. El anillo y las uniones
+// van en los grises del tema; los nodos llevan colores de red de
+// Cole-Anticevic (Lenguaje, Por defecto, Frontoparietal y Visual), la
+// única excepción de color fuera de los datos, porque representan justo
+// eso: redes. Salen del tema activo, así que siguen a la paleta.
+const LOGO_NODES = [
+  { cx: 6.2, cy: 9.5, network: "cole-anticevic.language" },
+  { cx: 21.8, cy: 18.5, network: "cole-anticevic.default" },
+  { cx: 6.2, cy: 18.5, network: "cole-anticevic.frontoparietal" },
+  { cx: 17, cy: 3.3, network: "cole-anticevic.visual" },
+] as const;
+
 function Logo() {
+  const { networkColor } = useDrawColors();
   return (
     <svg className="topbar__logo" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
       <circle className="topbar__logo-ring" cx="14" cy="14" r="11" />
       <path className="topbar__logo-links" d="M6.2 9.5Q14 14 21.8 18.5 M6.2 18.5Q14 14 17 3.3" />
-      <circle className="topbar__logo-node" cx="6.2" cy="9.5" r="2.4" />
-      <circle className="topbar__logo-node" cx="21.8" cy="18.5" r="2.4" />
-      <circle className="topbar__logo-node" cx="6.2" cy="18.5" r="2.4" />
-      <circle className="topbar__logo-node" cx="17" cy="3.3" r="2.4" />
+      {LOGO_NODES.map((node) => (
+        <circle
+          key={node.network}
+          className="topbar__logo-node"
+          cx={node.cx}
+          cy={node.cy}
+          r="2.4"
+          fill={networkColor(node.network)}
+        />
+      ))}
     </svg>
   );
 }
@@ -1496,7 +1513,10 @@ Expected: PASS (13 pruebas).
    .topbar__logo { flex-shrink: 0; }
    .topbar__logo-ring { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
    .topbar__logo-links { fill: none; stroke: var(--text-muted); stroke-width: 1.2; }
-   .topbar__logo-node { fill: var(--text-h); }
+   /* El color de cada nodo va en su atributo fill (colores de red del tema).
+      Un fill aquí lo taparía. El anillo fino los separa del fondo, también
+      el amarillo sobre el blanco de Claro. */
+   .topbar__logo-node { stroke: var(--border-strong); stroke-width: 0.8; }
    .topbar__name { font-size: 0.89rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-h); }
    .topbar__stage { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
    .topbar__tabs { display: flex; align-self: stretch; gap: 2px; margin-left: 6px; }
@@ -7373,7 +7393,7 @@ Abre las capturas (`$D/*.png`) con la herramienta Read y los `$D/*.json`. Cada p
 - **Temas** (`temas.json` y `*-1-inicio.png`, `*-2-region.png`, `*-3-cerebro3d.png`), en los cuatro temas:
   - La barra ocupa una fila (`bar.height` ≤ 60 y `bar.overflow` falso), no hay desplazamiento horizontal y la página cabe (`layout.pageFits`).
   - `bar.collapse`: vacío a 1400 px, `status` a 1280 y `status import synthesis tabs` a 1024.
-  - El logotipo es monocromo y lleva «alfa»; el contexto se lee entero (`layout.contextOk`: «Atlas HCP-MMP1.0» y «Redes Cole-Anticevic»); el estado muestra el punto verde.
+  - El logotipo lleva sus cuatro nodos de color de red y «alfa»; el contexto se lee entero (`layout.contextOk`: «Atlas HCP-MMP1.0» y «Redes Cole-Anticevic»); el estado muestra el punto verde.
   - Fuera de Original, `purple` está vacío.
   - Lo que la D3 dejó para esta fase, en `theme` (a 1400 px), en cada tema: el anillo de foco es del color de acento (`foco.igual`, con `foco.estilo` `solid`); las muestras de los filtros y `.legend-swatch` llevan el anillo neutro (`anilloFiltros.conTextFaint` y `anilloLeyenda.conTextFaint`); y «Todas» y «Ninguna» van en una línea (`todasYNingunaEnUnaLinea`).
   - Herramientas: a 1400 px, las del connectograma, los hemisferios y el cerebro 3D con una región seleccionada suben a la cabecera (`position` `absolute`) sin tapar el título ni la descripción (`overlap` falso). A 1280 y a 1024 px se quedan debajo (`static`). Si a 1400 px no suben, la D4 lo dice con el `contentWidth` medido.

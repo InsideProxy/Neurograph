@@ -42,7 +42,7 @@ Fuera:
 1. **La lógica de representación no cambia.** El color del nodo es la red, el grosor de la línea es el peso, el trazo discontinuo es evidencia no directa (indirecta o hipótesis) y la flecha es conectividad efectiva. Las posiciones y el orden de los nodos siguen saliendo de los mismos datos.
 2. **El color de red es un dato.** `NETWORK_COLORS` sigue siendo el color extraído de cada atlas (`theme/networks.ts:225`). La paleta suave es una capa de presentación calculada a partir de él, y siempre se puede volver a los originales.
 3. **Un tema cambia colores, no estructura.** Barra, jerarquía, controles y mejoras de los gráficos son iguales en los cuatro temas.
-4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. El logotipo es monocromo.
+4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. La única excepción es el logotipo de la maqueta, que lleva cuatro nodos con colores de red: representa justo eso, redes (decisión de la usuaria, 24/09/2026).
 5. **Todo color sale de un token.** No quedan colores fijos en componentes ni en `App.css`.
 6. **Los nodos conservan su anillo neutro** (regla de `theme/networks.ts:228-234`). Es lo que mantiene visibles los colores extremos, como `#000000` o `#ffffcc`, sobre cualquier fondo.
 
@@ -194,7 +194,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 
 De izquierda a derecha:
 
-1. **Marca:** logotipo monocromo, «NeuroGraph» y la etiqueta «alfa».
+1. **Marca:** el logotipo de la maqueta, «NeuroGraph» y la etiqueta «alfa». El logotipo es un anillo gris con cuatro nodos unidos, pintados con colores de red de Cole-Anticevic (Lenguaje, Por defecto, Frontoparietal y Visual) del tema activo.
 2. **Pestañas de vista:**
    - Atlas (antes «Un atlas»), Comparar especies, Tractografía 3D y Nodos de tractografía, cada una con icono. La activa lleva un subrayado del color de acento.
    - Las síntesis importadas se añaden como pestañas con icono en lugar del emoji 🧪 y con un `<button>` real para cerrarlas, en lugar del `span` con `role="button"`.
