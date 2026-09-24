@@ -5,7 +5,7 @@ import { exportDrawTokens, type DrawTokens, type OpacityToken, type PaintToken, 
 
 const UNCLASSIFIED = "unclassified";
 
-// True si la clave es una red real del atlas (no heredada del prototipo).
+// True si la clave tiene color en NETWORK_COLORS (redes de los atlas, de demostración y «sin clasificar»), sin contar las heredadas del prototipo.
 export function hasNetworkColor(key: string): boolean {
   return Object.hasOwn(NETWORK_COLORS, key);
 }

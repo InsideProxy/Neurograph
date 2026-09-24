@@ -72,3 +72,13 @@ describe("ayudantes data-ng-*", () => {
     expect(ngStrokeOpacity("edgeOpacitySelected")).toEqual({ "data-ng-stroke-opacity": "edgeOpacitySelected" });
   });
 });
+
+describe("ayudantes data-ng-* con tipo", () => {
+  it("una referencia mal escrita no compila", () => {
+    // @ts-expect-error: "egde" no es un token de color
+    ngFill("egde");
+    // @ts-expect-error: "edge" es un color, no una opacidad
+    ngStrokeOpacity("edge");
+    expect(ngFill("edge")).toEqual({ "data-ng-fill": "edge" });
+  });
+});
