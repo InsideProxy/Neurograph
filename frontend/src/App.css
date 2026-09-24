@@ -4,10 +4,6 @@
    define cada tema en index.css. */
 .demo-badge { display: inline-block; background: var(--warning-bg); color: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
 .real-badge { display: inline-block; background: var(--success-bg); color: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
-.atlas-selector { display: block; margin: 0.4rem 0; font-size: 0.9rem; }
-.topbar .atlas-selector { display: inline-flex; align-items: center; margin: 0; font-size: 0.82rem; white-space: nowrap; }
-.topbar .atlas-selector select { max-width: 22rem; }
-.atlas-selector select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 
 /* Selector "Un atlas" / "Comparar especies" (decisión 38, 01/09/2026):
    mismo estilo de botón secundario que .export-btn / .filter-panel__bulk-btn,
@@ -366,3 +362,51 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .settings__theme-name { font-size: 0.72rem; font-weight: 600; color: var(--text-h); }
 .settings__theme-desc { font-size: 0.72rem; line-height: 1.35; color: var(--text-muted); }
+
+/* ------------------------------------------------------------------
+   Estructura (D4 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md,
+   sección 5): barra superior, contexto de datos, filtros, cabeceras de
+   las vistas, panel de detalle, avisos y deshacer. Solo usa variables
+   de index.css: los cuatro temas se ven bien sin reglas propias.
+   ------------------------------------------------------------------ */
+
+/* Texto solo para lectores de pantalla. Va con position: absolute, así
+   que se coloca respecto al primer antepasado posicionado: todo panel
+   que se desplaza por dentro y lleva texto así necesita position:
+   relative. Sin él, el texto oculto de una lista larga alarga la página
+   (Tasks 4 y 7). */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Foco visible en todos los controles (spec 8): 2 px del color de acento.
+   :where() no suma especificidad, así que la regla propia de un control
+   puede ajustarlo. */
+:where(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Iconos en línea (components/Icon.tsx): trazo del color del texto. */
+.icon { flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Contexto de datos (spec 5.1, punto 3): las dos listas en un bloque. */
+.data-context { display: flex; align-items: stretch; height: 40px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-bg); }
+.data-menu { position: relative; display: flex; }
+.data-menu + .data-menu { border-left: 1px solid var(--border); }
+.data-menu__trigger { display: flex; align-items: center; gap: 10px; padding: 0 10px 0 12px; border: none; border-radius: 9px; background: transparent; color: var(--text-muted); font: inherit; text-align: left; cursor: pointer; }
+.data-menu__trigger:hover, .data-menu__trigger[aria-expanded="true"] { background: var(--hover); color: var(--text-h); }
+.data-menu__text { display: flex; flex-direction: column; line-height: 1.15; }
+.data-menu__caption { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.data-menu__value { font-size: 0.72rem; font-weight: 600; color: var(--text-h); white-space: nowrap; }
+/* Mientras carga la clasificación elegida, el chevron gira. */
+.data-menu__spinner { animation: data-menu-spin 0.9s linear infinite; }
+@keyframes data-menu-spin { to { transform: rotate(360deg); } }
+.data-menu__list { position: absolute; top: calc(100% + 6px); right: 0; z-index: 25; box-sizing: border-box; min-width: 100%; width: max-content; max-width: min(28rem, calc(100vw - 24px)); max-height: min(60svh, 24rem); overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--panel-bg); box-shadow: var(--shadow); text-align: left; }
+/* Con el teclado, el foco está en la lista y la opción activa la señala
+   aria-activedescendant. El fondo de --hover solo no llega a 3:1 sobre
+   el panel, así que la opción activa lleva además el contorno del foco. */
+.data-menu__list:focus-visible { outline: none; }
+.data-menu__list:focus-visible .data-menu__option--active { outline: 2px solid var(--accent); outline-offset: -2px; }
+.data-menu__option { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; border-radius: 7px; font-size: 0.72rem; line-height: 1.35; color: var(--text); cursor: pointer; }
+.data-menu__option--active { background: var(--hover); color: var(--text-h); }
+.data-menu__option[aria-selected="true"] { font-weight: 600; color: var(--text-h); }
+.data-menu__check { display: inline-flex; flex-shrink: 0; width: 14px; padding-top: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .data-menu__spinner { animation: none; }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { Hemisferios } from "./components/Hemisferios";
@@ -10,9 +10,10 @@ import { Tractography3D } from "./components/Tractography3D";
 import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
 import { SettingsMenu } from "./components/SettingsMenu";
+import { DataContextMenu } from "./components/DataContextMenu";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
-import { NETWORK_SOURCE_LABELS } from "./theme/networks";
+import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
 import { pickAndReadSynthesisFile, type PickedSynthesisFile } from "./logic/synthesisImport";
 import { validateSynthesisFile } from "./logic/synthesisValidation";
 import type { GraphConnection, GraphNode } from "./types/domain";
@@ -217,42 +218,42 @@ export default function App() {
     }
   }
 
-  const atlasSelector = (
-    <label className="atlas-selector">
-      Atlas:{" "}
-      <select value={selectedAtlasId} onChange={(e) => handleChangeAtlas(e.target.value)}>
-        {ATLASES.map((atlas) => (
-          <option key={atlas.id} value={atlas.id}>
-            {atlas.label}
-          </option>
-        ))}
-      </select>
-    </label>
+  // Contexto de datos de la barra (D4 de docs/decisiones-diseno.md; spec
+  // 5.1): listas desplegables en lugar de los <select> nativos, que
+  // cortaban el texto. El botón muestra un nombre corto y la lista, las
+  // etiquetas completas. Mismo estado y mismos manejadores que antes.
+  const atlasMenu = (
+    <DataContextMenu
+      caption="Atlas"
+      valueLabel={atlasShortLabel(selectedAtlas.label)}
+      title={selectedAtlas.label}
+      options={ATLASES.map((atlas) => ({ value: atlas.id, label: atlas.label }))}
+      value={selectedAtlasId}
+      onChange={handleChangeAtlas}
+    />
   );
 
   // Selector de clasificación de red (decisión 73): solo si el atlas tiene
   // más de una cargada. Cambia la red de cada región en TODAS las vistas a
   // la vez (connectograma, hemisferios, filtros, cerebro 3D).
-  const networkSourceSelector =
+  const chosenNetworkSource = networkSource ?? defaultNetworkSource ?? "";
+  const networkMenu =
     source.kind === "real" && sourcesForAtlas.length > 1 ? (
-      <label className="atlas-selector">
-        Redes:{" "}
-        <select
-          value={networkSource ?? defaultNetworkSource ?? ""}
-          onChange={(e) => {
-            setNetworkSourceError(null);
-            setNetworkSource(e.target.value === defaultNetworkSource ? null : e.target.value);
-          }}
-        >
-          {sourcesForAtlas.map((s) => (
-            <option key={s.source} value={s.source}>
-              {NETWORK_SOURCE_LABELS[s.source] ?? s.source} — {s.regionCount} de {source.nodes.length} regiones
-              {s.isDefault ? " (por defecto)" : ""}
-            </option>
-          ))}
-        </select>
-        {networkSourcePending && " cargando…"}
-      </label>
+      <DataContextMenu
+        caption="Redes"
+        valueLabel={chosenNetworkSource ? networkSourceShortLabel(chosenNetworkSource) : "—"}
+        title={chosenNetworkSource ? networkSourceLabel(chosenNetworkSource) : undefined}
+        options={sourcesForAtlas.map((s) => ({
+          value: s.source,
+          label: networkSourceOptionLabel(s, source.nodes.length),
+        }))}
+        value={chosenNetworkSource}
+        onChange={(value) => {
+          setNetworkSourceError(null);
+          setNetworkSource(value === defaultNetworkSource ? null : value);
+        }}
+        pending={networkSourcePending}
+      />
     ) : null;
 
   const viewToggle = (
@@ -333,8 +334,11 @@ export default function App() {
   // etiqueta de DATOS REALES / SINTÉTICOS sigue siempre visible (sección
   // 24: nunca se confunde lo real con lo ilustrativo); su explicación
   // larga pasa al texto emergente.
+  // Fragment con clave: sin ella, React lo desenvuelve cuando es el único
+  // hijo (vista de carga) y la barra se vuelve a montar al cambiar de
+  // atlas, con lo que el foco se pierde (D4 de docs/decisiones-diseno.md).
   const renderHeader = (controls: ReactNode = null) => (
-    <>
+    <Fragment key="barra">
       <header className="topbar">
         <span className="topbar__brand">NeuroGraph</span>
         {viewToggle}
@@ -343,7 +347,7 @@ export default function App() {
       </header>
       {synthesisImportBanner}
       {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
-    </>
+    </Fragment>
   );
 
   if (view === "species") {
@@ -421,7 +425,7 @@ export default function App() {
       <div className="app">
         {renderHeader(
           <>
-            {atlasSelector}
+            <div className="data-context">{atlasMenu}</div>
             <span className="demo-badge">Cargando…</span>
           </>,
         )}
@@ -469,8 +473,10 @@ export default function App() {
     <div className="app app--workspace">
       {renderHeader(
         <>
-          {atlasSelector}
-          {networkSourceSelector}
+          <div className="data-context">
+            {atlasMenu}
+            {networkMenu}
+          </div>
           {badge}
         </>,
       )}
