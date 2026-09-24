@@ -97,6 +97,6 @@ describe("DataStatus", () => {
     expect(html).toContain("Datos de demostración");
     expect(html).toContain("Datos sintéticos · solo ilustrativos.");
     expect(html).toContain("revisa que el backend esté en marcha");
-    expect(html).toContain('<span class="visually-hidden">: la API no respondió</span>');
+    expect(html).toContain('<span class="visually-hidden">: datos sintéticos, solo ilustrativos</span>');
   });
 });

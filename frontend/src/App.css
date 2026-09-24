@@ -447,27 +447,48 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Con el foco del teclado, lo plegado muestra su nombre (data-tip) bajo
    el botón, como la etiqueta emergente del ratón. Hacia la derecha en
    las pestañas y hacia la izquierda en Importar, para no salirse de la
-   barra: si sobresaliera, TopBar mediría de más. content lleva dos
-   declaraciones: la segunda (con "/ <alt>") pone el texto alternativo en
-   "" -- el nombre accesible ya lo dan title y data-tab-id/aria-current,
-   así que un lector de pantalla no debe anunciarlo también desde el
-   contenido generado (si no, "Comparar especies Comparar especies"). Los
-   motores que no entienden esa sintaxis descartan la declaración entera y
-   se quedan con la primera. max-width y white-space: normal -- un nombre
-   de síntesis largo envuelve en vez de salirse de la ventana o ensanchar
-   la barra (scrollWidth) mientras TopBar mide. */
+   barra: si sobresaliera, TopBar mediría de más. width: max-content --
+   son absolutas con left/right pero sin ancho propio, así que sin esto
+   su caja de contención es el botón plegado (estrecho) y el texto
+   envuelve una palabra por línea. content lleva dos declaraciones: la
+   segunda (con "/ <alt>") pone el texto alternativo en "" -- el nombre
+   accesible ya lo da el texto de .topbar__tab-label (oculto solo
+   visualmente, no de la accesibilidad); title pasa a ser la descripción,
+   no el nombre, y data-tab-id no llega nunca a la accesibilidad. Sin ese
+   alt vacío, un lector de pantalla anunciaría el nombre dos veces (p.
+   ej. "Comparar especies Comparar especies"). Los motores que no
+   entienden esa sintaxis descartan la declaración entera y se quedan con
+   la primera. max-width y white-space: normal -- un nombre de síntesis
+   largo envuelve en vez de salirse de la ventana o ensanchar la barra
+   (scrollWidth) mientras TopBar mide. */
 .topbar[data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active):not(.topbar__tab--closable) .topbar__tab-btn:focus-visible::after,
-.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
+.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; width: max-content; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
 .topbar[data-collapse~="import"] .topbar__import:focus-visible::after { left: auto; right: 0; }
 /* Paridad de teclado (spec 8): una síntesis muestra su nombre entero con
    el foco del teclado siempre, plegada o no y sea o no la activa --
    .topbar__tab-label se corta a 10rem tanto si cabe como si no, y antes
    el nombre entero solo vivía en title (sin foco de teclado no se veía). */
-.topbar__tab--closable .topbar__tab-btn:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
+.topbar__tab--closable .topbar__tab-btn:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; width: max-content; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
+/* Mientras TopBar mide (data-measuring, refit en components/TopBar.tsx):
+   sin etiquetas emergentes, para que una pestaña de síntesis con el foco
+   del teclado no infle scrollWidth con su propio ancho al probar cada
+   nivel. content: none, no display: none -- quita el pseudo-elemento
+   entero (con su relleno y su borde); display: none solo lo ocultaría a
+   la vista sin sacarlo del cálculo. Mismos selectores que las tres reglas
+   de arriba, con [data-measuring] de más para ganarles en especificidad. */
+.topbar[data-measuring][data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active):not(.topbar__tab--closable) .topbar__tab-btn:focus-visible::after,
+.topbar[data-measuring][data-collapse~="import"] .topbar__import:focus-visible::after,
+.topbar[data-measuring] .topbar__tab--closable .topbar__tab-btn:focus-visible::after { content: none; }
 /* Último recurso, si ni así cabe (muchas pestañas de síntesis en una
-   ventana estrecha): dos filas, con algo de aire vertical entre ellas. */
-.topbar[data-collapse~="tabs"] { flex-wrap: wrap; row-gap: 6px; padding-block: 6px; }
+   ventana estrecha): dos filas. row-gap, no padding-block -- ese relleno
+   se aplicaba también con una sola fila (data-collapse~="tabs" sin
+   llegar a envolver, el caso común a 900-1100 px), y encogía las
+   pestañas y dejaba flotando el subrayado de la activa. data-wrapped lo
+   pone refit solo cuando de verdad hay dos filas (bar.offsetHeight
+   medido), y solo entonces hace falta aire vertical entre ellas. */
+.topbar[data-collapse~="tabs"] { flex-wrap: wrap; row-gap: 6px; }
 .topbar[data-collapse~="tabs"] .topbar__tabs { flex-wrap: wrap; }
+.topbar[data-wrapped] { padding-block: 6px; }
 
 /* Estado de los datos (spec 5.1, punto 4). min-height: 28px -- plegado a
    solo el punto (data-collapse~="status"), el bloque encoge a la altura
