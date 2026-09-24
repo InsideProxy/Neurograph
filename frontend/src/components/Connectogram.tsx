@@ -14,7 +14,7 @@
 // permanente, y el nombre completo vive en un recuadro de lectura fijo
 // debajo del diagrama, nunca flotando junto al ratón o el nodo (así no
 // se sale del cuadro ni depende de dónde esté el puntero).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import * as d3 from "d3";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
@@ -24,12 +24,14 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
+import { nearestNodeId } from "../logic/magnifier";
 import {
   NETWORK_COLORS,
   CONNECTION_TYPE_LABELS,
   EVIDENCE_LEVEL_LABELS,
   NEUTRAL_COLOR,
   ACCENT_SELECTED_COLOR,
+  HOVER_HIGHLIGHT_COLOR,
 } from "../theme/networks";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
@@ -85,6 +87,9 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   // por el peso mínimo, así que no representan el mismo riesgo.
   const tooManyConnections = connections.length > MAX_RENDERED_CONNECTIONS;
   const visibleConnections = tooManyConnections ? [] : connections;
+  const hoveredConnections = hoveredNodeId
+    ? visibleConnections.filter((c) => c.source === hoveredNodeId || c.target === hoveredNodeId)
+    : [];
 
   // Tamaño fijo a 420px heredado de cuando solo había 8 nodos de
   // demostración (pendiente señalado por la usuaria el 28/08/2026):
@@ -166,6 +171,42 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
+  // Lupa (decisión 76, 24/09/2026, propuesta de la usuaria): en las zonas
+  // densas del círculo los nodos y sus abreviaturas quedan diminutos. Con
+  // la casilla "Lupa" activada, un círculo sigue al ratón y dibuja
+  // ampliados los nodos que hay debajo (ver <ConnectogramLens>). Con la
+  // lupa activa, pasar/clicar actúa sobre el nodo más cercano al puntero
+  // (logic/magnifier.ts): no hace falta acertar con el círculo de 3 px.
+  const [lensEnabled, setLensEnabled] = useState(false);
+  const lensPickDistance = 12;
+
+  const lensPointer = (event: MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+
+  const handleSvgMouseMove = (event: MouseEvent<SVGSVGElement>) => {
+    if (!lensEnabled) return;
+    const { x, y } = lensPointer(event);
+    setHoveredNodeId(nearestNodeId(positions, x, y, lensPickDistance));
+  };
+
+  const handleSvgMouseLeave = () => {
+    if (lensEnabled) setHoveredNodeId(null);
+  };
+
+  // Fase de captura: con la lupa activa, el clic sobre (o cerca de) un
+  // nodo lo selecciona y no llega a la conexión que pudiera haber debajo.
+  const handleSvgClickCapture = (event: MouseEvent<SVGSVGElement>) => {
+    if (!lensEnabled) return;
+    const { x, y } = lensPointer(event);
+    const id = nearestNodeId(positions, x, y, lensPickDistance);
+    if (id) {
+      event.stopPropagation();
+      toggleNode(id);
+    }
+  };
+
   // Recuadro de lectura fijo debajo del diagrama (decisión de la
   // usuaria, 30/08/2026): nunca flota junto al ratón ni al nodo -- así
   // el nombre nunca se sale del cuadro ni depende de dónde esté el
@@ -245,6 +286,17 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     <div className="viz-panel">
     {!compact && (
       <div className="viz-panel__toolbar">
+        <label className="connectogram-lens-toggle" title="Amplía la zona bajo el ratón (útil en zonas con muchos nodos)">
+          <input
+            type="checkbox"
+            checked={lensEnabled}
+            onChange={(e) => {
+              setLensEnabled(e.target.checked);
+              setHoveredNodeId(null);
+            }}
+          />
+          Lupa
+        </label>
         <button type="button" className="export-btn" onClick={handleExport}>
           Exportar JPEG
         </button>
@@ -270,7 +322,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       role="img"
       aria-label="Connectograma"
       className="viz-svg"
-      style={{ borderRadius: 8, display: "block", margin: "0 auto" }}
+      style={{ borderRadius: 8, display: "block", margin: "0 auto", cursor: lensEnabled ? "crosshair" : undefined }}
+      onMouseMove={handleSvgMouseMove}
+      onMouseLeave={handleSvgMouseLeave}
+      onClickCapture={handleSvgClickCapture}
     >
       <defs>
         {/* Dos marcadores en vez de uno (decisión 18, 30/08/2026): antes
@@ -301,12 +356,27 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill={ACCENT_SELECTED_COLOR} />
         </marker>
+        <marker
+          id="connectogram-arrow-hover"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={HOVER_HIGHLIGHT_COLOR} />
+        </marker>
       </defs>
       <g>
         {visibleConnections.map((conn) => {
           const a = positions.get(conn.source);
           const b = positions.get(conn.target);
           if (!a || !b) return null;
+          // Las del nodo bajo el ratón se dibujan aparte, encima (ver más abajo).
+          if (hoveredNodeId !== null && (conn.source === hoveredNodeId || conn.target === hoveredNodeId)) {
+            return null;
+          }
           const isSelected =
             isInducedView ||
             selectedConnectionId === conn.id ||
@@ -323,7 +393,9 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
               fill="none"
               stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
-              strokeOpacity={isSelected ? 0.95 : 0.55}
+              strokeOpacity={
+                hoveredNodeId !== null ? (isSelected ? 0.45 : 0.12) : isSelected ? 0.95 : 0.55
+              }
               strokeWidth={Math.max(1, conn.weight * 6)}
               strokeDasharray={isDashed ? "6 4" : undefined}
               markerEnd={
@@ -337,6 +409,33 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           );
         })}
       </g>
+      {/* Resaltado al pasar el ratón por un nodo (decisión 76c, 24/09/2026,
+          petición de la usuaria: "algo muy resaltado, esté o no activada la
+          lupa"): sus conexiones van encima de todas, más gruesas y en
+          HOVER_HIGHLIGHT_COLOR, y el resto se atenúa mientras dura el
+          hover. Sin eventos propios: el clic sigue llegando a la conexión
+          real de debajo (su selección no cambia de lugar). */}
+      {hoveredConnections.length > 0 && (
+        <g style={{ pointerEvents: "none" }}>
+          {hoveredConnections.map((conn) => {
+            const a = positions.get(conn.source);
+            const b = positions.get(conn.target);
+            if (!a || !b) return null;
+            return (
+              <path
+                key={conn.id}
+                d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
+                fill="none"
+                stroke={HOVER_HIGHLIGHT_COLOR}
+                strokeOpacity={1}
+                strokeWidth={Math.max(2, conn.weight * 6) + 1.5}
+                strokeDasharray={conn.evidenceLevel !== "direct" ? "6 4" : undefined}
+                markerEnd={conn.type === "effective" ? "url(#connectogram-arrow-hover)" : undefined}
+              />
+            );
+          })}
+        </g>
+      )}
       <g>
         {nodes.map((node) => {
           const pos = positions.get(node.id);
@@ -370,8 +469,12 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
             <g key={node.id}>
               <g
                 transform={`translate(${pos.x}, ${pos.y})`}
-                onMouseEnter={() => setHoveredNodeId(node.id)}
-                onMouseLeave={() => setHoveredNodeId((current) => (current === node.id ? null : current))}
+                onMouseEnter={lensEnabled ? undefined : () => setHoveredNodeId(node.id)}
+                onMouseLeave={
+                  lensEnabled
+                    ? undefined
+                    : () => setHoveredNodeId((current) => (current === node.id ? null : current))
+                }
               >
                 {/* El relleno es SIEMPRE el color de red real (no se toca,
                     ver theme/networks.ts), pero el trazo ya no es "none"
@@ -408,9 +511,240 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           );
         })}
       </g>
+      {lensEnabled && !compact && (
+        <ConnectogramLens
+          svgRef={svgRef}
+          nodes={nodes}
+          positions={positions}
+          center={center}
+          radius={radius}
+          size={size}
+          nodeRadius={nodeRadius}
+          labelFontSize={labelFontSize}
+          hoveredNodeId={hoveredNodeId}
+          selectedNodeIds={selectedNodeIds}
+          connections={visibleConnections}
+          selectedConnectionId={selectedConnectionId}
+          isInducedView={isInducedView}
+        />
+      )}
     </svg>
     </div>
     {!compact && <div className="connectogram-readout">{readout}</div>}
     </div>
+  );
+}
+
+// Lupa del connectograma (decisión 76). Primer intento: un <use> que
+// clonaba el dibujo entero, escalado y recortado -- en Chrome el pintado
+// se quedaba colgado en cuanto la lupa pasaba sobre el anillo de 360
+// nodos (comprobado a mano el 24/09/2026). Ahora la lupa vuelve a dibujar
+// SOLO los nodos cercanos al puntero (una decena), a LENS_ZOOM veces su
+// tamaño y separación, con sus abreviaturas legibles. Guarda su propia posición del ratón (escucha el <svg> por su
+// cuenta) para que moverla no redibuje los cientos de nodos del padre.
+//
+// Conexiones dentro de la lupa (petición de la usuaria, 24/09/2026: "podríamos
+// dibujar conexiones activas también, para marcar fácilmente"): no todas --
+// ampliar las miles del dibujo es justo lo que colgaba el primer intento --
+// sino solo las ACTIVAS: las que el dibujo principal ya resalta (tocan un
+// nodo seleccionado, son la conexión seleccionada, o toda la vista inducida)
+// en el color de selección, y las del nodo bajo el cursor en el amarillo de
+// resaltado (el mismo que en el dibujo principal, decisión 76c),
+// para ver adónde va antes de clicar. Una curva cuadrática sigue siéndolo
+// tras el escalado, así que basta con ampliar sus tres puntos de control;
+// el grosor no se amplía (sería una mancha).
+const LENS_ZOOM = 3;
+const LENS_HOVER_COLOR = HOVER_HIGHLIGHT_COLOR;
+
+interface LensProps {
+  svgRef: RefObject<SVGSVGElement | null>;
+  nodes: GraphNode[];
+  positions: Map<string, { x: number; y: number }>;
+  center: number;
+  radius: number;
+  size: number;
+  nodeRadius: number;
+  labelFontSize: number;
+  hoveredNodeId: string | null;
+  selectedNodeIds: Set<string>;
+  connections: GraphConnection[];
+  selectedConnectionId: string | null;
+  isInducedView: boolean;
+}
+
+function ConnectogramLens({
+  svgRef,
+  nodes,
+  positions,
+  center,
+  radius,
+  size,
+  nodeRadius,
+  labelFontSize,
+  hoveredNodeId,
+  selectedNodeIds,
+  connections,
+  selectedConnectionId,
+  isInducedView,
+}: LensProps) {
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+
+  // Independiente de la posición del ratón: se recalcula solo al cambiar
+  // la selección o el nodo bajo el cursor, no en cada movimiento.
+  const activeConnections = useMemo(() => {
+    const result: { conn: GraphConnection; hovered: boolean }[] = [];
+    for (const conn of connections) {
+      const selected =
+        isInducedView ||
+        selectedConnectionId === conn.id ||
+        selectedNodeIds.has(conn.source) ||
+        selectedNodeIds.has(conn.target);
+      const hovered = hoveredNodeId !== null && (conn.source === hoveredNodeId || conn.target === hoveredNodeId);
+      if (selected || hovered) result.push({ conn, hovered });
+    }
+    // Las del nodo bajo el cursor encima (y con su color, aunque además
+    // estén seleccionadas), igual que en el dibujo principal.
+    return result.sort((a, b) => Number(a.hovered) - Number(b.hovered));
+  }, [connections, selectedConnectionId, selectedNodeIds, hoveredNodeId, isInducedView]);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    let frame = 0;
+    const onMove = (event: globalThis.MouseEvent) => {
+      const rect = svg.getBoundingClientRect();
+      const next = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setPointer(next));
+    };
+    const onLeave = () => {
+      cancelAnimationFrame(frame);
+      setPointer(null);
+    };
+    svg.addEventListener("mousemove", onMove);
+    svg.addEventListener("mouseleave", onLeave);
+    return () => {
+      cancelAnimationFrame(frame);
+      svg.removeEventListener("mousemove", onMove);
+      svg.removeEventListener("mouseleave", onLeave);
+    };
+  }, [svgRef]);
+
+  if (!pointer) return null;
+
+  const lensRadius = Math.round(Math.max(45, Math.min(110, size * 0.14)));
+  // Coordenadas del dibujo -> coordenadas dentro de la lupa: escalado
+  // alrededor del puntero, así el nodo bajo el cursor sigue bajo él.
+  const zoom = (x: number, y: number) => ({
+    x: pointer.x + (x - pointer.x) * LENS_ZOOM,
+    y: pointer.y + (y - pointer.y) * LENS_ZOOM,
+  });
+  // Margen extra para que entren las etiquetas de nodos cuyo punto queda
+  // justo fuera del borde de la lupa.
+  const reach = lensRadius / LENS_ZOOM + 12;
+  const inside = nodes.filter((node) => {
+    const pos = positions.get(node.id);
+    return pos !== undefined && Math.hypot(pos.x - pointer.x, pos.y - pointer.y) <= reach;
+  });
+
+  const ring = zoom(center, center);
+  const zoomedNodeRadius = Math.min(nodeRadius * LENS_ZOOM, 9);
+  const zoomedFontSize = Math.min(labelFontSize * LENS_ZOOM, 15);
+  const clipId = "connectogram-lens-clip";
+
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx={pointer.x} cy={pointer.y} r={lensRadius} />
+        </clipPath>
+      </defs>
+      <circle cx={pointer.x} cy={pointer.y} r={lensRadius} className="connectogram-lens__bg" />
+      <g clipPath={`url(#${clipId})`}>
+        {/* El propio anillo, ampliado, como guía de por dónde va el círculo. */}
+        <circle
+          cx={ring.x}
+          cy={ring.y}
+          r={radius * LENS_ZOOM}
+          fill="none"
+          stroke={NEUTRAL_COLOR}
+          strokeOpacity={0.35}
+        />
+        {activeConnections.map(({ conn, hovered }) => {
+          const a = positions.get(conn.source);
+          const b = positions.get(conn.target);
+          if (!a || !b) return null;
+          const za = zoom(a.x, a.y);
+          const zb = zoom(b.x, b.y);
+          const isDirected = conn.type === "effective";
+          return (
+            <path
+              key={conn.id}
+              d={`M ${za.x} ${za.y} Q ${ring.x} ${ring.y} ${zb.x} ${zb.y}`}
+              fill="none"
+              stroke={hovered ? LENS_HOVER_COLOR : ACCENT_SELECTED_COLOR}
+              strokeOpacity={hovered ? 1 : 0.95}
+              strokeWidth={hovered ? Math.max(2, conn.weight * 6) + 1.5 : Math.max(1, conn.weight * 6)}
+              strokeDasharray={conn.evidenceLevel !== "direct" ? "6 4" : undefined}
+              markerEnd={
+                isDirected ? `url(#connectogram-arrow-${hovered ? "hover" : "selected"})` : undefined
+              }
+            />
+          );
+        })}
+        {inside.map((node) => {
+          const pos = positions.get(node.id)!;
+          const p = zoom(pos.x, pos.y);
+          const isSelected = selectedNodeIds.has(node.id);
+          const isHovered = hoveredNodeId === node.id;
+          const r = isSelected || isHovered ? zoomedNodeRadius + 3 : zoomedNodeRadius;
+          const ux = (pos.x - center) / radius;
+          const uy = (pos.y - center) / radius;
+          // Dentro de la lupa la etiqueta va hacia DENTRO del círculo (al
+          // revés que en el dibujo normal): la lupa suele quedar pegada al
+          // borde del <svg> y hacia fuera se cortaría (un halo del color de
+          // fondo la separa de las conexiones activas). Y va girada en
+          // dirección radial: arriba y abajo del círculo los nodos quedan
+          // uno al lado del otro en horizontal y las etiquetas rectas se
+          // pisaban. En la mitad izquierda se gira 180° más para que el
+          // texto nunca quede cabeza abajo.
+          const offset = r + 5;
+          const lx = p.x - ux * offset;
+          const ly = p.y - uy * offset;
+          const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+          const leftHalf = ux < 0;
+          const rotation = leftHalf ? angle + 180 : angle;
+          const textAnchor = leftHalf ? "start" : "end";
+          return (
+            <g key={node.id}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={r}
+                fill={NETWORK_COLORS[node.network] ?? "#888"}
+                stroke={isSelected || isHovered ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+                strokeWidth={isSelected || isHovered ? 2.5 : 1}
+              />
+              {node.abbreviation && (
+                <text
+                  x={lx}
+                  y={ly}
+                  transform={`rotate(${rotation} ${lx} ${ly})`}
+                  textAnchor={textAnchor}
+                  dominantBaseline="central"
+                  fontSize={zoomedFontSize}
+                  fontWeight={isHovered || isSelected ? 700 : 600}
+                  fill={isHovered ? "var(--text-h)" : NEUTRAL_COLOR}
+                  className="connectogram-lens__label"
+                >
+                  {node.abbreviation}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </g>
+      <circle cx={pointer.x} cy={pointer.y} r={lensRadius} className="connectogram-lens__border" />
+    </g>
   );
 }
