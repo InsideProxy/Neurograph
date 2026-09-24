@@ -35,12 +35,15 @@ export function SettingsMenu() {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        // Solo devuelve el foco al engranaje si estaba dentro del panel: si
-        // ya se habia ido fuera (revision de la tarea 8), Escape no debe
-        // arrastrarlo de vuelta.
-        const focusWasInPanel = panelRef.current?.contains(document.activeElement);
+        // Tambien devuelve el foco si no habia nada enfocado o el foco
+        // habia caido en <body> -- lo que pasa tras un clic dentro del
+        // panel en una zona sin foco propio, como el titulo o "TEMA"
+        // (revision de la tarea 8): sin esto Escape dejaria el foco
+        // perdido en <body>.
+        const current = document.activeElement;
+        const refocus = !current || current === document.body || panelRef.current?.contains(current);
         setOpen(false);
-        if (focusWasInPanel) triggerRef.current?.focus();
+        if (refocus) triggerRef.current?.focus();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
@@ -60,8 +63,16 @@ export function SettingsMenu() {
   // panel) cierra el panel sin moverlo de nuevo -- se deja seguir su curso
   // natural (revision de la tarea 8).
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    // relatedTarget nulo no significa que el foco haya salido del bloque:
+    // en Chromium, un clic en una parte no enfocable del panel (el
+    // titulo, "TEMA", el relleno) deja el foco en <body> sin
+    // relatedTarget; en WebKit/Firefox de macOS (WebKitGTK en Tauri
+    // Linux), los botones no toman el foco al pulsarlos, asi que elegir
+    // una tarjeta tampoco pone relatedTarget dentro del panel. En ambos
+    // casos no hay que cerrar aqui -- el clic realmente fuera ya lo
+    // cierra el "pointerdown" del otro efecto (revision de la tarea 8).
     const next = event.relatedTarget as Node | null;
-    if (next && event.currentTarget.contains(next)) return;
+    if (!next || event.currentTarget.contains(next)) return;
     setOpen(false);
   };
 
