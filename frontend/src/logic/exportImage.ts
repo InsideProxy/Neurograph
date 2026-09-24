@@ -34,7 +34,7 @@ function triggerDownload(blob: Blob, filename: string): void {
  * a CORS -- el connectograma no usa ninguna) como JPEG en color sobre
  * fondo blanco.
  */
-export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveColor?: ColorResolver): void {
+export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveColor: ColorResolver): void {
   const width = svg.viewBox?.baseVal?.width || svg.width.baseVal.value || svg.clientWidth;
   const height = svg.viewBox?.baseVal?.height || svg.height.baseVal.value || svg.clientHeight;
   if (!width || !height) {
@@ -53,16 +53,14 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
   // (nunca una vez por elemento: un token roto suele repetirse en muchos
   // elementos y no hace falta el mismo aviso decenas de veces): quedaría
   // con el color de pantalla.
-  if (resolveColor) {
-    const warnedRefs = new Set<string>();
-    applyExportColors(clone, resolveColor, (ref, attribute) => {
-      if (import.meta.env.DEV && !warnedRefs.has(ref)) {
-        warnedRefs.add(ref);
-        // eslint-disable-next-line no-console
-        console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
-      }
-    });
-  }
+  const warnedRefs = new Set<string>();
+  applyExportColors(clone, resolveColor, (ref, attribute) => {
+    if (import.meta.env.DEV && !warnedRefs.has(ref)) {
+      warnedRefs.add(ref);
+      // eslint-disable-next-line no-console
+      console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
+    }
+  });
   clone.setAttribute("font-family", EXPORT_FONT_FAMILY);
 
   const serialized = new XMLSerializer().serializeToString(clone);

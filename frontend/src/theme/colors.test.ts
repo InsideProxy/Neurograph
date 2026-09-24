@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NEUTRAL_COLOR } from "./networks";
 import { DRAW_TOKENS } from "./themes";
 import { exportColorFor, exportResolverFor, hasNetworkColor, ngFill, ngStrokeOpacity, resolveNetworkColor } from "./colors";
+import { drawColorsFor } from "./useDrawColors";
 
 describe("resolveNetworkColor", () => {
   it("devuelve el color original del atlas", () => {
@@ -81,5 +82,18 @@ describe("ayudantes data-ng-* con tipo", () => {
     // @ts-expect-error: "edge" es un color, no una opacidad
     ngStrokeOpacity("edge");
     expect(typeof ngFill).toBe("function");
+  });
+});
+
+describe("drawColorsFor", () => {
+  it("devuelve los tokens del tema y el resolvedor de redes", () => {
+    const colors = drawColorsFor("noche");
+    expect(colors.edge).toBe(DRAW_TOKENS.noche.edge);
+    expect(colors.networkColor("cole-anticevic.visual")).toBe("#0000ff");
+  });
+
+  it("forExport devuelve los tokens de exportación", () => {
+    expect(drawColorsFor("grafito", true).selected).toBe(DRAW_TOKENS.claro.selected);
+    expect(drawColorsFor("original", true).selected).toBe(DRAW_TOKENS.original.selected);
   });
 });

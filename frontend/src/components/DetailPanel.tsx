@@ -18,13 +18,10 @@
 // la petición por completo en vez de mostrar un resultado vacío que
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  CONNECTION_TYPE_LABELS,
-  EVIDENCE_LEVEL_LABELS,
-  NETWORK_COLORS,
-  NETWORK_LABELS,
-  NEUTRAL_COLOR,
-} from "../theme/networks";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS, NETWORK_LABELS } from "../theme/networks";
+import { exportResolverFor, ngFill, ngStroke } from "../theme/colors";
+import { useDrawColors } from "../theme/useDrawColors";
+import { useAppearanceStore } from "../state/appearance";
 import { useSelectionStore } from "../state/selection";
 import { fetchInducedTracts } from "../data/api";
 import { inducedConnections } from "../logic/induced";
@@ -159,9 +156,14 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   }, [canFetchTracts, selectedNodesList.map((n) => n.id).join(",")]);
 
   const legendSvgRef = useRef<SVGSVGElement>(null);
+  const colors = useDrawColors();
   const handleExportLegend = () => {
     if (legendSvgRef.current) {
-      exportSvgAsJpeg(legendSvgRef.current, `neurograph-leyenda-${Date.now()}.jpg`);
+      exportSvgAsJpeg(
+        legendSvgRef.current,
+        `neurograph-leyenda-${Date.now()}.jpg`,
+        exportResolverFor(useAppearanceStore.getState().theme),
+      );
     }
   };
 
@@ -251,9 +253,10 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           App.css como `.legend-svg`, solo pantalla) para que
           exportSvgAsJpeg pueda seguir componiendo esta leyenda -- también
           exportable -- sobre blanco explícito sin que un fondo oscuro
-          clonado lo tape. El círculo de red mantiene su color real sin
-          tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible
-          sobre los dos fondos. */}
+          clonado lo tape. El círculo usa el color de red y el texto el
+          token label del tema; al exportar, applyExportColors los cambia
+          por los de la paleta de exportación (D3 de
+          docs/decisiones-diseno.md). */}
       <svg
         ref={legendSvgRef}
         width={260}
@@ -267,11 +270,13 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
             <circle
               r={5}
               cy={-4}
-              fill={NETWORK_COLORS[node.network] ?? "#888"}
-              stroke={NEUTRAL_COLOR}
+              fill={colors.networkColor(node.network)}
+              {...ngFill(`net:${node.network}`)}
+              stroke={colors.nodeRing}
+              {...ngStroke("nodeRing")}
               strokeWidth={1}
             />
-            <text x={14} fontSize={11} fill={NEUTRAL_COLOR}>
+            <text x={14} fontSize={11} fill={colors.label} {...ngFill("label")}>
               {abbreviationAddsInformation(node) ? (
                 <>
                   <tspan fontWeight={700}>{node.abbreviation}</tspan>

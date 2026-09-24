@@ -25,14 +25,10 @@ import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
-import {
-  NETWORK_COLORS,
-  CONNECTION_TYPE_LABELS,
-  EVIDENCE_LEVEL_LABELS,
-  NEUTRAL_COLOR,
-  ACCENT_SELECTED_COLOR,
-  HOVER_HIGHLIGHT_COLOR,
-} from "../theme/networks";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
+import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
+import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
+import { useAppearanceStore } from "../state/appearance";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
 // por la usuaria): antes siempre se mostraba "abreviatura — nombre",
@@ -64,6 +60,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const colors = useDrawColors();
 
   // Con dos o más regiones seleccionadas a la vez, el dibujo deja de
   // mostrar TODAS las conexiones filtradas y pasa a mostrar solo la
@@ -135,7 +132,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const svgRef = useRef<SVGSVGElement>(null);
   const handleExport = () => {
     if (svgRef.current) {
-      exportSvgAsJpeg(svgRef.current, `neurograph-connectograma-${Date.now()}.jpg`);
+      exportSvgAsJpeg(
+        svgRef.current,
+        `neurograph-connectograma-${Date.now()}.jpg`,
+        exportResolverFor(useAppearanceStore.getState().theme),
+      );
     }
   };
 
@@ -343,7 +344,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={NEUTRAL_COLOR} />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.edge} {...ngFill("edge")} />
         </marker>
         <marker
           id="connectogram-arrow-selected"
@@ -354,7 +355,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={ACCENT_SELECTED_COLOR} />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.selected} {...ngFill("selected")} />
         </marker>
         <marker
           id="connectogram-arrow-hover"
@@ -365,7 +366,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={HOVER_HIGHLIGHT_COLOR} />
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.hoverHighlight} {...ngFill("hoverHighlight")} />
         </marker>
       </defs>
       <g>
@@ -392,12 +393,20 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               key={conn.id}
               d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
               fill="none"
-              stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+              stroke={isSelected ? colors.selected : colors.edge}
+              {...ngStroke(isSelected ? "selected" : "edge")}
               strokeOpacity={
-                hoveredNodeId !== null ? (isSelected ? 0.45 : 0.12) : isSelected ? 0.95 : 0.55
+                hoveredNodeId !== null
+                  ? isSelected
+                    ? colors.edgeOpacityHoverSelected
+                    : colors.edgeOpacityHoverOther
+                  : isSelected
+                    ? colors.edgeOpacitySelected
+                    : colors.edgeOpacityConnectogram
               }
+              {...ngStrokeOpacity(isSelected ? "edgeOpacitySelected" : "edgeOpacityConnectogram")}
               strokeWidth={Math.max(1, conn.weight * 6)}
-              strokeDasharray={isDashed ? "6 4" : undefined}
+              strokeDasharray={isDashed ? colors.dash : undefined}
               markerEnd={
                 isDirected
                   ? `url(#connectogram-arrow${isSelected ? "-selected" : ""})`
@@ -412,9 +421,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       {/* Resaltado al pasar el ratón por un nodo (decisión 76c, 24/09/2026,
           petición de la usuaria: "algo muy resaltado, esté o no activada la
           lupa"): sus conexiones van encima de todas, más gruesas y en
-          HOVER_HIGHLIGHT_COLOR, y el resto se atenúa mientras dura el
-          hover. Sin eventos propios: el clic sigue llegando a la conexión
-          real de debajo (su selección no cambia de lugar). */}
+          el color de resaltado del tema (token hoverHighlight), y el resto
+          se atenúa mientras dura el hover. Sin eventos propios: el clic
+          sigue llegando a la conexión real de debajo (su selección no
+          cambia de lugar). */}
       {hoveredConnections.length > 0 && (
         <g style={{ pointerEvents: "none" }}>
           {hoveredConnections.map((conn) => {
@@ -426,10 +436,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                 key={conn.id}
                 d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
                 fill="none"
-                stroke={HOVER_HIGHLIGHT_COLOR}
+                stroke={colors.hoverHighlight}
                 strokeOpacity={1}
                 strokeWidth={Math.max(2, conn.weight * 6) + 1.5}
-                strokeDasharray={conn.evidenceLevel !== "direct" ? "6 4" : undefined}
+                strokeDasharray={conn.evidenceLevel !== "direct" ? colors.dash : undefined}
                 markerEnd={conn.type === "effective" ? "url(#connectogram-arrow-hover)" : undefined}
               />
             );
@@ -481,13 +491,16 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                     para el caso no seleccionado (decisión 18, 30/08/2026):
                     algunos colores reales son extremos (p. ej. "#000000"
                     de gordon333.salience) y desaparecerían contra el fondo
-                    oscuro sin un contorno propio. NEUTRAL_COLOR es legible
-                    sobre oscuro y sobre el blanco de la exportación por
-                    igual. */}
+                    oscuro sin un contorno propio. El contorno usa el token
+                    nodeRing del tema; al exportar, applyExportColors lo
+                    cambia por uno legible sobre blanco (D3 de
+                    docs/decisiones-diseno.md). */}
                 <circle
                   r={currentNodeRadius}
-                  fill={NETWORK_COLORS[node.network] ?? "#888"}
-                  stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+                  fill={colors.networkColor(node.network)}
+                  {...ngFill(`net:${node.network}`)}
+                  stroke={isSelected ? colors.selected : colors.nodeRing}
+                  {...ngStroke(isSelected ? "selected" : "nodeRing")}
                   strokeWidth={isSelected ? 2.5 : 1}
                   style={{ cursor: "pointer" }}
                   onClick={() => toggleNode(node.id)}
@@ -501,7 +514,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   dominantBaseline="central"
                   fontSize={isSelected || isHovered ? labelFontSize + 1.5 : labelFontSize}
                   fontWeight={isSelected || isHovered ? 700 : 600}
-                  fill={NEUTRAL_COLOR}
+                  fill={colors.label}
+                  {...ngFill("label")}
                   style={{ pointerEvents: "none" }}
                 >
                   {node.abbreviation}
@@ -526,6 +540,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           connections={visibleConnections}
           selectedConnectionId={selectedConnectionId}
           isInducedView={isInducedView}
+          colors={colors}
         />
       )}
     </svg>
@@ -554,7 +569,6 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 // tras el escalado, así que basta con ampliar sus tres puntos de control;
 // el grosor no se amplía (sería una mancha).
 const LENS_ZOOM = 3;
-const LENS_HOVER_COLOR = HOVER_HIGHLIGHT_COLOR;
 
 interface LensProps {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -570,6 +584,7 @@ interface LensProps {
   connections: GraphConnection[];
   selectedConnectionId: string | null;
   isInducedView: boolean;
+  colors: DrawColors;
 }
 
 function ConnectogramLens({
@@ -586,6 +601,7 @@ function ConnectogramLens({
   connections,
   selectedConnectionId,
   isInducedView,
+  colors,
 }: LensProps) {
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
@@ -667,7 +683,7 @@ function ConnectogramLens({
           cy={ring.y}
           r={radius * LENS_ZOOM}
           fill="none"
-          stroke={NEUTRAL_COLOR}
+          stroke={colors.edge}
           strokeOpacity={0.35}
         />
         {activeConnections.map(({ conn, hovered }) => {
@@ -682,10 +698,10 @@ function ConnectogramLens({
               key={conn.id}
               d={`M ${za.x} ${za.y} Q ${ring.x} ${ring.y} ${zb.x} ${zb.y}`}
               fill="none"
-              stroke={hovered ? LENS_HOVER_COLOR : ACCENT_SELECTED_COLOR}
-              strokeOpacity={hovered ? 1 : 0.95}
+              stroke={hovered ? colors.hoverHighlight : colors.selected}
+              strokeOpacity={hovered ? 1 : colors.edgeOpacitySelected}
               strokeWidth={hovered ? Math.max(2, conn.weight * 6) + 1.5 : Math.max(1, conn.weight * 6)}
-              strokeDasharray={conn.evidenceLevel !== "direct" ? "6 4" : undefined}
+              strokeDasharray={conn.evidenceLevel !== "direct" ? colors.dash : undefined}
               markerEnd={
                 isDirected ? `url(#connectogram-arrow-${hovered ? "hover" : "selected"})` : undefined
               }
@@ -721,8 +737,8 @@ function ConnectogramLens({
                 cx={p.x}
                 cy={p.y}
                 r={r}
-                fill={NETWORK_COLORS[node.network] ?? "#888"}
-                stroke={isSelected || isHovered ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+                fill={colors.networkColor(node.network)}
+                stroke={isSelected || isHovered ? colors.selected : colors.nodeRing}
                 strokeWidth={isSelected || isHovered ? 2.5 : 1}
               />
               {node.abbreviation && (
@@ -734,7 +750,7 @@ function ConnectogramLens({
                   dominantBaseline="central"
                   fontSize={zoomedFontSize}
                   fontWeight={isHovered || isSelected ? 700 : 600}
-                  fill={isHovered ? "var(--text-h)" : NEUTRAL_COLOR}
+                  fill={isHovered ? "var(--text-h)" : colors.label}
                   className="connectogram-lens__label"
                 >
                   {node.abbreviation}

@@ -57,15 +57,10 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
-import {
-  NETWORK_COLORS,
-  CONNECTION_TYPE_LABELS,
-  EVIDENCE_LEVEL_LABELS,
-  NEUTRAL_COLOR,
-  ACCENT_SELECTED_COLOR,
-  INTRA_HEMISPHERE_COLOR,
-  INTER_HEMISPHERE_COLOR,
-} from "../theme/networks";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
+import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
+import { useDrawColors } from "../theme/useDrawColors";
+import { useAppearanceStore } from "../state/appearance";
 import type { GraphConnection } from "../types/domain";
 
 interface Props {
@@ -105,15 +100,7 @@ const DESIGN_LEFT_CX = 125;
 const DESIGN_RIGHT_CX = 335;
 const DESIGN_MIDLINE_X = 230;
 
-// INTRA_COLOR/INTER_COLOR vivían aquí como constantes locales; ahora se
-// importan de theme/networks.ts (decisión 18, 30/08/2026) porque dejaron
-// de ser "un verde y un rojo cualquiera" -- son colores calculados para
-// leerse con contraste suficiente tanto sobre el tema oscuro de la app
-// en pantalla como sobre el blanco que fuerza siempre la exportación
-// (decisión 11), y ese cálculo tiene que vivir en un solo sitio para no
-// desincronizarse con Connectogram.tsx/Brain3D.tsx/DetailPanel.tsx.
-const INTRA_COLOR = INTRA_HEMISPHERE_COLOR;
-const INTER_COLOR = INTER_HEMISPHERE_COLOR;
+// Los colores intra- e interhemisférico son tokens del tema (intra, inter: theme/themes.ts, D3 de docs/decisiones-diseno.md).
 
 export function Hemisferios({ nodes: allNodes, connections: allConnections, compact = false }: Props) {
   const { selectedNodeIds, selectedConnectionId, toggleNode, selectConnection } =
@@ -121,6 +108,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const colors = useDrawColors();
 
   // Fix del 30/08/2026 (bug real reportado por la usuaria: "las líneas de
   // unión [...] son demasiado gruesas, no entiendo por qué"). Causa: este
@@ -318,7 +306,11 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
   const svgRef = useRef<SVGSVGElement>(null);
   const handleExport = () => {
     if (svgRef.current) {
-      exportSvgAsJpeg(svgRef.current, `neurograph-hemisferios-${Date.now()}.jpg`);
+      exportSvgAsJpeg(
+        svgRef.current,
+        `neurograph-hemisferios-${Date.now()}.jpg`,
+        exportResolverFor(useAppearanceStore.getState().theme),
+      );
     }
   };
 
@@ -477,7 +469,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={NEUTRAL_COLOR} />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.edge} {...ngFill("edge")} />
           </marker>
           <marker
             id="hemisferios-arrow-selected"
@@ -488,20 +480,20 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={ACCENT_SELECTED_COLOR} />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.selected} {...ngFill("selected")} />
           </marker>
         </defs>
 
-        <text x={MIDLINE_X} y={14} textAnchor="middle" fontSize={11} fontWeight={700} fill={NEUTRAL_COLOR}>
+        <text x={MIDLINE_X} y={14} textAnchor="middle" fontSize={11} fontWeight={700} fill={colors.label} {...ngFill("label")}>
           ANTERIOR
         </text>
-        <text x={MIDLINE_X} y={VIEW_H - 8} textAnchor="middle" fontSize={11} fontWeight={700} fill={NEUTRAL_COLOR}>
+        <text x={MIDLINE_X} y={VIEW_H - 8} textAnchor="middle" fontSize={11} fontWeight={700} fill={colors.label} {...ngFill("label")}>
           POSTERIOR
         </text>
-        <text x={LEFT_CX} y={ELLIPSE_CY - ELLIPSE_RY - 10} textAnchor="middle" fontSize={10} fontWeight={600} fill={NEUTRAL_COLOR}>
+        <text x={LEFT_CX} y={ELLIPSE_CY - ELLIPSE_RY - 10} textAnchor="middle" fontSize={10} fontWeight={600} fill={colors.label} {...ngFill("label")}>
           IZQUIERDO
         </text>
-        <text x={RIGHT_CX} y={ELLIPSE_CY - ELLIPSE_RY - 10} textAnchor="middle" fontSize={10} fontWeight={600} fill={NEUTRAL_COLOR}>
+        <text x={RIGHT_CX} y={ELLIPSE_CY - ELLIPSE_RY - 10} textAnchor="middle" fontSize={10} fontWeight={600} fill={colors.label} {...ngFill("label")}>
           DERECHO
         </text>
 
@@ -510,17 +502,40 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             -- sobre el tema oscuro se veía como un bloque casi blanco
             enorme. Sin relleno, el fondo del propio panel (oscuro en
             pantalla, blanco forzado en la exportación) se ve directamente
-            a través, y solo el trazo necesita ser "intermedio". */}
+            a través, y solo el trazo necesita ser "intermedio". Desde la
+            D3 de docs/decisiones-diseno.md el relleno es el token hemiFill
+            del tema: "none" en el tema Original, como hasta ahora, y un
+            tono apenas más claro que el panel en los demás; la
+            exportación lo cambia por el de su paleta. */}
         <line
           x1={MIDLINE_X}
           y1={ELLIPSE_CY - ELLIPSE_RY - 15}
           x2={MIDLINE_X}
           y2={ELLIPSE_CY + ELLIPSE_RY + 15}
-          stroke={NEUTRAL_COLOR}
+          stroke={colors.edge}
+          {...ngStroke("edge")}
           strokeDasharray="4 4"
         />
-        <ellipse cx={LEFT_CX} cy={ELLIPSE_CY} rx={ELLIPSE_RX} ry={ELLIPSE_RY} fill="none" stroke={NEUTRAL_COLOR} />
-        <ellipse cx={RIGHT_CX} cy={ELLIPSE_CY} rx={ELLIPSE_RX} ry={ELLIPSE_RY} fill="none" stroke={NEUTRAL_COLOR} />
+        <ellipse
+          cx={LEFT_CX}
+          cy={ELLIPSE_CY}
+          rx={ELLIPSE_RX}
+          ry={ELLIPSE_RY}
+          fill={colors.hemiFill}
+          {...ngFill("hemiFill")}
+          stroke={colors.edge}
+          {...ngStroke("edge")}
+        />
+        <ellipse
+          cx={RIGHT_CX}
+          cy={ELLIPSE_CY}
+          rx={ELLIPSE_RX}
+          ry={ELLIPSE_RY}
+          fill={colors.hemiFill}
+          {...ngFill("hemiFill")}
+          stroke={colors.edge}
+          {...ngStroke("edge")}
+        />
 
         <g>
           {renderedConnections.map((conn) => {
@@ -533,7 +548,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             const targetHemi = target?.hemisphere ?? null;
             const isClassified = sourceHemi !== null && targetHemi !== null;
             const isInter = isClassified && sourceHemi !== targetHemi;
-            const color = !isClassified ? NEUTRAL_COLOR : isInter ? INTER_COLOR : INTRA_COLOR;
+            const colorRef: "edge" | "inter" | "intra" = !isClassified ? "edge" : isInter ? "inter" : "intra";
+            const color = colors[colorRef];
             const isSelected =
               isInducedView ||
               selectedConnectionId === conn.id ||
@@ -554,9 +570,11 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                 x2={b.x}
                 y2={b.y}
                 stroke={color}
-                strokeOpacity={isSelected ? 0.95 : 0.6}
+                {...ngStroke(colorRef)}
+                strokeOpacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacityHemispheres}
+                {...ngStrokeOpacity(isSelected ? "edgeOpacitySelected" : "edgeOpacityHemispheres")}
                 strokeWidth={Math.max(1, conn.weight * 5) * (isSelected ? 1.4 : 1)}
-                strokeDasharray={isDashed ? "6 4" : undefined}
+                strokeDasharray={isDashed ? colors.dash : undefined}
                 markerEnd={
                   isDirected
                     ? `url(#hemisferios-arrow${isSelected ? "-selected" : ""})`
@@ -604,8 +622,10 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                   cx={pos.x}
                   cy={pos.y}
                   r={r}
-                  fill={NETWORK_COLORS[node.network] ?? "#888"}
-                  stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+                  fill={colors.networkColor(node.network)}
+                  {...ngFill(`net:${node.network}`)}
+                  stroke={isSelected ? colors.selected : colors.nodeRing}
+                  {...ngStroke(isSelected ? "selected" : "nodeRing")}
                   strokeWidth={isSelected ? 2.5 : 1}
                   style={{ cursor: "pointer" }}
                   onMouseEnter={() => setHoveredNodeId(node.id)}
@@ -620,7 +640,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                     dominantBaseline="central"
                     fontSize={isSelected || isHovered ? labelFontSize + 1.5 : labelFontSize}
                     fontWeight={isSelected || isHovered ? 700 : 600}
-                    fill={NEUTRAL_COLOR}
+                    fill={colors.label}
+                    {...ngFill("label")}
                     style={{ pointerEvents: "none" }}
                   >
                     {node.abbreviation}

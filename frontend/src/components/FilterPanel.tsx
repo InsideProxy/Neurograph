@@ -17,7 +17,8 @@
 // cargados para el atlas/fuente activa, real o demo): solo aparecen
 // redes que de verdad tienen al menos un nodo, nunca una lista fija.
 import { useMemo } from "react";
-import { CONNECTION_TYPE_LABELS, NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR } from "../theme/networks";
+import { CONNECTION_TYPE_LABELS, NETWORK_LABELS } from "../theme/networks";
+import { resolveNetworkColor } from "../theme/colors";
 import { useFiltersStore, type ConnectionType } from "../state/filters";
 import { useSelectionStore } from "../state/selection";
 import { formatMinWeight, sliderPositionToWeight, weightToSliderPosition } from "../logic/weightScale";
@@ -191,7 +192,7 @@ export function FilterPanel({ nodes, onCollapse }: FilterPanelProps) {
                 />
                 <span
                   className="legend-swatch"
-                  style={{ backgroundColor: NETWORK_COLORS[network] ?? NEUTRAL_COLOR }}
+                  style={{ backgroundColor: resolveNetworkColor(network) }}
                 />
                 <span className="filter-row__name">{shortLabel}</span>
               </label>
