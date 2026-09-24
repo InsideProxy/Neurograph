@@ -14,7 +14,7 @@ para aprovechar los datos en informes y papers.
 - **Apoyo auxiliar, nada de cambios en lo existente.** El instalador no toca
   el código ni la arquitectura del desarrollador principal, incluidos el MCP
   y sus imágenes. Todo lo nuevo va en `instalacion/`, y se reutilizan tal
-  cual `backend/Dockerfile` y `scripts/rebuild_db_from_sql.sh` (decisión 75).
+  cual `backend/Dockerfile` y `scripts/rebuild_db_from_sql.sh` (H1 de `docs/decisiones-herramientas.md`).
 - **Complementa el instalador de Windows, no lo sustituye.** La app de
   escritorio Tauri (decisiones 54-70) sigue siendo el instalador de Windows.
   Una versión AppImage para Linux queda para más adelante.
@@ -26,7 +26,7 @@ para aprovechar los datos en informes y papers.
 | Cómo se lanza | Un comando en la terminal (`./instalar.sh`), con mensajes claros en español. Pide la contraseña de administrador solo si hay que instalar Docker. |
 | Distribuciones | Instala Docker por sí solo en la familia Ubuntu/Debian (Ubuntu, Mint, Pop!_OS, Zorin, Debian…), desde el repositorio oficial de Docker. En otras distribuciones muestra un enlace a la guía oficial y se detiene. Si Docker ya está instalado, funciona en cualquier distribución. |
 | Uso diario | Un icono "NeuroGraph" enciende la aplicación si está apagada y abre el navegador. Otro icono, "Apagar NeuroGraph", la apaga. El instalador la deja encendida al terminar. |
-| Alcance de la v1 | Instalar, cargar los datos iniciales (orden de la decisión 75) y desinstalar (por defecto conserva los datos). Quedan fuera: actualizar sin perder datos, y el selector de archivos del navegador para "Importar síntesis de IA" (ese botón usa el diálogo nativo de Tauri y no funciona en el navegador). |
+| Alcance de la v1 | Instalar, cargar los datos iniciales (orden de la H1 de `docs/decisiones-herramientas.md`) y desinstalar (por defecto conserva los datos). Quedan fuera: actualizar sin perder datos, y el selector de archivos del navegador para "Importar síntesis de IA" (ese botón usa el diálogo nativo de Tauri y no funciona en el navegador). |
 | Web y API | Igual que en desarrollo. La web se sirve con nginx (solo archivos estáticos) en el puerto 5173 por defecto. La API escucha en `127.0.0.1:8420` por defecto. Si un puerto está ocupado, se usa el siguiente libre y se avisa. Si la API no queda en el 8420, el número se ajusta solo en la copia compilada de la web dentro de la imagen, con verificación; el código fuente no se toca. Postgres no expone ningún puerto en el ordenador. |
 | MCP | Conector local para IAs de terminal. Un comando `neurograph-mcp` enciende NeuroGraph si hace falta y ejecuta el MCP dentro del contenedor de la API. No cambia nada del MCP. |
 | Al terminar | El script explica cómo abrir y apagar NeuroGraph, da la URL y explica cómo conectar el MCP. También deja un archivo con instrucciones para Claude Code, Codex CLI (OpenAI), Gemini CLI y un JSON genérico para otros clientes. |

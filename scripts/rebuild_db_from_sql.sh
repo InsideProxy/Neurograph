@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Reconstruye la base de datos de NeuroGraph desde cero a partir de los
 # archivos .sql del repositorio (migraciones + seeds + salida_*.sql), en
-# el orden de dependencias establecido en la decision 75
-# (docs/analisis-arquitectura.md) y documentado en
+# el orden de dependencias establecido en la H1 (antes decision 75)
+# de docs/decisiones-herramientas.md y documentado en
 # backend/database/migrations/README.md.
 #
 # Solo para cuando NO hay volcado (scripts/export_snapshot.ps1, decision
 # 53). Con volcado disponible, cargarlo es siempre preferible: es la
 # base de datos real, no una reconstruccion. Esta reconstruccion no
 # incluye los 41 tractos del atlas ORG ni sus geometrias (no hay SQL de
-# ellos en el repositorio -- ver decision 75).
+# ellos en el repositorio -- ver H1 en docs/decisiones-herramientas.md).
 #
 # Mismo procedimiento que scripts/apply_sql.ps1: docker cp + psql -f
 # dentro del contenedor, nunca una tuberia (riesgo 7: acentos/n).
@@ -49,7 +49,7 @@ MIGRACIONES=(
   backend/database/migrations/generated/0015_tractography_nodes_and_edges.sql
 )
 
-# Orden de dependencias (decision 75). Los seeds register_atlas_hcp_mmp1,
+# Orden de dependencias (H1 de docs/decisiones-herramientas.md). Los seeds register_atlas_hcp_mmp1,
 # register_atlas_brainnetome, register_gordon333 y
 # register_hcp_subcortical_structures NO se aplican: sus salida_*
 # equivalentes tienen las mismas filas mas abbreviation/hemisphere

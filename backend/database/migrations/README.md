@@ -75,8 +75,8 @@ Aplica las migraciones de `generated/` (solo si la base está vacía) y
 después los datos en el orden de abajo, y termina imprimiendo recuentos y
 comprobaciones de huérfanos. Se puede repetir sin riesgo: todos los
 archivos de datos son idempotentes (`ON CONFLICT DO UPDATE` o `UPDATE`
-por id). El orden y su justificación están en la decisión 75 de
-`docs/analisis-arquitectura.md`.
+por id). El orden y su justificación están en la H1 de
+`docs/decisiones-herramientas.md` (antes decisión 75).
 
 **Orden de carga** (cada paso depende solo de los anteriores):
 
@@ -101,11 +101,14 @@ largo en un comentario). El script lo convierte a UTF-8 en una copia
 temporal antes de aplicarlo; el archivo del repositorio no se toca.
 
 **Lo que esta reconstrucción no incluye** (no hay SQL en el repositorio):
-los 41 tractos del atlas ORG y sus geometrías (`tract_geometries`),
-`tractography_nodes`/`tractography_edges`, genes y evidencia. Salen de
+los 41 tractos del atlas ORG y sus geometrías (`tract_geometries`) y
+`tractography_nodes`/`tractography_edges`. Salen de
 `scripts/generate_org_tractography_geometry.py` y
 `scripts/generate_hybrid_tractography_nodes.py`, que necesitan los datos
-originales de la biblioteca (`E:\NeuroData`).
+originales de la biblioteca (`E:\NeuroData`). Esos archivos siguen
+publicados en Zenodo: enlaces y md5 en la H1 de
+`docs/decisiones-herramientas.md`. Las tablas de genes (`genes`,
+`expressions`) y `evidence` salen vacías porque nunca tuvieron datos.
 
 **Al añadir un `salida_*.sql` nuevo:** añádelo a la lista `DATOS` de
 `scripts/rebuild_db_from_sql.sh`, detrás de lo que referencia, y a esta
