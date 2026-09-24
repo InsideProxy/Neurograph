@@ -331,10 +331,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       <defs>
         {/* Dos marcadores en vez de uno (decisión 18, 30/08/2026): antes
             la flecha era siempre "#222", invisible sobre el fondo oscuro
-            en cuanto la conexión no estaba seleccionada. Cada marcador
-            usa el mismo color "intermedio" (legible sobre oscuro Y sobre
-            el blanco forzado de la exportación) que la línea a la que
-            acompaña -- ver theme/networks.ts. */}
+            en cuanto la conexión no estaba seleccionada. Cada marcador usa
+            los tokens de dibujo del tema (theme/themes.ts), los mismos que
+            la línea a la que acompaña; al exportar, applyExportColors los
+            sustituye por los de la paleta de exportación (D3 de
+            docs/decisiones-diseno.md). */}
         <marker
           id="connectogram-arrow"
           viewBox="0 0 10 10"
@@ -388,23 +389,26 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           // efectiva) se marca con una flecha, no solo con el grosor.
           const isDashed = conn.evidenceLevel !== "direct";
           const isDirected = conn.type === "effective";
+          const strokeRef: "selected" | "edge" = isSelected ? "selected" : "edge";
+          const restOpacityRef: "edgeOpacitySelected" | "edgeOpacityConnectogram" = isSelected
+            ? "edgeOpacitySelected"
+            : "edgeOpacityConnectogram";
           return (
             <path
               key={conn.id}
               d={`M ${a.x} ${a.y} Q ${center} ${center} ${b.x} ${b.y}`}
               fill="none"
-              stroke={isSelected ? colors.selected : colors.edge}
-              {...ngStroke(isSelected ? "selected" : "edge")}
+              stroke={colors[strokeRef]}
+              {...ngStroke(strokeRef)}
               strokeOpacity={
                 hoveredNodeId !== null
                   ? isSelected
                     ? colors.edgeOpacityHoverSelected
                     : colors.edgeOpacityHoverOther
-                  : isSelected
-                    ? colors.edgeOpacitySelected
-                    : colors.edgeOpacityConnectogram
+                  : colors[restOpacityRef]
               }
-              {...ngStrokeOpacity(isSelected ? "edgeOpacitySelected" : "edgeOpacityConnectogram")}
+              // La referencia de exportación usa la opacidad de reposo (sin hover): al exportar nunca hay ratón encima.
+              {...ngStrokeOpacity(restOpacityRef)}
               strokeWidth={Math.max(1, conn.weight * 6)}
               strokeDasharray={isDashed ? colors.dash : undefined}
               markerEnd={
@@ -452,6 +456,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           if (!pos) return null;
           const isSelected = selectedNodeIds.has(node.id);
           const isHovered = hoveredNodeId === node.id;
+          const nodeStrokeRef: "selected" | "nodeRing" = isSelected ? "selected" : "nodeRing";
           const currentNodeRadius = isSelected || isHovered ? nodeRadius + 3 : nodeRadius;
 
           // Etiqueta SIEMPRE por fuera del círculo (30/08/2026, corrige un
@@ -499,8 +504,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   r={currentNodeRadius}
                   fill={colors.networkColor(node.network)}
                   {...ngFill(`net:${node.network}`)}
-                  stroke={isSelected ? colors.selected : colors.nodeRing}
-                  {...ngStroke(isSelected ? "selected" : "nodeRing")}
+                  stroke={colors[nodeStrokeRef]}
+                  {...ngStroke(nodeStrokeRef)}
                   strokeWidth={isSelected ? 2.5 : 1}
                   style={{ cursor: "pointer" }}
                   onClick={() => toggleNode(node.id)}

@@ -33,6 +33,10 @@ function triggerDownload(blob: Blob, filename: string): void {
  * Exporta un elemento <svg> autocontenido (sin <image> externas sujetas
  * a CORS -- el connectograma no usa ninguna) como JPEG en color sobre
  * fondo blanco.
+ *
+ * @param resolveColor Resuelve las referencias `data-ng-*` del clon a la
+ * paleta de exportación del tema activo (D3 de docs/decisiones-diseno.md).
+ * Quien llama lo obtiene con `exportResolverFor(theme)` (theme/colors.ts).
  */
 export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveColor: ColorResolver): void {
   const width = svg.viewBox?.baseVal?.width || svg.width.baseVal.value || svg.clientWidth;

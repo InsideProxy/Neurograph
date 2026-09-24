@@ -100,8 +100,6 @@ const DESIGN_LEFT_CX = 125;
 const DESIGN_RIGHT_CX = 335;
 const DESIGN_MIDLINE_X = 230;
 
-// Los colores intra- e interhemisférico son tokens del tema (intra, inter: theme/themes.ts, D3 de docs/decisiones-diseno.md).
-
 export function Hemisferios({ nodes: allNodes, connections: allConnections, compact = false }: Props) {
   const { selectedNodeIds, selectedConnectionId, toggleNode, selectConnection } =
     useSelectionStore();
@@ -505,8 +503,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             a través, y solo el trazo necesita ser "intermedio". Desde la
             D3 de docs/decisiones-diseno.md el relleno es el token hemiFill
             del tema: "none" en el tema Original, como hasta ahora, y un
-            tono apenas más claro que el panel en los demás; la
-            exportación lo cambia por el de su paleta. */}
+            tono apenas distinto del panel en los demás; la exportación lo
+            cambia por el de su paleta. */}
         <line
           x1={MIDLINE_X}
           y1={ELLIPSE_CY - ELLIPSE_RY - 15}
@@ -548,6 +546,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             const targetHemi = target?.hemisphere ?? null;
             const isClassified = sourceHemi !== null && targetHemi !== null;
             const isInter = isClassified && sourceHemi !== targetHemi;
+            // Los colores intra- e interhemisféricos son tokens del tema
+            // (intra, inter: theme/themes.ts, D3 de docs/decisiones-diseno.md).
             const colorRef: "edge" | "inter" | "intra" = !isClassified ? "edge" : isInter ? "inter" : "intra";
             const color = colors[colorRef];
             const isSelected =
@@ -593,6 +593,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             if (!pos) return null;
             const isSelected = selectedNodeIds.has(node.id);
             const isHovered = hoveredNodeId === node.id;
+            const nodeStrokeRef: "selected" | "nodeRing" = isSelected ? "selected" : "nodeRing";
             const r = isSelected || isHovered ? nodeRadius + 1.5 : nodeRadius;
             // Dirección de la etiqueta (30/08/2026, abreviatura permanente
             // pedida por la usuaria): mismo principio que el connectograma
@@ -624,8 +625,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                   r={r}
                   fill={colors.networkColor(node.network)}
                   {...ngFill(`net:${node.network}`)}
-                  stroke={isSelected ? colors.selected : colors.nodeRing}
-                  {...ngStroke(isSelected ? "selected" : "nodeRing")}
+                  stroke={colors[nodeStrokeRef]}
+                  {...ngStroke(nodeStrokeRef)}
                   strokeWidth={isSelected ? 2.5 : 1}
                   style={{ cursor: "pointer" }}
                   onMouseEnter={() => setHoveredNodeId(node.id)}
