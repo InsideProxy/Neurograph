@@ -9,8 +9,8 @@ import { SpeciesComparisonPanel } from "./components/SpeciesComparisonPanel";
 import { Tractography3D } from "./components/Tractography3D";
 import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
-import { SettingsMenu } from "./components/SettingsMenu";
 import { DataContextMenu } from "./components/DataContextMenu";
+import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
 import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
@@ -256,95 +256,66 @@ export default function App() {
       />
     ) : null;
 
-  const viewToggle = (
-    <nav className="view-toggle">
-      <button
-        type="button"
-        className={view === "atlas" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("atlas")}
-      >
-        Un atlas
-      </button>
-      <button
-        type="button"
-        className={view === "species" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("species")}
-      >
-        Comparar especies
-      </button>
-      <button
-        type="button"
-        className={view === "tractography" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("tractography")}
-      >
-        Tractografía 3D
-      </button>
-      <button
-        type="button"
-        className={view === "tractography-nodes" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("tractography-nodes")}
-      >
-        Nodos de tractografía
-      </button>
-      {/* Pestañas de síntesis de IA ya abiertas (decisión 71) -- closable,
-          nunca se pierden al cambiar a otra vista, solo al cerrarlas
-          explícitamente con el "×". */}
-      {synthesisTabs.map(({ tabId, validated }) => (
-        <button
-          key={tabId}
-          type="button"
-          className={
-            view === "synthesis" && activeSynthesisTabId === tabId
-              ? "view-toggle__btn view-toggle__btn--active"
-              : "view-toggle__btn"
-          }
-          onClick={() => {
-            setActiveSynthesisTabId(tabId);
-            setView("synthesis");
-          }}
-          title={`Síntesis de IA: ${validated.file.function}`}
-        >
-          🧪 {validated.file.function}
-          <span
-            className="synthesis-tab-close"
-            role="button"
-            aria-label={`Cerrar pestaña de síntesis "${validated.file.function}"`}
-            onClick={(e) => {
-              e.stopPropagation();
-              closeSynthesisTab(tabId);
-            }}
-          >
-            ×
-          </span>
-        </button>
-      ))}
-      <button type="button" className="synthesis-import-btn" onClick={handleImportSynthesis}>
-        Importar síntesis de IA…
-      </button>
-    </nav>
-  );
+  // Pestañas de la barra (D4 de docs/decisiones-diseno.md; spec 5.1): las
+  // cuatro vistas y las pestañas de síntesis de IA ya abiertas (decisión
+  // 71). Estas nunca se pierden al cambiar de vista; solo se quitan al
+  // cerrarlas con su botón.
+  const tabs: TopBarTab[] = [
+    { id: "atlas", label: "Atlas", icon: "atlas", active: view === "atlas", onSelect: () => setView("atlas") },
+    {
+      id: "species",
+      label: "Comparar especies",
+      icon: "species",
+      active: view === "species",
+      onSelect: () => setView("species"),
+    },
+    {
+      id: "tractography",
+      label: "Tractografía 3D",
+      icon: "tracts",
+      active: view === "tractography",
+      onSelect: () => setView("tractography"),
+    },
+    {
+      id: "tractography-nodes",
+      label: "Nodos de tractografía",
+      icon: "nodes",
+      active: view === "tractography-nodes",
+      onSelect: () => setView("tractography-nodes"),
+    },
+    ...synthesisTabs.map(
+      ({ tabId, validated }): TopBarTab => ({
+        id: tabId,
+        label: validated.file.function,
+        icon: "synthesis",
+        title: `Síntesis de IA: ${validated.file.function}`,
+        active: view === "synthesis" && activeSynthesisTabId === tabId,
+        onSelect: () => {
+          setActiveSynthesisTabId(tabId);
+          setView("synthesis");
+        },
+        onClose: () => closeSynthesisTab(tabId),
+        closeLabel: `Cerrar pestaña de síntesis "${validated.file.function}"`,
+      }),
+    ),
+  ];
 
   const synthesisImportBanner = synthesisImportError ? (
     <p className="synthesis-import-error">{synthesisImportError}</p>
   ) : null;
 
-  // Barra superior compacta (decisión 74, 24/09/2026): antes la cabecera
-  // ocupaba ~190 px en cinco filas centradas (título grande, pestañas,
-  // atlas, redes, etiqueta de datos); ahora es una sola franja. La
-  // etiqueta de DATOS REALES / SINTÉTICOS sigue siempre visible (sección
-  // 24: nunca se confunde lo real con lo ilustrativo); su explicación
-  // larga pasa al texto emergente.
-  // Fragment con clave: sin ella, React lo desenvuelve cuando es el único
-  // hijo (vista de carga) y la barra se vuelve a montar al cambiar de
-  // atlas, con lo que el foco se pierde (D4 de docs/decisiones-diseno.md).
-  const renderHeader = (controls: ReactNode = null) => (
+  // Barra superior (D4 de docs/decisiones-diseno.md; spec 5.1). Sustituye
+  // a la franja compacta de la decisión 74 (D1): marca, pestañas con
+  // icono, contexto de datos, Importar y Ajustes. El contexto (atlas,
+  // redes y la etiqueta de datos reales o de demostración) solo llega en
+  // la vista Atlas, y ahí está siempre visible (sección 24: nunca se
+  // confunde lo real con lo ilustrativo). Fragment con clave: sin ella,
+  // React lo desenvuelve cuando es el único hijo (vista de carga) y la
+  // barra se vuelve a montar al cambiar de atlas, con lo que el foco se
+  // pierde y el estado de los datos no se anuncia.
+  const renderHeader = (context: ReactNode = null) => (
     <Fragment key="barra">
-      <header className="topbar">
-        <span className="topbar__brand">NeuroGraph</span>
-        {viewToggle}
-        {controls && <div className="topbar__controls">{controls}</div>}
-        <SettingsMenu />
-      </header>
+      <TopBar tabs={tabs} context={context} onImport={handleImportSynthesis} />
       {synthesisImportBanner}
       {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
     </Fragment>
@@ -412,8 +383,8 @@ export default function App() {
           <FunctionSynthesisTab validated={activeTab.validated} />
         ) : (
           <p className="canvas-error">
-            Esta pestaña de síntesis ya no existe (se cerró). Elige otra pestaña o importa una nueva con "Importar
-            síntesis de IA…".
+            Esta pestaña de síntesis ya no existe (se cerró). Elige otra pestaña o importa una nueva con «Importar»,
+            en la barra superior.
           </p>
         )}
       </div>
@@ -426,28 +397,19 @@ export default function App() {
         {renderHeader(
           <>
             <div className="data-context">{atlasMenu}</div>
-            <span className="demo-badge">Cargando…</span>
+            <DataStatus kind="loading" />
           </>,
         )}
       </div>
     );
   }
 
-  const badge =
+  // Estado de los datos (spec 5.1, punto 4).
+  const status =
     source.kind === "real" ? (
-      <span
-        className="real-badge"
-        title={`Datos reales de la base de datos · ${selectedAtlas.label} · ${source.nodes.length} regiones, ${source.connections.length} conexiones`}
-      >
-        DATOS REALES · {source.nodes.length} regiones · {source.connections.length} conexiones
-      </span>
+      <DataStatus kind="real" regionCount={source.nodes.length} connectionCount={source.connections.length} />
     ) : (
-      <span
-        className="demo-badge"
-        title="La API no respondió, o este atlas aún no tiene datos — revisa que el backend esté en marcha (docker compose up -d en desarrollo)"
-      >
-        DATOS SINTÉTICOS · SOLO ILUSTRATIVOS
-      </span>
+      <DataStatus kind="demo" />
     );
 
   // Espacio de trabajo "una vista grande + miniaturas" (decisión 74,
@@ -477,7 +439,7 @@ export default function App() {
             {atlasMenu}
             {networkMenu}
           </div>
-          {badge}
+          {status}
         </>,
       )}
       <div className={`workspace${filtersCollapsed ? " workspace--filters-collapsed" : ""}`}>

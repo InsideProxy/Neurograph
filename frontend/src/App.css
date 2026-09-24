@@ -1,18 +1,4 @@
 .app { font-family: var(--sans); padding: 1rem 1.5rem; color: var(--text); }
-/* Etiquetas de datos reales y de demostración (decisión 18 y D3 de docs/decisiones-diseno.md): nunca
-   se exportan. Sus colores (--success y --warning, con sus fondos -bg) los
-   define cada tema en index.css. */
-.demo-badge { display: inline-block; background: var(--warning-bg); color: var(--warning); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
-.real-badge { display: inline-block; background: var(--success-bg); color: var(--success); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
-
-/* Selector "Un atlas" / "Comparar especies" (decisión 38, 01/09/2026):
-   mismo estilo de botón secundario que .export-btn / .filter-panel__bulk-btn,
-   con un estado activo marcado con el color de acento en vez de un
-   tercer estilo de botón nuevo. */
-.view-toggle { display: flex; gap: 6px; margin: 0.5rem 0; }
-.view-toggle__btn { font-size: 0.85rem; padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
-.view-toggle__btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
-.view-toggle__btn--active { border-color: var(--accent-border); background: var(--accent-bg); color: var(--text-h); font-weight: 600; }
 
 .layout { display: flex; gap: 1.5rem; align-items: flex-start; }
 
@@ -192,15 +178,10 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    dibujadas sobre blanco, en cualquier tema. */
 .species-panel__figure img { max-width: 100%; height: auto; border-radius: 4px; background: #ffffff; }
 
-/* "Importar síntesis de IA" (decisión 71, 11/09/2026): botón de acción
-   junto al selector de vistas, y aviso de error de importación (nunca
-   silencioso -- si la validación real rechaza el archivo, se ve por
-   qué). Reutiliza el estilo de .view-toggle__btn como base para no
-   introducir un cuarto tipo de botón. */
-.synthesis-import-btn { font-size: 0.85rem; padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; margin-left: 8px; }
-.synthesis-import-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
+/* Aviso de error de "Importar síntesis de IA" (decisión 71, 11/09/2026):
+   nunca silencioso -- si la validación real rechaza el archivo, se ve por
+   qué. El botón Importar está ahora en la barra superior (D4). */
 .synthesis-import-error { white-space: pre-line; padding: 0.6rem 0.9rem; background: var(--error-bg); color: var(--error); border-radius: 6px; font-size: 0.82rem; margin: 0.4rem 0; }
-.synthesis-tab-close { margin-left: 4px; font-weight: 700; }
 
 /* Banner de síntesis de IA: TERCERA categoría visual, deliberadamente
    distinta tanto de .real-badge (verde) como de .demo-badge (ámbar) --
@@ -226,21 +207,16 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 
 /* ------------------------------------------------------------------
-   Decisión 74 (24/09/2026): barra superior compacta y espacio de
-   trabajo "una vista grande + miniaturas" (disposición elegida por la
-   usuaria). Nada de esto cambia colores de datos (theme/networks.ts):
-   solo reparto de espacio, tamaños de letra y espaciado del chrome.
+   Decisión 74 (24/09/2026): espacio de trabajo "una vista grande +
+   miniaturas" (disposición elegida por la usuaria). Nada de esto cambia
+   colores de datos (theme/networks.ts): solo reparto de espacio, tamaños
+   de letra y espaciado del chrome. La barra superior de entonces la
+   sustituye la de la D4, al final de este archivo.
    ------------------------------------------------------------------ */
-.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; text-align: left; }
-.topbar__brand { font-weight: 700; color: var(--text-h); font-size: 1rem; letter-spacing: 0.02em; margin-right: 4px; }
-.topbar .view-toggle { margin: 0; flex-wrap: wrap; }
-.topbar .view-toggle__btn, .topbar .synthesis-import-btn { font-size: 0.8rem; padding: 3px 10px; }
-.topbar__controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; flex: 1 1 auto; justify-content: flex-end; }
-.topbar .real-badge, .topbar .demo-badge { font-size: 0.74rem; white-space: nowrap; }
 
 /* La vista de trabajo ocupa exactamente la ventana: nada se desplaza
    hacia abajo; cada panel se desplaza por dentro si lo necesita. */
-.app--workspace { height: 100svh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding: 0.5rem 0.75rem 0.75rem; text-align: left; }
+.app--workspace { height: 100svh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding: 0 12px 12px; text-align: left; }
 .workspace {
   flex: 1 1 auto;
   min-height: 0;
@@ -343,7 +319,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 /* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
    emergente con los cuatro temas. */
-.topbar .settings { margin-left: auto; position: relative; }
+.topbar .settings { position: relative; }
 .settings__trigger { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; }
 .settings__trigger[aria-expanded="true"] { background: var(--code-bg); border-color: var(--border-strong); color: var(--text-h); }
 .settings__icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -422,3 +398,67 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 @media (prefers-reduced-motion: reduce) {
   .data-menu__spinner { animation: none; }
 }
+
+/* Barra superior (spec 5.1). Va de borde a borde: los márgenes negativos
+   anulan el relleno de .app. Va en una sola fila (nowrap): así TopBar
+   puede medir si cabe (ver «Compactación», más abajo). */
+.topbar { display: flex; align-items: center; flex-wrap: nowrap; column-gap: 14px; min-height: 56px; margin: -1rem -1.5rem 1rem; padding: 0 12px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: var(--bg); text-align: left; }
+.app--workspace > .topbar { margin: 0 -12px 12px; }
+.topbar__brand { display: flex; align-items: center; gap: 10px; }
+.topbar__logo { flex-shrink: 0; }
+.topbar__logo-ring { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+.topbar__logo-links { fill: none; stroke: var(--text-muted); stroke-width: 1.2; }
+/* El color de cada nodo va en su atributo fill (colores de red del tema).
+   Un fill aquí lo taparía. El anillo fino los separa del fondo, también
+   el amarillo sobre el blanco de Claro. */
+.topbar__logo-node { stroke: var(--border-strong); stroke-width: 0.8; }
+.topbar__name { font-size: 0.89rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-h); }
+.topbar__stage { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+.topbar__tabs { display: flex; align-self: stretch; gap: 2px; margin-left: 6px; }
+.topbar__tab { display: flex; align-items: stretch; border-bottom: 2px solid transparent; }
+.topbar__tab--active { border-bottom-color: var(--accent); }
+.topbar__tab-btn { position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 9px 0; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 0.72rem; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.topbar__tab-btn:hover, .topbar__tab--active .topbar__tab-btn { color: var(--text-h); }
+.topbar__tab--active .topbar__tab-btn { font-weight: 600; }
+.topbar__tab-btn:focus-visible { outline-offset: -2px; }
+/* El nombre de una síntesis lo escribe quien la genera: se corta a 10rem
+   y entero queda en la etiqueta emergente. Los de las vistas caben. */
+.topbar__tab-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
+.topbar__tab--closable .topbar__tab-btn { padding-right: 2px; }
+/* Las síntesis de IA conservan su naranja: tercera categoría visual
+   (decisión de la usuaria, 11/09/2026). */
+.icon--synthesis { color: var(--synthesis); }
+.topbar__tab-close { align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 4px; padding: 0; border: none; border-radius: 6px; background: none; color: var(--text-muted); cursor: pointer; }
+.topbar__tab-close:hover { background: var(--hover); color: var(--text-h); }
+.topbar__end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.topbar__import { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-bg); color: var(--text); font: inherit; font-size: 0.72rem; font-weight: 500; cursor: pointer; }
+.topbar__import:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
+/* Compactación (logic/topBarFit.ts). Si la barra no cabe en una fila,
+   TopBar pone en data-collapse los pasos que hacen falta, por este
+   orden: «Datos reales» se queda en su punto («Datos de demostración»
+   nunca: es un aviso), Importar en su icono, las síntesis inactivas en
+   el suyo (.topbar__tab--closable: solo ellas se cierran) y al final
+   las vistas inactivas. Lo plegado sigue para los lectores de pantalla
+   y en la etiqueta emergente. */
+.topbar[data-collapse~="status"] .data-status--real .data-status__text,
+.topbar[data-collapse~="import"] .topbar__import-label,
+.topbar[data-collapse~="synthesis"] .topbar__tab--closable:not(.topbar__tab--active) .topbar__tab-label,
+.topbar[data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active) .topbar__tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.topbar[data-collapse~="import"] .topbar__import { width: 36px; padding: 0; justify-content: center; }
+/* Con el foco del teclado, lo plegado muestra su nombre (data-tip) bajo
+   el botón, como la etiqueta emergente del ratón. Hacia la derecha en
+   las pestañas y hacia la izquierda en Importar, para no salirse de la
+   barra: si sobresaliera, TopBar mediría de más. */
+.topbar[data-collapse~="synthesis"] .topbar__tab--closable:not(.topbar__tab--active) .topbar__tab-btn:focus-visible::after,
+.topbar[data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active) .topbar__tab-btn:focus-visible::after,
+.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: nowrap; pointer-events: none; }
+.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { left: auto; right: 0; }
+/* Último recurso, si ni así cabe (muchas pestañas de síntesis en una
+   ventana estrecha): dos filas. */
+.topbar[data-collapse~="tabs"] { flex-wrap: wrap; }
+
+/* Estado de los datos (spec 5.1, punto 4). */
+.data-status { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 0.7rem; font-weight: 600; color: var(--text-h); white-space: nowrap; }
+.data-status__dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); box-shadow: 0 0 0 3px var(--hover); }
+.data-status--real .data-status__dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
+.data-status--demo .data-status__dot { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }
