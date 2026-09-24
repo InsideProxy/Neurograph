@@ -66,11 +66,11 @@
      Corregido el 29/08/2026 (pendiente señalado por la usuaria el
      28/08/2026): ahora usa el ancho disponible, con un límite generoso
      para no volverse ilegible en monitores ultra-anchos. */
+  /* Decisión 74 (24/09/2026): sin tope de 1800 px ni bordes laterales --
+     la ventana entera es el espacio de trabajo. */
   width: 100%;
-  max-width: 1800px;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;

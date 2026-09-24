@@ -7,6 +7,8 @@
 .demo-badge { display: inline-block; background: rgba(240, 196, 115, 0.16); color: #f0c473; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
 .real-badge { display: inline-block; background: rgba(127, 224, 160, 0.16); color: #7fe0a0; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
 .atlas-selector { display: block; margin: 0.4rem 0; font-size: 0.9rem; }
+.topbar .atlas-selector { display: inline-flex; align-items: center; margin: 0; font-size: 0.82rem; white-space: nowrap; }
+.topbar .atlas-selector select { max-width: 22rem; }
 .atlas-selector select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 
 /* Selector "Un atlas" / "Comparar especies" (decisión 38, 01/09/2026):
@@ -225,3 +227,98 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .synthesis-finding__citation a { color: inherit; }
 .synthesis-finding__agrees { margin: 0.3rem 0 0; color: #7fe0a0; font-size: 0.8rem; }
 .synthesis-finding__conflicts { margin: 0.3rem 0 0; color: #ff9b9b; font-size: 0.8rem; }
+
+
+/* ------------------------------------------------------------------
+   Decisión 74 (24/09/2026): barra superior compacta y espacio de
+   trabajo "una vista grande + miniaturas" (disposición elegida por la
+   usuaria). Nada de esto cambia colores de datos (theme/networks.ts):
+   solo reparto de espacio, tamaños de letra y espaciado del chrome.
+   ------------------------------------------------------------------ */
+.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; text-align: left; }
+.topbar__brand { font-weight: 700; color: var(--text-h); font-size: 1rem; letter-spacing: 0.02em; margin-right: 4px; }
+.topbar .view-toggle { margin: 0; flex-wrap: wrap; }
+.topbar .view-toggle__btn, .topbar .synthesis-import-btn { font-size: 0.8rem; padding: 3px 10px; }
+.topbar__controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; }
+.topbar .real-badge, .topbar .demo-badge { font-size: 0.74rem; white-space: nowrap; }
+
+/* La vista de trabajo ocupa exactamente la ventana: nada se desplaza
+   hacia abajo; cada panel se desplaza por dentro si lo necesita. */
+.app--workspace { height: 100svh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding: 0.5rem 0.75rem 0.75rem; text-align: left; }
+.workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(150px, 31%) minmax(150px, 31%) minmax(0, 1fr);
+  grid-template-areas:
+    "filters main thumb1"
+    "filters main thumb2"
+    "filters main detail";
+  gap: 10px;
+}
+.workspace--filters-collapsed { grid-template-columns: 34px minmax(0, 1fr) 300px; }
+.ws-filters { grid-area: filters; min-height: 0; display: flex; }
+.ws-filters .filter-panel { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+.ws-filters__expand { writing-mode: vertical-rl; flex: 1 1 auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg); color: var(--text); cursor: pointer; font-size: 0.8rem; padding: 8px 0; }
+.ws-filters__expand:hover { border-color: var(--text-muted); background: var(--code-bg); }
+.ws-detail { grid-area: detail; min-height: 0; display: flex; }
+.ws-detail .detail-panel { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+
+.ws-view { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px 8px; box-sizing: border-box; overflow: hidden; }
+.ws-view__header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: 0 0 auto; }
+.ws-view__header h2 { font-size: 0.95rem; margin: 0 0 4px; font-weight: 600; }
+.ws-view--thumb .ws-view__header h2 { font-size: 0.8rem; color: var(--text); }
+.ws-view__enlarge-hint { font-size: 0.72rem; color: var(--text-muted); }
+.ws-view--thumb:hover { border-color: var(--accent-border); }
+.ws-view--thumb:hover .ws-view__enlarge-hint { color: var(--text-h); }
+.ws-view__body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.ws-view__overlay { position: absolute; inset: 0; background: transparent; border: none; cursor: zoom-in; border-radius: 8px; }
+.ws-view__overlay:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Connectograma y Hemisferios: el dibujo llena el hueco disponible y se
+   ajusta a su lado menor (ver el ResizeObserver de cada componente). */
+.viz-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.viz-panel__toolbar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 4px; flex: 0 0 auto; }
+.viz-panel__area { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.ws-view .connectogram-readout, .ws-view .hemisferios-readout { flex: 0 0 auto; }
+.ws-view .connectogram-toomany-warning { flex: 0 0 auto; margin: 2px 0 4px; }
+.ws-view .hemisferios-summary { flex: 0 0 auto; margin-bottom: 2px; }
+
+/* Cerebro 3D dentro del espacio de trabajo: el lienzo llena el hueco en
+   vez de la altura fija de antes (min(70vh, 760px)). */
+.ws-view .canvas-wrap { height: auto; min-height: 0; flex: 1 1 0; border: none; padding: 0; background: transparent; }
+.ws-view .brain3d-focus-placeholder { height: auto; min-height: 0; flex: 1 1 0; padding: 1rem; }
+.ws-view--thumb .brain3d-focus-placeholder { font-size: 0.75rem; padding: 0.5rem; }
+
+/* Panel de filtros compacto. */
+.filter-panel__header { display: flex; align-items: center; justify-content: space-between; }
+.filter-panel__header h2 { font-size: 0.95rem; margin: 0; font-weight: 600; }
+.icon-btn { font-size: 0.85rem; line-height: 1; padding: 3px 7px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text-muted); cursor: pointer; }
+.icon-btn:hover { border-color: var(--text-muted); color: var(--text-h); background: var(--code-bg); }
+.filter-section { border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.4rem; }
+.filter-section > summary { font-weight: 600; font-size: 0.82rem; color: var(--text-h); cursor: pointer; padding: 2px 0; }
+.filter-section__count { font-weight: 400; color: var(--text-muted); }
+.filter-panel__hint { font-size: 0.7rem; color: var(--text-muted); margin: 0 0 0.3rem; }
+.filter-panel .filter-panel__bulk-actions { margin: 0.3rem 0 0.4rem; }
+.filter-panel .filter-panel__selection-status { margin: 0.4rem 0 0; }
+.filter-row--network { flex-wrap: nowrap; padding: 1px 0; }
+.filter-row--network label { overflow: hidden; }
+.filter-row__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.filter-row--network .legend-swatch { flex: 0 0 auto; }
+.filter-row--network input { flex: 0 0 auto; margin: 0; }
+.filter-panel__select-network-btn { min-width: 20px; }
+.filter-panel__weight-help > summary { cursor: pointer; color: var(--text-muted); font-size: 0.72rem; }
+.filter-panel input[type="range"] { width: 100%; }
+
+/* Panel de detalle en la columna derecha. */
+.ws-detail .detail-panel h2 { font-size: 0.9rem; margin: 0 0 4px; font-weight: 600; }
+
+/* Barra de controles del cerebro 3D, más compacta en el espacio de
+   trabajo (antes ocupaba cuatro filas a 800 px de ancho). */
+.ws-view .brain3d-toolbar { gap: 6px 12px; font-size: 0.76rem; }
+.ws-view .brain3d-homology, .ws-view .brain3d-surface-controls { font-size: 0.76rem; gap: 6px 10px; }
+.ws-view .brain3d-homology select, .ws-view .brain3d-surface-controls select { font-size: 0.74rem; padding: 1px 4px; max-width: 16rem; }
+.ws-view .brain3d-surface-status { font-size: 0.74rem; }
+.ws-view .export-btn { font-size: 0.72rem; padding: 2px 8px; }
+.ws-detail code { font-size: 0.72rem; padding: 2px 6px; word-break: break-all; }

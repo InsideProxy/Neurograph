@@ -71,6 +71,9 @@ import type { GraphConnection } from "../types/domain";
 interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
+  // Miniatura (decisión 74): solo el dibujo, sin botones, resumen ni
+  // recuadro de lectura.
+  compact?: boolean;
 }
 
 // Mismo criterio que Connectogram.tsx (fix del 30/08/2026): en HCP-MMP1.0
@@ -112,7 +115,7 @@ const DESIGN_MIDLINE_X = 230;
 const INTRA_COLOR = INTRA_HEMISPHERE_COLOR;
 const INTER_COLOR = INTER_HEMISPHERE_COLOR;
 
-export function Hemisferios({ nodes: allNodes, connections: allConnections }: Props) {
+export function Hemisferios({ nodes: allNodes, connections: allConnections, compact = false }: Props) {
   const { selectedNodeIds, selectedConnectionId, toggleNode, selectConnection } =
     useSelectionStore();
   const filters = useFiltersStore();
@@ -160,10 +163,17 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    // Decisión 74 (24/09/2026): cada vista llena ahora un hueco fijo de
+    // la ventana, así que el esquema se ajusta al ancho Y al alto de ese
+    // hueco (conservando su proporción de diseño 460x340) para no salirse
+    // por abajo; suelo de 160 px para que quepa en una miniatura. Sin
+    // alto propio, se vuelve al criterio anterior (solo ancho).
     const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (!width) return;
-      setMeasuredWidth(Math.round(Math.max(320, width)));
+      const rect = entries[0]?.contentRect;
+      if (!rect?.width) return;
+      const fitWidth =
+        rect.height > 0 ? Math.min(rect.width, (rect.height * DESIGN_VIEW_W) / DESIGN_VIEW_H) : rect.width;
+      setMeasuredWidth(Math.round(Math.max(160, fitWidth)));
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -390,8 +400,10 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
   }
 
   return (
-    <div ref={containerRef} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 4 }}>
+    <div className="viz-panel">
+      {!compact && (
+      <>
+      <div className="viz-panel__toolbar">
         <button
           type="button"
           className={`export-btn${hidingActive ? " export-btn--active" : ""}`}
@@ -422,8 +434,13 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
           </span>
         )}
       </div>
+      </>
+      )}
 
-      {tooManyConnections && (
+      {tooManyConnections && compact && (
+        <p className="connectogram-toomany-warning">Demasiadas conexiones para dibujar: solo nodos.</p>
+      )}
+      {tooManyConnections && !compact && (
         <p className="connectogram-toomany-warning">
           Hay {connections.length} conexiones con los filtros actuales —
           demasiadas para dibujar sin arriesgar que la aplicación se
@@ -434,6 +451,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
         </p>
       )}
 
+      <div ref={containerRef} className="viz-panel__area">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -613,15 +631,16 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections }: Pr
           })}
         </g>
       </svg>
+      </div>
 
-      {unlateralizedCount > 0 && (
+      {unlateralizedCount > 0 && !compact && (
         <p className="hemisferios-unlateralized-note">
           {unlateralizedCount} región{unlateralizedCount === 1 ? "" : "es"} sin hemisferio asignado todavía
           (no se {unlateralizedCount === 1 ? "muestra" : "muestran"} en este esquema, nunca se adivina su lado).
         </p>
       )}
 
-      <div className="hemisferios-readout">{readout}</div>
+      {!compact && <div className="hemisferios-readout">{readout}</div>}
     </div>
   );
 }

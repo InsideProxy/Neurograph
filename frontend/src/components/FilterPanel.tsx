@@ -27,9 +27,12 @@ const CONNECTION_TYPES: ConnectionType[] = ["structural", "functional", "effecti
 
 interface FilterPanelProps {
   nodes: GraphNode[];
+  // Decisión 74: el panel se puede plegar para dejar más sitio a la vista
+  // principal. Sin esto, no se muestra el botón de plegar.
+  onCollapse?: () => void;
 }
 
-export function FilterPanel({ nodes }: FilterPanelProps) {
+export function FilterPanel({ nodes, onCollapse }: FilterPanelProps) {
   const {
     hiddenNetworks,
     hiddenConnectionTypes,
@@ -120,77 +123,105 @@ export function FilterPanel({ nodes }: FilterPanelProps) {
 
   const hasSelection = selectedNodeIds.size > 0 || selectedConnectionId !== null;
 
+  // Decisión 74 (24/09/2026): mismo contenido y mismas acciones que
+  // antes, en menos espacio -- secciones plegables, una sola línea por
+  // red (el nombre completo sigue disponible al pasar el ratón) y la
+  // explicación del deslizador de peso plegada bajo "¿Cómo funciona?".
   return (
     <aside className="filter-panel">
-      <h2>Filtros</h2>
+      <div className="filter-panel__header">
+        <h2>Filtros</h2>
+        {onCollapse && (
+          <button type="button" className="icon-btn" title="Plegar el panel de filtros" aria-label="Plegar el panel de filtros" onClick={onCollapse}>
+            «
+          </button>
+        )}
+      </div>
 
-      <fieldset>
-        <legend>Redes</legend>
+      <div className="filter-panel__selection-status">
+        <span>
+          {selectedNodeIds.size > 0
+            ? `${selectedNodeIds.size} nodo${selectedNodeIds.size === 1 ? "" : "s"} resaltado${selectedNodeIds.size === 1 ? "" : "s"}`
+            : "Ningún nodo resaltado"}
+        </span>
+        <button
+          type="button"
+          className="filter-panel__bulk-btn"
+          disabled={!hasSelection}
+          title="Quita el resaltado actual (nodos o conexión seleccionada) en las tres vistas"
+          onClick={clearNodeSelection}
+        >
+          Limpiar
+        </button>
+      </div>
+
+      <details className="filter-section" open>
+        <summary>
+          Redes <span className="filter-section__count">({networkKeys.length})</span>
+        </summary>
         <div className="filter-panel__bulk-actions">
-          <button type="button" className="filter-panel__bulk-btn" onClick={markAllNetworks}>
+          <button type="button" className="filter-panel__bulk-btn" title="Marcar todas las redes" onClick={markAllNetworks}>
             Marcar todas
           </button>
-          <button type="button" className="filter-panel__bulk-btn" onClick={unmarkAllNetworks}>
+          <button type="button" className="filter-panel__bulk-btn" title="Desmarcar todas las redes" onClick={unmarkAllNetworks}>
             Desmarcar todas
           </button>
         </div>
-        <div className="filter-panel__selection-status">
-          <span>
-            {selectedNodeIds.size > 0
-              ? `${selectedNodeIds.size} nodo${selectedNodeIds.size === 1 ? "" : "s"} resaltado${selectedNodeIds.size === 1 ? "" : "s"}`
-              : "Ningún nodo resaltado"}
-          </span>
-          <button
-            type="button"
-            className="filter-panel__bulk-btn"
-            disabled={!hasSelection}
-            title="Quita el resaltado actual (nodos o conexión seleccionada) en las tres vistas"
-            onClick={clearNodeSelection}
-          >
-            Limpiar selección
-          </button>
-        </div>
+        {networkKeys.length > 0 && (
+          <p className="filter-panel__hint">◎ resalta solo esa red · + la añade a lo ya resaltado</p>
+        )}
         {networkKeys.length === 0 && (
           <p className="filter-panel__empty">Sin redes cargadas todavía.</p>
         )}
-        {networkKeys.map((network) => (
-          <div key={network} className="filter-row filter-row--network">
-            <label>
-              <input
-                type="checkbox"
-                checked={!hiddenNetworks.has(network)}
-                onChange={() => toggleNetwork(network)}
-              />
-              <span
-                className="legend-swatch"
-                style={{ backgroundColor: NETWORK_COLORS[network] ?? NEUTRAL_COLOR }}
-              />
-              {NETWORK_LABELS[network] ?? network}
-            </label>
-            <div className="filter-row__actions">
-              <button
-                type="button"
-                className="filter-panel__select-network-btn"
-                title={`Seleccionar y resaltar los ${nodeIdsByNetwork.get(network)?.length ?? 0} nodos de esta red, reemplazando cualquier selección anterior (se refleja en el conectograma y en el cerebro 3D)`}
-                onClick={() => selectWholeNetwork(network)}
-              >
-                Resaltar
-              </button>
-              <button
-                type="button"
-                className="filter-panel__select-network-btn"
-                title={`Añadir los ${nodeIdsByNetwork.get(network)?.length ?? 0} nodos de esta red a la selección actual, sin quitar lo ya resaltado -- para comprobar conectividad compartida entre varias redes`}
-                onClick={() => addNetworkToSelection(network)}
-              >
-                + Añadir
-              </button>
+        {networkKeys.map((network) => {
+          const label = NETWORK_LABELS[network] ?? network;
+          // En la lista, sin el paréntesis final de la fuente ("(Cole-
+          // Anticevic)", "(Yeo 2011, 7 redes)"...): la clasificación ya se
+          // elige y se ve en el selector "Redes" de arriba. El nombre
+          // completo sigue en el texto emergente.
+          const shortLabel = label.replace(/\s*\([^()]*\)\s*$/, "") || label;
+          const count = nodeIdsByNetwork.get(network)?.length ?? 0;
+          return (
+            <div key={network} className="filter-row filter-row--network">
+              <label title={`${label} — ${count} región${count === 1 ? "" : "es"}`}>
+                <input
+                  type="checkbox"
+                  checked={!hiddenNetworks.has(network)}
+                  onChange={() => toggleNetwork(network)}
+                />
+                <span
+                  className="legend-swatch"
+                  style={{ backgroundColor: NETWORK_COLORS[network] ?? NEUTRAL_COLOR }}
+                />
+                <span className="filter-row__name">{shortLabel}</span>
+              </label>
+              <div className="filter-row__actions">
+                <button
+                  type="button"
+                  className="filter-panel__select-network-btn"
+                  aria-label={`Resaltar solo ${label}`}
+                  title={`Seleccionar y resaltar los ${count} nodos de esta red, reemplazando cualquier selección anterior (se refleja en todas las vistas)`}
+                  onClick={() => selectWholeNetwork(network)}
+                >
+                  ◎
+                </button>
+                <button
+                  type="button"
+                  className="filter-panel__select-network-btn"
+                  aria-label={`Añadir ${label} a lo resaltado`}
+                  title={`Añadir los ${count} nodos de esta red a la selección actual, sin quitar lo ya resaltado -- para comprobar conectividad compartida entre varias redes`}
+                  onClick={() => addNetworkToSelection(network)}
+                >
+                  +
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </fieldset>
+          );
+        })}
+      </details>
 
-      <fieldset>
-        <legend>Tipo de conectividad</legend>
+      <details className="filter-section" open>
+        <summary>Tipo de conectividad</summary>
         {CONNECTION_TYPES.map((type) => (
           <label key={type} className="filter-row">
             <input
@@ -201,10 +232,10 @@ export function FilterPanel({ nodes }: FilterPanelProps) {
             {CONNECTION_TYPE_LABELS[type]}
           </label>
         ))}
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Peso mínimo: {formatMinWeight(minWeight)}</legend>
+      <details className="filter-section" open>
+        <summary>Peso mínimo: {formatMinWeight(minWeight)}</summary>
         <input
           type="range"
           min={0}
@@ -212,14 +243,16 @@ export function FilterPanel({ nodes }: FilterPanelProps) {
           step={0.001}
           value={weightToSliderPosition(minWeight)}
           onChange={(event) => setMinWeight(sliderPositionToWeight(Number(event.target.value)))}
+          aria-label="Peso mínimo de conectividad"
         />
-        <p className="filter-panel__weight-help">
+        <details className="filter-panel__weight-help">
+          <summary>¿Cómo funciona?</summary>
           Escala logarítmica: el peso real de conectividad se concentra en
           varios órdenes de magnitud por debajo de 0.01, así que cada tramo
           del deslizador multiplica el peso en vez de sumarle una cantidad
           fija. En el extremo izquierdo (0) no se filtra nada.
-        </p>
-      </fieldset>
+        </details>
+      </details>
     </aside>
   );
 }

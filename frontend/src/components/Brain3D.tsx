@@ -723,6 +723,9 @@ interface Props {
   // Clasificación de red con la que vienen `nodes` (decisión 73, p. ej.
   // "yeo2011-7"): decide si hay mapa de redes vértice a vértice.
   networkSource?: string;
+  // Miniatura (decisión 74): solo el lienzo, sin barra de controles ni
+  // líneas de estado.
+  compact?: boolean;
 }
 
 // Controles de la corteza pintada (decisión 72). Solo aparecen en los
@@ -842,7 +845,7 @@ function computeFocus(
   return null;
 }
 
-export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId, networkSource }: Props) {
+export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId, networkSource, compact = false }: Props) {
   const { selectedNodeIds, selectedConnectionId, selectConnection, toggleNode } = useSelectionStore();
   const filters = useFiltersStore();
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
@@ -1268,15 +1271,19 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   if (!focus && !painted) {
     return (
       <>
-        <div className="brain3d-toolbar">
-          {homologyControl}
-          {surfaceControls}
-        </div>
-        {parcelError}
+        {!compact && (
+          <div className="brain3d-toolbar">
+            {homologyControl}
+            {surfaceControls}
+          </div>
+        )}
+        {!compact && parcelError}
         <div className="brain3d-focus-placeholder">
           {effectiveSurfaceMode !== "translucent" && parcelsLoading
             ? "Cargando las regiones reales de la superficie…"
-            : "Selecciona una región (o una conexión) en el connectograma o en el esquema de hemisferios para ver aquí, en 3D, su red de conectividad."}
+            : compact
+              ? "Selecciona una región para verla aquí en 3D."
+              : "Selecciona una región (o una conexión) en el connectograma o en el esquema de hemisferios para ver aquí, en 3D, su red de conectividad."}
         </div>
       </>
     );
@@ -1284,16 +1291,18 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
 
   return (
     <>
-    <div className="brain3d-toolbar">
-      {homologyControl}
-      {surfaceControls}
-      <button type="button" className="export-btn" onClick={handleExport}>
-        Exportar JPEG
-      </button>
-    </div>
-    {parcelError}
-    {surfaceStatus && <p className="brain3d-surface-status">{surfaceStatus}</p>}
-    {tooManyFocusConnections && focus && (
+    {!compact && (
+      <div className="brain3d-toolbar">
+        {homologyControl}
+        {surfaceControls}
+        <button type="button" className="export-btn" onClick={handleExport}>
+          Exportar JPEG
+        </button>
+      </div>
+    )}
+    {!compact && parcelError}
+    {!compact && surfaceStatus && <p className="brain3d-surface-status">{surfaceStatus}</p>}
+    {!compact && tooManyFocusConnections && focus && (
       <p className="connectogram-toomany-warning">
         Hay {focus.connections.length} conexiones reales entre los nodos
         seleccionados — demasiadas para dibujar aquí sin riesgo. Se

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { Hemisferios } from "./components/Hemisferios";
@@ -70,6 +70,10 @@ type View = "atlas" | "species" | "tractography" | "tractography-nodes" | "synth
 
 export default function App() {
   const [view, setView] = useState<View>("atlas");
+  // Espacio de trabajo (decisión 74): qué vista va en grande, y si el
+  // panel de filtros está plegado. Por defecto, el cerebro 3D en grande.
+  const [mainView, setMainView] = useState<WorkspaceViewId>("brain3d");
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [selectedAtlasId, setSelectedAtlasId] = useState(ATLASES[0].id);
   const [source, setSource] = useState<DataSource>({ kind: "loading" });
   // Clasificación de red elegida (decisión 73): null = la original del
@@ -322,14 +326,28 @@ export default function App() {
     <p className="synthesis-import-error">{synthesisImportError}</p>
   ) : null;
 
+  // Barra superior compacta (decisión 74, 24/09/2026): antes la cabecera
+  // ocupaba ~190 px en cinco filas centradas (título grande, pestañas,
+  // atlas, redes, etiqueta de datos); ahora es una sola franja. La
+  // etiqueta de DATOS REALES / SINTÉTICOS sigue siempre visible (sección
+  // 24: nunca se confunde lo real con lo ilustrativo); su explicación
+  // larga pasa al texto emergente.
+  const renderHeader = (controls: ReactNode = null) => (
+    <>
+      <header className="topbar">
+        <span className="topbar__brand">NeuroGraph</span>
+        {viewToggle}
+        {controls && <div className="topbar__controls">{controls}</div>}
+      </header>
+      {synthesisImportBanner}
+      {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
+    </>
+  );
+
   if (view === "species") {
     return (
       <div className="app">
-        <header>
-          <h1>NeuroGraph — vista de desarrollo</h1>
-          {viewToggle}
-          {synthesisImportBanner}
-        </header>
+        {renderHeader()}
         <div className="layout">
           <section className="panel species-panel-wrap">
             <h2>Comparación real entre especies</h2>
@@ -343,11 +361,7 @@ export default function App() {
   if (view === "tractography") {
     return (
       <div className="app">
-        <header>
-          <h1>NeuroGraph — vista de desarrollo</h1>
-          {viewToggle}
-          {synthesisImportBanner}
-        </header>
+        {renderHeader()}
         <ErrorBoundary
           fallback={
             <p className="canvas-error">
@@ -366,11 +380,7 @@ export default function App() {
   if (view === "tractography-nodes") {
     return (
       <div className="app">
-        <header>
-          <h1>NeuroGraph — vista de desarrollo</h1>
-          {viewToggle}
-          {synthesisImportBanner}
-        </header>
+        {renderHeader()}
         <ErrorBoundary
           fallback={
             <p className="canvas-error">
@@ -391,11 +401,7 @@ export default function App() {
     const activeTab = synthesisTabs.find((t) => t.tabId === activeSynthesisTabId);
     return (
       <div className="app">
-        <header>
-          <h1>NeuroGraph — vista de desarrollo</h1>
-          {viewToggle}
-          {synthesisImportBanner}
-        </header>
+        {renderHeader()}
         {activeTab ? (
           <FunctionSynthesisTab validated={activeTab.validated} />
         ) : (
@@ -411,81 +417,163 @@ export default function App() {
   if (source.kind === "loading") {
     return (
       <div className="app">
-        <header>
-          <h1>NeuroGraph — vista de desarrollo</h1>
-          {viewToggle}
-          {synthesisImportBanner}
-          {atlasSelector}
-          <p className="demo-badge">Cargando…</p>
-        </header>
+        {renderHeader(
+          <>
+            {atlasSelector}
+            <span className="demo-badge">Cargando…</span>
+          </>,
+        )}
       </div>
     );
   }
 
   const badge =
-    source.kind === "real"
-      ? `DATOS REALES · ${selectedAtlas.label} · ${source.nodes.length} regiones, ${source.connections.length} conexiones`
-      : "DATOS SINTÉTICOS · SOLO ILUSTRATIVOS (la API no respondió, o este atlas aún no tiene datos — revisa docker compose up -d)";
+    source.kind === "real" ? (
+      <span
+        className="real-badge"
+        title={`Datos reales de la base de datos · ${selectedAtlas.label} · ${source.nodes.length} regiones, ${source.connections.length} conexiones`}
+      >
+        DATOS REALES · {source.nodes.length} regiones · {source.connections.length} conexiones
+      </span>
+    ) : (
+      <span
+        className="demo-badge"
+        title="La API no respondió, o este atlas aún no tiene datos — revisa que el backend esté en marcha (docker compose up -d en desarrollo)"
+      >
+        DATOS SINTÉTICOS · SOLO ILUSTRATIVOS
+      </span>
+    );
+
+  // Espacio de trabajo "una vista grande + miniaturas" (decisión 74,
+  // elegida por la usuaria, 24/09/2026). Antes, las tres vistas iban en
+  // filas que se desbordaban: en una pantalla de 1920x1080 el cerebro 3D
+  // empezaba a 2176 px de altura (hacía falta bajar dos pantallas y
+  // media) y ya no se veía a la vez que el connectograma. Ahora todo cabe
+  // en la ventana: filtros a la izquierda (plegables), la vista elegida en
+  // grande en el centro, y las otras dos como miniaturas vivas a la
+  // derecha, encima del detalle. Hacer clic en una miniatura la amplía.
+  //
+  // Las tres vistas se montan SIEMPRE en el mismo orden del DOM y solo
+  // cambia la zona de la rejilla que ocupan (grid-area): así, al
+  // intercambiarlas no se desmontan ni pierden su estado (cámara del 3D,
+  // modo de corteza, especie de homología...).
+  const areaOf = (v: WorkspaceViewId): string => {
+    if (v === mainView) return "main";
+    const thumbs = WORKSPACE_VIEWS.filter((w) => w !== mainView);
+    return thumbs[0] === v ? "thumb1" : "thumb2";
+  };
 
   return (
-    <div className="app">
-      <header>
-        <h1>NeuroGraph — vista de desarrollo</h1>
-        {viewToggle}
-        {synthesisImportBanner}
-        {atlasSelector}
-        {networkSourceSelector}
-        {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
-        <p className={source.kind === "real" ? "real-badge" : "demo-badge"}>{badge}</p>
-      </header>
-      <div className="layout">
-        <FilterPanel nodes={source.nodes} />
-        <main>
-          {/* Diseño de tres paneles (decisión de la usuaria, 30/08/2026):
-              connectograma y hemisferios apilados en una misma columna,
-              junto a un cerebro 3D del doble de tamaño que muestra SOLO
-              la red de foco actual (Brain3D.tsx), nunca el grafo
-              completo -- eso ya lo hacen los otros dos. */}
-          <div className="panel-column">
-            <section className="panel">
-              <h2>Connectograma</h2>
-              <Connectogram nodes={source.nodes} connections={source.connections} />
-            </section>
-            <section className="panel">
-              <h2>Hemisferios</h2>
-              <Hemisferios nodes={source.nodes} connections={source.connections} />
-            </section>
+    <div className="app app--workspace">
+      {renderHeader(
+        <>
+          {atlasSelector}
+          {networkSourceSelector}
+          {badge}
+        </>,
+      )}
+      <div className={`workspace${filtersCollapsed ? " workspace--filters-collapsed" : ""}`}>
+        <div className="ws-filters">
+          {filtersCollapsed ? (
+            <button
+              type="button"
+              className="ws-filters__expand"
+              title="Desplegar el panel de filtros"
+              onClick={() => setFiltersCollapsed(false)}
+            >
+              Filtros »
+            </button>
+          ) : (
+            <FilterPanel nodes={source.nodes} onCollapse={() => setFiltersCollapsed(true)} />
+          )}
+        </div>
+
+        <WorkspaceView id="connectogram" area={areaOf("connectogram")} isMain={mainView === "connectogram"} onEnlarge={setMainView}>
+          <Connectogram nodes={source.nodes} connections={source.connections} compact={mainView !== "connectogram"} />
+        </WorkspaceView>
+
+        <WorkspaceView id="hemispheres" area={areaOf("hemispheres")} isMain={mainView === "hemispheres"} onEnlarge={setMainView}>
+          <Hemisferios nodes={source.nodes} connections={source.connections} compact={mainView !== "hemispheres"} />
+        </WorkspaceView>
+
+        <WorkspaceView id="brain3d" area={areaOf("brain3d")} isMain={mainView === "brain3d"} onEnlarge={setMainView}>
+          <div className="canvas-wrap">
+            <ErrorBoundary
+              fallback={
+                <p className="canvas-error">
+                  No se pudo mostrar el cerebro 3D (error inesperado).
+                  Recarga la página; si se repite, abre la consola del
+                  navegador (F12 → Console) y dime qué aparece ahí.
+                </p>
+              }
+            >
+              {/* atlasId solo con datos reales (decisión 72): con datos de
+                  demostración nunca se pinta ninguna corteza real. */}
+              <Brain3D
+                nodes={source.nodes}
+                connections={source.connections}
+                atlasId={source.kind === "real" ? selectedAtlasId : undefined}
+                networkSource={shownNetworkSource ?? undefined}
+                compact={mainView !== "brain3d"}
+              />
+            </ErrorBoundary>
           </div>
-          <section className="panel panel--focus">
-            <h2>Cerebro 3D — foco de la selección</h2>
-            <div className="canvas-wrap">
-              <ErrorBoundary
-                fallback={
-                  <p className="canvas-error">
-                    No se pudo mostrar el cerebro 3D (error inesperado).
-                    Recarga la página; si se repite, abre la consola del
-                    navegador (F12 → Console) y dime qué aparece ahí.
-                  </p>
-                }
-              >
-                {/* atlasId solo con datos reales (decisión 72): con datos de
-                    demostración nunca se pinta ninguna corteza real. */}
-                <Brain3D
-                  nodes={source.nodes}
-                  connections={source.connections}
-                  atlasId={source.kind === "real" ? selectedAtlasId : undefined}
-                  networkSource={shownNetworkSource ?? undefined}
-                />
-              </ErrorBoundary>
-            </div>
-          </section>
-        </main>
-        <DetailPanel
-          nodes={source.nodes}
-          connections={source.connections}
-          canFetchTracts={source.kind === "real"}
-        />
+        </WorkspaceView>
+
+        <div className="ws-detail">
+          <DetailPanel
+            nodes={source.nodes}
+            connections={source.connections}
+            canFetchTracts={source.kind === "real"}
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+type WorkspaceViewId = "connectogram" | "hemispheres" | "brain3d";
+const WORKSPACE_VIEWS: WorkspaceViewId[] = ["connectogram", "hemispheres", "brain3d"];
+const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewId, string> = {
+  connectogram: "Connectograma",
+  hemispheres: "Hemisferios",
+  brain3d: "Cerebro 3D",
+};
+
+// Marco de cada vista del espacio de trabajo (decisión 74). En miniatura,
+// una capa transparente encima recoge el clic para ampliarla -- así un
+// clic en la miniatura nunca selecciona por accidente una región que
+// apenas se ve; seleccionar se hace en la vista grande.
+function WorkspaceView({
+  id,
+  area,
+  isMain,
+  onEnlarge,
+  children,
+}: {
+  id: WorkspaceViewId;
+  area: string;
+  isMain: boolean;
+  onEnlarge: (id: WorkspaceViewId) => void;
+  children: ReactNode;
+}) {
+  const title = WORKSPACE_VIEW_TITLES[id];
+  return (
+    <section className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`} style={{ gridArea: area }}>
+      <div className="ws-view__header">
+        <h2>{title}</h2>
+        {!isMain && <span className="ws-view__enlarge-hint">⤢ ampliar</span>}
+      </div>
+      <div className="ws-view__body">{children}</div>
+      {!isMain && (
+        <button
+          type="button"
+          className="ws-view__overlay"
+          title={`Ver ${title} en grande`}
+          aria-label={`Ver ${title} en grande`}
+          onClick={() => onEnlarge(id)}
+        />
+      )}
+    </section>
   );
 }

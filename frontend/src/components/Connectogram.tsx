@@ -51,9 +51,12 @@ interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
   size?: number;
+  // Miniatura (rediseño de la disposición, decisión 74): solo el dibujo,
+  // sin botones ni recuadro de lectura.
+  compact?: boolean;
 }
 
-export function Connectogram({ nodes: allNodes, connections: allConnections, size: fixedSize }: Props) {
+export function Connectogram({ nodes: allNodes, connections: allConnections, size: fixedSize, compact = false }: Props) {
   const { selectedNodeIds, selectedConnectionId, toggleNode, selectConnection } =
     useSelectionStore();
   const filters = useFiltersStore();
@@ -92,6 +95,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   // en una ventana pequeña como en un monitor muy ancho). `size`
   // sigue existiendo como escape explícito -- si se pasa, gana
   // siempre sobre la medición automática (p. ej. para pruebas).
+  //
+  // Decisión 74 (24/09/2026): la app ya no se desplaza hacia abajo -- cada
+  // vista llena un hueco fijo de la ventana (grande, o miniatura). El
+  // círculo se ajusta al lado MENOR de ese hueco (ancho y alto), no solo
+  // al ancho, para que nunca se salga por abajo; el suelo baja a 160 px
+  // para que quepa en una miniatura. Si el hueco no tiene alto propio
+  // (contenedor sin altura), se vuelve al criterio anterior por ancho.
   const containerRef = useRef<HTMLDivElement>(null);
   const [measuredSize, setMeasuredSize] = useState(420);
 
@@ -100,9 +110,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (!width) return;
-      setMeasuredSize(Math.round(Math.max(320, Math.min(width, 720))));
+      const rect = entries[0]?.contentRect;
+      if (!rect?.width) return;
+      const side = rect.height > 0 ? Math.min(rect.width, rect.height) : Math.min(rect.width, 720);
+      setMeasuredSize(Math.round(Math.max(160, side)));
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -231,13 +242,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   }
 
   return (
-    <div ref={containerRef} style={{ width: "100%" }}>
-    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-      <button type="button" className="export-btn" onClick={handleExport}>
-        Exportar JPEG
-      </button>
-    </div>
-    {tooManyConnections && (
+    <div className="viz-panel">
+    {!compact && (
+      <div className="viz-panel__toolbar">
+        <button type="button" className="export-btn" onClick={handleExport}>
+          Exportar JPEG
+        </button>
+      </div>
+    )}
+    {tooManyConnections && compact && (
+      <p className="connectogram-toomany-warning">Demasiadas conexiones para dibujar: solo nodos.</p>
+    )}
+    {tooManyConnections && !compact && (
       <p className="connectogram-toomany-warning">
         Hay {connections.length} conexiones con los filtros actuales —
         demasiadas para dibujar sin arriesgar que la aplicación se
@@ -246,6 +262,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         para reducir la cantidad.
       </p>
     )}
+    <div ref={containerRef} className="viz-panel__area">
     <svg
       ref={svgRef}
       width={size}
@@ -392,7 +409,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         })}
       </g>
     </svg>
-    <div className="connectogram-readout">{readout}</div>
+    </div>
+    {!compact && <div className="connectogram-readout">{readout}</div>}
     </div>
   );
 }
