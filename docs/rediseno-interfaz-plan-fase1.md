@@ -2127,6 +2127,7 @@ Sigue el formato de la decisión 76:
   - Qué se hizo: los cuatro temas, los tokens CSS y de dibujo, el store con persistencia, la tipografía local y la exportación con la paleta de exportación, incluido el redibujo del 3D.
   - Qué no cambia: `NETWORK_COLORS` y la lógica de representación. La única diferencia de color en el tema 1: el respaldo de una red desconocida pasa a ser siempre el gris de «sin clasificar» (`#8a8a8a`). Antes era `#888`, `#888888` o `NEUTRAL_COLOR` según el componente (spec 4.2, «se unifica»).
   - Qué queda para las fases 2 a 4.
+  - Limitación conocida: en el navegador puede verse un instante el tema de reserva (el 1) antes de que `main.tsx` aplique el elegido, porque el script es un módulo y corre después de leer el HTML. En Tauri no se nota: la ventana arranca oculta. Si molestara, basta un script en línea en el `<head>` de `index.html`.
   - Un párrafo **Comprobado** con lo que se vio en el paso 3, el número de pruebas y `tsc` limpio.
 - Enlaza `docs/rediseno-interfaz-diseno.md` y este plan.
 
