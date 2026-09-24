@@ -65,7 +65,7 @@ Fuera:
 | `accent` | `#ac61d1` | `#e8ecf1` | `#e3ebfb` | `#16181c` |
 | `accentSoft` fondo de estado activo | `rgba(172, 97, 209, 0.15)` | `rgba(232, 236, 241, 0.08)` | `rgba(227, 235, 251, 0.08)` | `rgba(22, 24, 28, 0.06)` |
 | `accentBorder` borde de estado activo | `rgba(172, 97, 209, 0.5)` | `rgba(232, 236, 241, 0.35)` | `rgba(227, 235, 251, 0.35)` | `rgba(22, 24, 28, 0.35)` |
-| `success` datos reales | `#7fe0a0` | `#6cc497` | `#5fd0a0` | `#227a4d` |
+| `success` datos reales | `#7fe0a0` | `#6cc497` | `#5fd0a0` | `#1f6e45` |
 | `warning` datos de demostración | `#f0c473` | `#e7c46a` | `#edc766` | `#7a5d00` |
 | `error` | `#ff9b9b` | `#f09a9a` | `#f59c9c` | `#b42318` |
 | `synthesis` síntesis de IA | `#ff7b3d` | `#ff7b3d` | `#ff7b3d` | `#b93d0a` |
@@ -74,8 +74,9 @@ Fuera:
 Notas:
 
 - **Original** reproduce los colores actuales de `index.css` y `App.css`; `accentSoft` y `accentBorder` son los `--accent-bg` y `--accent-border` de hoy.
-- **Acento:** no hay texto sobre fondo de acento sólido; los estados activos usan `accentSoft` y `accentBorder`.
+- **Acento:** no hay texto sobre fondo de acento sólido. Los estados activos usan `accentSoft` como fondo, y su borde es `accentBorder`, o `accent` cuando el estado tiene que distinguirse con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema elegido en Ajustes.
 - **Síntesis de IA:** conserva su naranja, que fue decisión de la usuaria como tercera categoría visual. En Claro es más oscuro para leerse sobre blanco.
+- **Fondos de estado:** cada color de estado tiene su fondo translúcido (`--success-bg`, `--warning-bg`, `--error-bg`, `--synthesis-bg`) en `index.css`. Las etiquetas de estado van sobre `--bg` con ese fondo tintado, y así superan 4,5:1 en los cuatro temas. Para lograrlo en Claro, `success` pasa de `#227a4d` (4,2:1) a `#1f6e45` (4,9:1), y el fondo de síntesis queda en `rgba(185, 61, 10, 0.06)` (4,6:1).
 - **Contraste sobre el panel** (medido):
   - `text`, `strong`, `muted`, `success`, `warning`, `error` y `synthesis` superan 4,5:1 en todos los temas.
   - `faint` queda entre 2,7 y 3,3:1: solo para separadores, iconos decorativos y controles desactivados, nunca para texto que haya que leer.
@@ -98,6 +99,7 @@ Lo que hoy son constantes en `theme/networks.ts` y valores sueltos en los compon
 | `hoverHighlight` | `#ffd84a` | `#ffd84a` | `#ffd84a` | `#b7791f` |
 | `label` abreviaturas | `#837f90` | `#8d95a3` | `#8a97b0` | `#686c74` |
 | `nodeRing` anillo neutro, 1 px | `#837f90` | `#8b93a0` | `#8a98b6` | `#6f737c` |
+| `nodeGap` contorno de los nodos del diagrama de síntesis | `#0b0c10` | `#0f1115` | `#0a0e17` | `#ffffff` |
 | `intra` intrahemisférica | `#2a925e` | `#6cc497` | `#5fd0a0` | `#2e8a5a` |
 | `inter` interhemisférica | `#cf596d` | `#ec8d9c` | `#f58fa3` | `#c24a5f` |
 | `hemiFill` relleno de las elipses de hemisferio | `none` | `#1d2127` | `#172035` | `#f6f5f1` |
@@ -213,7 +215,7 @@ Un panel emergente que sale del engranaje:
 
 - **Tema:** cuatro tarjetas con vista previa (fondo, panel y cinco colores de red del tema) y una descripción de una línea.
 - **Colores de las redes:** un control de dos opciones, «Suaves» y «Originales del atlas», con una muestra de la paleta y una nota: «Los originales son los del archivo de cada atlas: úsalos si una figura tiene que coincidir con la del artículo».
-- Se cierra con Escape, con un clic fuera o con su botón. Al cerrar, el foco vuelve al engranaje.
+- Se cierra con Escape, con un clic fuera, al salir de él con Tab o con su botón. Con Escape o con su botón, el foco vuelve al engranaje. Con un clic fuera, el foco se queda donde se hizo clic.
 
 ### 5.3 Filtros
 
@@ -296,7 +298,9 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 ## 7. Tipografía
 
 - **Fuentes:** Atkinson Hyperlegible Next (400, 500, 600 y 700) para la interfaz y Atkinson Hyperlegible Mono (400 y 500) para IDs y cifras. Distingue bien I, l y 1 en abreviaturas como IFJa, IP1 o LIPd.
-- **Instalación:** como archivos `woff2` en `frontend/src/assets/fonts/`, con su licencia (SIL OFL 1.1) y `@font-face` en `index.css`. No se piden a internet: la aplicación de escritorio tiene que funcionar sin conexión.
+- **Instalación:** como archivos `woff2` en `frontend/src/assets/fonts/`, con su licencia (SIL OFL 1.1) y `@font-face` en `index.css`. Son fuentes variables: un archivo por subconjunto (latin y latin-ext) cubre todos los pesos. No se piden a internet: la aplicación de escritorio tiene que funcionar sin conexión.
+- **Cursivas:** también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos.
+- **Licencia:** `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio. El texto de la licencia está en `frontend/public/licenses/`, que la compilación copia a `dist/licenses/`.
 - **JPEG:** las etiquetas del JPEG usan la pila de fuentes del sistema declarada en el SVG (ver 4.4), no la fuente nueva.
 
 ## 8. Accesibilidad
@@ -325,6 +329,14 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **`theme/useDrawColors.ts`:** hook `useDrawColors({ paraExportar })` que devuelve los tokens de dibujo y `networkColor(clave)` según el store. Con `paraExportar`, devuelve los de exportación. Solo `Brain3D` lo usa así, con su estado local «exportando».
 - **`logic/exportPalette.ts`:** `applyExportColors(raiz, resolver)`. Recorre `[data-ng-fill]`, `[data-ng-stroke]` y `[data-ng-stroke-opacity]` y escribe los atributos.
 - **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast` e `Icon` (iconos SVG en línea).
+
+**Fase 1.** Lo construido difiere de lo anterior en estos puntos (D3 de `docs/decisiones-diseno.md`):
+
+- **Sin `UI_TOKENS`:** los tokens de interfaz viven solo en `index.css`. La vista previa de cada tema en Ajustes toma de ahí sus colores: cada bloque de tema se aplica también a `[data-theme-preview="<id>"]`, así que no se repiten en TypeScript.
+- **Sin modo de paleta todavía:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` no lo reciben (`kind` es el tipo de atributo: color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2. El store ya guarda `paletteMode`, para no tener que migrar lo guardado.
+- **Nombres en inglés,** como el resto del código: `theme`, `paletteMode` y `forExport`. El hook es `useDrawColors(forExport)` y el panel de Ajustes, `SettingsMenu`.
+- **Token nuevo:** `nodeGap` (4.2), para que el diagrama de síntesis no conserve ningún color fijo.
+- **Añadido:** `exportResolverFor(theme)` y los ayudantes tipados `ngFill`, `ngStroke` y `ngStrokeOpacity` (`theme/colors.ts`). Con ellos, una referencia `data-ng-*` mal escrita es un error de compilación.
 
 ### Archivos que cambian
 
@@ -382,6 +394,6 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 
 - **Tema por defecto:** la propuesta es Grafito; se confirma al revisar este documento.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
-- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante.
+- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador: en la leyenda de la selección múltiple, que es un SVG de ancho fijo, una etiqueta larga puede cortarse en el JPEG (D3 de `docs/decisiones-diseno.md`).
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
