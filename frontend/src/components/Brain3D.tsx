@@ -346,8 +346,10 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
 // fotograma: en él ya están los materiales nuevos y los colores de la
 // corteza, que PaintedCortex recalcula en un efecto. Como en la decisión
 // 18, se sustituye tanto el color de "clear" como scene.background, que
-// gana siempre sobre el primero. Después se restaura el fondo y el modo
-// normal; los colores de pantalla vuelven en el siguiente render.
+// gana siempre sobre el primero. Después se restaura el fondo, se vuelve
+// a dibujar en el acto (para que en pantalla no quede el fotograma blanco
+// de la captura) y se sale del modo «exportando»; los colores de
+// pantalla vuelven en el siguiente render.
 function ExportBridge({
   exportRef,
   exporting,
@@ -366,6 +368,7 @@ function ExportBridge({
   }, [exportRef, onExportingChange]);
   useEffect(() => {
     if (!exporting) return;
+    let captured = false;
     const frame = requestAnimationFrame(() => {
       const previousClearColor = gl.getClearColor(new THREE.Color());
       const previousClearAlpha = gl.getClearAlpha();
@@ -376,9 +379,20 @@ function ExportBridge({
       exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
       gl.setClearColor(previousClearColor, previousClearAlpha);
       scene.background = previousBackground;
+      // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
+      // él el blanco de la captura se vería en pantalla durante un fotograma.
+      gl.render(scene, camera);
+      captured = true;
       onExportingChange(false);
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      // Si el fotograma no llegó a ejecutarse (se desmontó el lienzo o se
+      // perdió el contexto WebGL en esos ~16 ms), también se sale del modo
+      // «exportando»: si no, Brain3D seguiría con los colores de
+      // exportación y exportaría sola al volver a montar el lienzo.
+      if (!captured) onExportingChange(false);
+    };
   }, [exporting, gl, scene, camera, onExportingChange]);
   return null;
 }
