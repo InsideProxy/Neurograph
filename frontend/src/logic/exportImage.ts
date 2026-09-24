@@ -5,6 +5,7 @@
 // exportación nunca depende del tema visual en pantalla -- siempre
 // compone sobre blanco explícito, se vea la app como se vea en pantalla
 // (incluido un futuro tema oscuro).
+import { applyExportColors, EXPORT_FONT_FAMILY, type ColorResolver } from "./exportPalette";
 
 // Calidad JPEG y factor de sobre-muestreo: una figura de paper necesita
 // más resolución que la pantalla. 3x el tamaño en pantalla da un
@@ -33,7 +34,7 @@ function triggerDownload(blob: Blob, filename: string): void {
  * a CORS -- el connectograma no usa ninguna) como JPEG en color sobre
  * fondo blanco.
  */
-export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string): void {
+export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveColor?: ColorResolver): void {
   const width = svg.viewBox?.baseVal?.width || svg.width.baseVal.value || svg.clientWidth;
   const height = svg.viewBox?.baseVal?.height || svg.height.baseVal.value || svg.clientHeight;
   if (!width || !height) {
@@ -45,6 +46,17 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string): void {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));
+
+  // Paleta de exportación (decisión 77): colores legibles sobre el blanco
+  // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
+  // avisa de cada referencia sin color de exportación: quedaría con el
+  // color de pantalla.
+  if (resolveColor) {
+    applyExportColors(clone, resolveColor, (ref, attribute) => {
+      if (import.meta.env.DEV) console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
+    });
+  }
+  clone.setAttribute("font-family", EXPORT_FONT_FAMILY);
 
   const serialized = new XMLSerializer().serializeToString(clone);
   const svgBlob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
