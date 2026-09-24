@@ -78,7 +78,7 @@ La Task 9 las anota en el spec (sección 9) y en la D3:
 - Test: `frontend/src/theme/themes.test.ts`
 - Test: `frontend/src/theme/colors.test.ts`
 
-- [ ] **Step 1: escribir las pruebas que fallan**
+- [x] **Step 1: escribir las pruebas que fallan**
 
 `frontend/src/theme/themes.test.ts`:
 
@@ -195,12 +195,12 @@ describe("exportColorFor", () => {
 });
 ```
 
-- [ ] **Step 2: comprobar que fallan**
+- [x] **Step 2: comprobar que fallan**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/theme/themes.test.ts src/theme/colors.test.ts`
 Expected: FAIL, porque no existen `./themes` ni `./colors`.
 
-- [ ] **Step 3: implementar `frontend/src/theme/themes.ts`**
+- [x] **Step 3: implementar `frontend/src/theme/themes.ts`**
 
 ```ts
 // Temas de NeuroGraph (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md,
@@ -411,7 +411,7 @@ export function exportDrawTokens(theme: ThemeId): DrawTokens {
 }
 ```
 
-- [ ] **Step 4: implementar `frontend/src/theme/colors.ts`**
+- [x] **Step 4: implementar `frontend/src/theme/colors.ts`**
 
 ```ts
 // Resolución de colores (docs/rediseno-interfaz-diseno.md, 4.3 y 4.4).
@@ -446,12 +446,12 @@ export function exportResolverFor(theme: ThemeId): (ref: string) => string | nul
 }
 ```
 
-- [ ] **Step 5: comprobar que pasan**
+- [x] **Step 5: comprobar que pasan**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/theme/themes.test.ts src/theme/colors.test.ts && npx tsc -b`
 Expected: PASS (13 pruebas) y `tsc` sin errores.
 
-- [ ] **Step 6: commit**
+- [x] **Step 6: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/theme/themes.ts frontend/src/theme/colors.ts frontend/src/theme/themes.test.ts frontend/src/theme/colors.test.ts
@@ -479,7 +479,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Test: `frontend/src/state/appearance.test.ts`
 - Modify: `frontend/src/main.tsx`
 
-- [ ] **Step 1: escribir la prueba que falla**
+- [x] **Step 1: escribir la prueba que falla**
 
 `frontend/src/state/appearance.test.ts`:
 
@@ -561,12 +561,12 @@ describe("useAppearanceStore", () => {
 });
 ```
 
-- [ ] **Step 2: comprobar que falla**
+- [x] **Step 2: comprobar que falla**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/state/appearance.test.ts`
 Expected: FAIL, porque no existe `./appearance`.
 
-- [ ] **Step 3: implementar `frontend/src/state/appearance.ts`**
+- [x] **Step 3: implementar `frontend/src/state/appearance.ts`**
 
 ```ts
 // Tema elegido y modo de la paleta de redes (D3 de docs/decisiones-diseno.md;
@@ -647,7 +647,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
 }));
 ```
 
-- [ ] **Step 4: aplicar el tema antes del primer render en `frontend/src/main.tsx`**
+- [x] **Step 4: aplicar el tema antes del primer render en `frontend/src/main.tsx`**
 
 Añade el import y la llamada entre `import App from './App.tsx'` y `createRoot(...)`. El archivo queda así:
 
@@ -669,12 +669,12 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
-- [ ] **Step 5: comprobar que pasa y que los tipos compilan**
+- [x] **Step 5: comprobar que pasa y que los tipos compilan**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/state/appearance.test.ts && npx tsc -b`
 Expected: PASS (7 pruebas) y `tsc` sin errores.
 
-- [ ] **Step 6: commit**
+- [x] **Step 6: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/state/appearance.ts frontend/src/state/appearance.test.ts frontend/src/main.tsx
@@ -694,7 +694,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Modify: `frontend/src/index.css` (bloque `:root` inicial)
 - Modify: `frontend/src/App.css` (colores fijos)
 
-- [ ] **Step 1: descargar las fuentes y sus licencias**
+- [x] **Step 1: descargar las fuentes y sus licencias**
 
 Desde la raíz del worktree:
 
@@ -725,7 +725,7 @@ curl -s -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 
 La fuente Mono se pide igual.
 
-- [ ] **Step 2: sustituir el bloque `:root` inicial de `frontend/src/index.css`**
+- [x] **Step 2: sustituir el bloque `:root` inicial de `frontend/src/index.css`**
 
 Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cierra ese bloque, justo antes de `#root {`. En su lugar va este texto. El resto del archivo (`#root`, `body`, `h1`, `h2`, `p` y `code`) no cambia.
 
@@ -935,7 +935,7 @@ grep -rn "social-bg" ~/.config/superpowers/worktrees/Neurograph/rediseno-interfa
 
 Expected: sin resultados.
 
-- [ ] **Step 3: pasar a variables los colores fijos de `frontend/src/App.css`**
+- [x] **Step 3: pasar a variables los colores fijos de `frontend/src/App.css`**
 
 Desde la raíz del worktree:
 
@@ -970,18 +970,18 @@ Hay que actualizar también el comentario de las líneas 2 a 6 de `App.css`, que
    define cada tema en index.css. */
 ```
 
-- [ ] **Step 4: quitar `preview` de `THEME_INFO`**
+- [x] **Step 4: quitar `preview` de `THEME_INFO`**
 
 Con los selectores `[data-theme-preview="<id>"]`, la vista previa de Ajustes (Task 8) toma los colores de `index.css`. En `frontend/src/theme/themes.ts`, quita el campo `preview` de la interfaz `ThemeInfo` (con su comentario) y de las cuatro entradas de `THEME_INFO`. Quedan `number`, `name` y `description`. Nada más usa `preview` todavía: compruébalo con `grep -rn "preview" frontend/src`.
 
 Por qué no hay una prueba que compare el CSS con TypeScript: vitest vacía cualquier import `….css?raw` (su CSSEnablerPlugin lo convierte en `export default ""`). Leerlo con `node:fs` exigiría los tipos de node en `tsconfig.app.json`. Sin duplicación, no hace falta la prueba.
 
-- [ ] **Step 5: comprobar que compila**
+- [x] **Step 5: comprobar que compila**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npm run build`
 Expected: `✓ built`. El aviso de tamaño de bloque (más de 500 kB) ya estaba. `dist/licenses/` contiene las dos licencias.
 
-- [ ] **Step 6: commit**
+- [x] **Step 6: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/assets/fonts frontend/public/licenses frontend/src/index.css frontend/src/App.css frontend/src/theme/themes.ts
@@ -997,7 +997,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Test: `frontend/src/logic/exportPalette.test.ts`
 - Modify: `frontend/src/logic/exportImage.ts` (función `exportSvgAsJpeg`)
 
-- [ ] **Step 1: escribir la prueba que falla**
+- [x] **Step 1: escribir la prueba que falla**
 
 La prueba usa elementos simulados, porque vitest corre sin DOM.
 
@@ -1093,12 +1093,12 @@ describe("applyExportColors", () => {
 });
 ```
 
-- [ ] **Step 2: comprobar que falla**
+- [x] **Step 2: comprobar que falla**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/exportPalette.test.ts`
 Expected: FAIL, porque no existe `./exportPalette`.
 
-- [ ] **Step 3: implementar `frontend/src/logic/exportPalette.ts`**
+- [x] **Step 3: implementar `frontend/src/logic/exportPalette.ts`**
 
 ```ts
 // Colores de la exportación JPEG (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 4.4).
@@ -1151,7 +1151,7 @@ export function applyExportColors(
 export const EXPORT_FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 ```
 
-- [ ] **Step 4: usarlo en `exportSvgAsJpeg` (`frontend/src/logic/exportImage.ts`)**
+- [x] **Step 4: usarlo en `exportSvgAsJpeg` (`frontend/src/logic/exportImage.ts`)**
 
 El archivo no tiene imports todavía. Añade este justo antes de `const JPEG_QUALITY = 0.95;`, debajo del comentario de cabecera:
 
@@ -1188,12 +1188,12 @@ Justo después de las dos líneas `clone.setAttribute("width", ...)` y `clone.se
 
 El parámetro es opcional: los llamadores actuales siguen compilando, y la Task 5 les pasa el resolvedor.
 
-- [ ] **Step 5: comprobar que pasa**
+- [x] **Step 5: comprobar que pasa**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/exportPalette.test.ts && npx tsc -b`
 Expected: PASS (4 pruebas) y `tsc` sin errores.
 
-- [ ] **Step 6: commit**
+- [x] **Step 6: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/logic/exportPalette.ts frontend/src/logic/exportPalette.test.ts frontend/src/logic/exportImage.ts
@@ -1217,7 +1217,7 @@ Regla para esta tarea: todo color de los SVG exportables (connectograma, hemisfe
 
 Los atributos `data-ng-*` se escriben siempre con los ayudantes tipados de `theme/colors.ts`: `{...ngFill("edge")}`, `{...ngStroke(...)}` y `{...ngStrokeOpacity(...)}`. Nunca se escribe el atributo `data-ng-fill` (ni los otros dos) a mano: con los ayudantes, una referencia mal escrita es un error de compilación. Importa en cada componente solo los que use.
 
-- [ ] **Step 1: prueba de `drawColorsFor` (falla)**
+- [x] **Step 1: prueba de `drawColorsFor` (falla)**
 
 Añade al final de `frontend/src/theme/colors.test.ts`:
 
@@ -1243,7 +1243,7 @@ Deja el `import` junto a los demás imports, al principio del archivo.
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/theme/colors.test.ts`
 Expected: FAIL, porque no existe `./useDrawColors`.
 
-- [ ] **Step 2: implementar `frontend/src/theme/useDrawColors.ts`**
+- [x] **Step 2: implementar `frontend/src/theme/useDrawColors.ts`**
 
 ```ts
 // Colores de dibujo (SVG y 3D) del tema activo (D3 de docs/decisiones-diseno.md). forExport:
@@ -1272,7 +1272,7 @@ export function useDrawColors(forExport = false): DrawColors {
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/theme/colors.test.ts`
 Expected: PASS.
 
-- [ ] **Step 3: `Connectogram.tsx`**
+- [x] **Step 3: `Connectogram.tsx`**
 
 1. **Imports.** Sustituye el bloque `import { NETWORK_COLORS, CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOVER_HIGHLIGHT_COLOR } from "../theme/networks";`, repartido en varias líneas, por:
 
@@ -1366,7 +1366,7 @@ Expected: PASS.
 
     Expected: solo aparecen en comentarios.
 
-- [ ] **Step 4: `Hemisferios.tsx`**
+- [x] **Step 4: `Hemisferios.tsx`**
 
 1. **Imports.**
    - Quita del import de `"../theme/networks"` estos nombres: `NETWORK_COLORS`, `NEUTRAL_COLOR`, `ACCENT_SELECTED_COLOR`, `INTRA_HEMISPHERE_COLOR` e `INTER_HEMISPHERE_COLOR`. Quedan `CONNECTION_TYPE_LABELS` y `EVIDENCE_LEVEL_LABELS`.
@@ -1412,7 +1412,7 @@ Expected: PASS.
 10. **Etiquetas de los nodos.** `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
 11. **Comprobación.** Mismo `grep` del paso 3, con `Hemisferios.tsx` y añadiendo `INTRA_\|INTER_` al patrón. Expected: solo aparecen en comentarios.
 
-- [ ] **Step 5: `DetailPanel.tsx`, `FilterPanel.tsx` y `FunctionSynthesisTab.tsx`**
+- [x] **Step 5: `DetailPanel.tsx`, `FilterPanel.tsx` y `FunctionSynthesisTab.tsx`**
 
 `DetailPanel.tsx`:
 1. **Imports.**
@@ -1469,7 +1469,7 @@ Expected: PASS.
   - `stroke="#0b0c10"` → `stroke={colors.nodeGap}`.
 - `NETWORK_LABELS` se sigue usando en ese archivo: compruébalo con `grep -n NETWORK_LABELS` antes de dejarlo en el import. Si ya no se usa, quítalo.
 
-- [ ] **Step 6: comprobar**
+- [x] **Step 6: comprobar**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx tsc -b && npm test && npm run lint
@@ -1481,7 +1481,7 @@ Expected:
 - `lint` sin errores y con los mismos 9 avisos previos, aunque cambien los números de línea.
 - El `grep` final no devuelve nada. El filtro no reconoce los comentarios `{/* … */}` de varias líneas: si aparece alguna línea, comprueba si es uno de ellos. Si lo es, actualízalo para que hable de los tokens del tema. Si es código, es un color que se quedó sin cambiar.
 
-- [ ] **Step 7: commit**
+- [x] **Step 7: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/theme/useDrawColors.ts frontend/src/theme/colors.test.ts frontend/src/components/Connectogram.tsx frontend/src/components/Hemisferios.tsx frontend/src/components/DetailPanel.tsx frontend/src/components/FilterPanel.tsx frontend/src/components/FunctionSynthesisTab.tsx
@@ -1500,7 +1500,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Modify: `frontend/src/logic/surfaceParcels.ts` (constantes `GRAY_*`, `fillVertexColors` y `fillVertexColorsByIndex`)
 - Test: `frontend/src/logic/surfaceParcels.test.ts`
 
-- [ ] **Step 1: escribir la prueba que falla**
+- [x] **Step 1: escribir la prueba que falla**
 
 Añade esta prueba al `describe("fillVertexColors", ...)` de `frontend/src/logic/surfaceParcels.test.ts`. Añade también al import de `./surfaceParcels` los nombres que aún no estén entre `fillVertexColorsByIndex`, `NO_REGION` y `type CortexGrays`. `NO_REGION` ya se importa hoy: no lo repitas.
 
@@ -1525,7 +1525,7 @@ Añade esta prueba al `describe("fillVertexColors", ...)` de `frontend/src/logic
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/surfaceParcels.test.ts`
 Expected: FAIL, porque no existe el tipo y el sexto parámetro no hace nada.
 
-- [ ] **Step 2: implementar**
+- [x] **Step 2: implementar**
 
 En `frontend/src/logic/surfaceParcels.ts`, sustituye las cuatro constantes `GRAY_SULCUS`, `GRAY_GYRUS`, `GRAY_NO_DATA` y `GRAY_MEDIAL_WALL` por lo siguiente. Mantén el comentario largo que las precede, sobre el RGB lineal.
 
@@ -1607,12 +1607,12 @@ Añade el parámetro `grays: CortexGrays = DEFAULT_CORTEX_GRAYS` al final de las
 
 Deja intacto el comentario sobre el sombreado de las regiones pintadas (el `0.7 + 0.3 * t`).
 
-- [ ] **Step 3: comprobar**
+- [x] **Step 3: comprobar**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/surfaceParcels.test.ts && npx tsc -b`
 Expected: PASS, las pruebas de antes y la nueva, y `tsc` sin errores.
 
-- [ ] **Step 4: commit**
+- [x] **Step 4: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/logic/surfaceParcels.ts frontend/src/logic/surfaceParcels.test.ts
@@ -1626,7 +1626,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Modify: `frontend/src/components/Brain3D.tsx`, `PaintedCortex.tsx`, `ReferenceMesh.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx`
 
-- [ ] **Step 1: `ReferenceMesh.tsx`**
+- [x] **Step 1: `ReferenceMesh.tsx`**
 
 Quita el import de `NEUTRAL_COLOR`. La función queda así (añade `useEffect` al import de React):
 
@@ -1670,14 +1670,14 @@ export function ReferenceMesh({ url, color }: { url: string; color: string }) {
 
 Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color llega como prop, desde el token `edge` del tema.
 
-- [ ] **Step 2: `PaintedCortex.tsx`**
+- [x] **Step 2: `PaintedCortex.tsx`**
 
 - Añade `type CortexGrays` al import de `"../logic/surfaceParcels"`.
 - Añade `grays: CortexGrays;` a `interface Props` y `grays,` a los parámetros.
 - En el efecto que rellena los colores, pasa `grays` como último argumento de `fillVertexColorsByIndex(...)` y de `fillVertexColors(...)`.
 - Añade `grays` a su lista de dependencias: `[geometry, map, sulc, colorForRegion, paintBy, grays]`.
 
-- [ ] **Step 3: `Brain3D.tsx`**
+- [x] **Step 3: `Brain3D.tsx`**
 
 1. **Imports.** El bloque `import { NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOMOLOGY_HIGHLIGHT_COLOR } from "../theme/networks";` pasa a ser:
 
@@ -1812,7 +1812,7 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
 
     Expected: solo aparecen en comentarios.
 
-- [ ] **Step 4: `Tractography3D.tsx` y `TractographyNodes3D.tsx`**
+- [x] **Step 4: `Tractography3D.tsx` y `TractographyNodes3D.tsx`**
 
 En cada uno:
 
@@ -1823,7 +1823,7 @@ En cada uno:
 - En cada `<ReferenceMesh url={...} />`, añade `color={colors.edge}`.
 - Los colores de los tractos (`colorForTractIndex`) y el respaldo `"#ffffff"` de `colorById.get(...) ?? "#ffffff"` no cambian: quedan fuera de esta ronda (spec, sección 2).
 
-- [ ] **Step 5: comprobar**
+- [x] **Step 5: comprobar**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx tsc -b && npm test && npm run lint
@@ -1831,7 +1831,7 @@ cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx 
 
 Expected: `tsc` sin errores, todas las pruebas en verde y ningún error de lint nuevo.
 
-- [ ] **Step 6: commit**
+- [x] **Step 6: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/components/Brain3D.tsx frontend/src/components/PaintedCortex.tsx frontend/src/components/ReferenceMesh.tsx frontend/src/components/Tractography3D.tsx frontend/src/components/TractographyNodes3D.tsx
@@ -1847,7 +1847,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Modify: `frontend/src/App.tsx` (función `renderHeader`)
 - Modify: `frontend/src/App.css` (estilos al final)
 
-- [ ] **Step 1: crear `frontend/src/components/SettingsMenu.tsx`**
+- [x] **Step 1: crear `frontend/src/components/SettingsMenu.tsx`**
 
 ```tsx
 // Engranaje de Ajustes (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.2).
@@ -1965,12 +1965,12 @@ export function SettingsMenu() {
 }
 ```
 
-- [ ] **Step 2: ponerlo en la barra (`App.tsx`)**
+- [x] **Step 2: ponerlo en la barra (`App.tsx`)**
 
 - Añade `import { SettingsMenu } from "./components/SettingsMenu";` junto a los demás imports de componentes.
 - En `renderHeader`, añade `<SettingsMenu />` como último hijo de `<header className="topbar">`, después de `{controls && ...}`.
 
-- [ ] **Step 3: estilos (al final de `App.css`)**
+- [x] **Step 3: estilos (al final de `App.css`)**
 
 ```css
 /* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
@@ -1997,12 +1997,12 @@ export function SettingsMenu() {
 .settings__theme-desc { font-size: 0.64rem; line-height: 1.35; color: var(--text-muted); }
 ```
 
-- [ ] **Step 4: comprobar**
+- [x] **Step 4: comprobar**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx tsc -b && npm run lint && npm run build`
 Expected: sin errores; el aviso de tamaño de bloque ya estaba.
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/components/SettingsMenu.tsx frontend/src/App.tsx frontend/src/App.css
@@ -2017,7 +2017,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Modify: `docs/decisiones-diseno.md` (añadir la D3 al final)
 - Modify: `docs/rediseno-interfaz-diseno.md` (tabla 4.2: fila `nodeGap`; nota de 4.1 sobre los fondos `*-bg`)
 
-- [ ] **Step 1: pruebas, tipos, lint y compilación**
+- [x] **Step 1: pruebas, tipos, lint y compilación**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npm test && npx tsc -b && npm run lint && npm run build
@@ -2028,7 +2028,7 @@ Expected:
 - Lint sin errores y con los mismos 9 avisos previos.
 - La compilación termina con `✓ built`.
 
-- [ ] **Step 2: servidor de desarrollo propio, en otro puerto**
+- [x] **Step 2: servidor de desarrollo propio, en otro puerto**
 
 No usar el 5173: es el de la usuaria.
 
@@ -2038,7 +2038,7 @@ cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx 
 
 Ejecútalo en segundo plano. El backend de la usuaria, en `127.0.0.1:8420`, acepta cualquier puerto local (`allow_origin_regex` en `backend/api/main.py`). Solo se le hacen peticiones GET de lectura, desde un navegador sin interfaz y aparte, nunca desde el de la usuaria.
 
-- [ ] **Step 3: comprobar en un navegador sin interfaz (Playwright)**
+- [x] **Step 3: comprobar en un navegador sin interfaz (Playwright)**
 
 Regla: todo lo que genere la prueba (capturas, JPEG, el directorio `.playwright-mcp` si aparece) va a una carpeta nueva del scratchpad. En la copia principal de la usuaria (`/home/dae/PycharmProjects/Neurograph/Neurograph`) no se escribe nada. Al terminar, comprueba que su `git status` sigue limpio.
 
@@ -2069,9 +2069,9 @@ Exportación:
 
 Si algo no cuadra, corrígelo antes de seguir y apúntalo para la D3.
 
-- [ ] **Step 4: parar el servidor de desarrollo**
+- [x] **Step 4: parar el servidor de desarrollo**
 
-- [ ] **Step 5: completar el spec**
+- [x] **Step 5: completar el spec**
 
 En `docs/rediseno-interfaz-diseno.md`:
 
@@ -2098,7 +2098,7 @@ En `docs/rediseno-interfaz-diseno.md`:
 - En las notas de 4.1, la de «Acento» pasa a decir: «No hay texto sobre fondo de acento sólido. Los estados activos usan `accentSoft` como fondo, y su borde es `accentBorder`, o `accent` cuando el estado tiene que distinguirse con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema elegido en Ajustes».
 - En la sección 7, añade que también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos. Añade también que `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio.
 
-- [ ] **Step 6: escribir la D3 al final de `docs/decisiones-diseno.md`**
+- [x] **Step 6: escribir la D3 al final de `docs/decisiones-diseno.md`**
 
 Desde el 24/09/2026, las decisiones de interfaz y estética van en `docs/decisiones-diseno.md`, numeradas D1, D2…, y no en `docs/analisis-arquitectura.md`, que queda para lo funcional. Antes de escribir, comprueba en ese archivo cuál es la siguiente D libre. La prevista es la D3, pero otra sesión podría haber añadido alguna. Si no es la D3, cambia también las referencias `D3` del código y del spec.
 
@@ -2116,7 +2116,7 @@ Sigue el formato de la D1 de ese mismo archivo:
   - **Verificación.** Lo que se vio en el paso 3, el número de pruebas y `tsc` limpio.
 - Enlaza `docs/rediseno-interfaz-diseno.md` y este plan.
 
-- [ ] **Step 7: commit**
+- [x] **Step 7: commit**
 
 ```bash
 cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add docs/decisiones-diseno.md docs/rediseno-interfaz-diseno.md

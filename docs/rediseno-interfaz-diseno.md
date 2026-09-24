@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** propuesta aprobada por la usuaria y validada por el main developer el 24/09/2026. Revisado por un agente aparte en tres pasadas; pendiente de la revisión de la usuaria antes del plan de implementación.
+- **Estado:** aprobado por la usuaria y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`.
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueña). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -185,7 +185,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 - **Estado:** `{ tema, modoPaleta }`. `modoPaleta` vale `"suave"`, `"original"` o `null`, que es automático: `"original"` en el tema Original y `"suave"` en los demás.
 - **Independencia:** cambiar de tema no borra un `modoPaleta` elegido a mano.
 - **Almacenamiento:** se guarda en `localStorage` con la clave `neurograph.apariencia`. Cada lectura y escritura va en `try/catch`: si el almacenamiento falla o no existe, se usan los valores por defecto sin error.
-- **Tema por defecto: Grafito.** Es la propuesta; se confirma al revisar este documento.
+- **Tema por defecto: Grafito.** Lo elegimos con la delegación de la usuaria («lo que sea mejor, tu criterio»), y se le confirma al pedirle permiso para fusionar. Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
 - **Primer render:** `main.tsx` lee la elección de forma síncrona y aplica `data-theme` y `color-scheme` en `<html>` antes del primer render, para que no parpadee el tema equivocado. `index.css` define los tokens de 4.1 para cada `data-theme`.
 
 ## 5. Estructura, común a todos los temas
@@ -385,15 +385,15 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Engranaje y Ajustes con los cuatro temas.
    - Exportación correcta: atributos `data-ng-*`, `applyExportColors` y modo «exportando» del 3D.
    - Tipografía local y `accent-color`.
-   - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy; solo cambia la tipografía.
+   - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle y avisos.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores y etiquetas).
 
 ## 12. Riesgos y puntos abiertos
 
-- **Tema por defecto:** la propuesta es Grafito; se confirma al revisar este documento.
+- **Tema por defecto:** Grafito, elegido con la delegación de la usuaria; se le confirma al pedirle permiso para fusionar.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
 - **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla. En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3 (D3 de `docs/decisiones-diseno.md`).
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
-- **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
+- **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
