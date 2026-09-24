@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   NO_REGION,
   fillVertexColors,
+  fillVertexColorsByIndex,
   hexToLinearRgb,
   leftTriangleCount,
   parseSulcFile,
   regionAtFace,
   srgbToLinear,
   validateParcelFile,
+  type CortexGrays,
 } from "./surfaceParcels";
 
 const EXPECTED = { atlasId: "atlas.human.prueba.x", referenceSpace: "espacio_x" };
@@ -80,6 +82,22 @@ describe("fillVertexColors", () => {
     const sulc = new Float32Array([1, -1, 0, Number.NaN]);
     fillVertexColors(out, map, sulc, () => null);
     expect(out[0]).toBeGreaterThan(out[3]);
+  });
+
+  it("usa los grises del tema: surco, giro, pared medial y sin dato", () => {
+    const grays: CortexGrays = {
+      sulcus: [0.1, 0.2, 0.3],
+      gyrus: [0.5, 0.6, 0.7],
+      noData: [0.4, 0.4, 0.4],
+      medialWall: [0.9, 0.8, 0.7],
+    };
+    // v0 fondo de surco, v1 corona de giro, v2 pared medial, v3 región sin dato de surco.
+    const vertexIndex = new Int32Array([0, 0, NO_REGION, 0]);
+    const sulc = new Float32Array([0, 1, Number.NaN, Number.NaN]);
+    const out = new Float32Array(12);
+    fillVertexColorsByIndex(out, vertexIndex, 1, sulc, () => null, grays);
+    const expected = [0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.9, 0.8, 0.7, 0.4, 0.4, 0.4];
+    expected.forEach((value, i) => expect(out[i]).toBeCloseTo(value, 5));
   });
 });
 

@@ -146,10 +146,47 @@ export type RGB = [number, number, number];
 // red deben pasar por `hexToLinearRgb`. Sin esta conversión, los
 // colores reales de cada red se verían lavados en la superficie y no
 // coincidirían con los del connectograma.
-const GRAY_SULCUS = srgbToLinear(0.35);
-const GRAY_GYRUS = srgbToLinear(0.72);
-const GRAY_NO_DATA = srgbToLinear(0.55);
-const GRAY_MEDIAL_WALL = srgbToLinear(0.25);
+//
+// Grises de la corteza en RGB lineal. Cada tema tiene los suyos (D3,
+// DrawTokens de theme/themes.ts). Estos son los de siempre (tema 1).
+export interface CortexGrays {
+  sulcus: RGB;
+  gyrus: RGB;
+  noData: RGB;
+  medialWall: RGB;
+}
+
+function uniformGray(srgb: number): RGB {
+  const v = srgbToLinear(srgb);
+  return [v, v, v];
+}
+
+export const DEFAULT_CORTEX_GRAYS: CortexGrays = {
+  sulcus: uniformGray(0.35),
+  gyrus: uniformGray(0.72),
+  noData: uniformGray(0.55),
+  medialWall: uniformGray(0.25),
+};
+
+// Tokens de un tema (sRGB 0-1) a RGB lineal.
+export function cortexGraysFromSrgb(tokens: {
+  cortexSulcus: readonly [number, number, number];
+  cortexGyrus: readonly [number, number, number];
+  cortexNoData: readonly [number, number, number];
+  cortexMedialWall: readonly [number, number, number];
+}): CortexGrays {
+  const lin = (c: readonly [number, number, number]): RGB => [
+    srgbToLinear(c[0]),
+    srgbToLinear(c[1]),
+    srgbToLinear(c[2]),
+  ];
+  return {
+    sulcus: lin(tokens.cortexSulcus),
+    gyrus: lin(tokens.cortexGyrus),
+    noData: lin(tokens.cortexNoData),
+    medialWall: lin(tokens.cortexMedialWall),
+  };
+}
 
 export function srgbToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
@@ -175,8 +212,9 @@ export function fillVertexColors(
   map: SurfaceParcelMap,
   sulc: Float32Array | null,
   colorForRegion: (regionIndex: number) => RGB | null,
+  grays: CortexGrays = DEFAULT_CORTEX_GRAYS,
 ): void {
-  fillVertexColorsByIndex(out, map.vertexRegionIndex, map.regionIds.length, sulc, colorForRegion);
+  fillVertexColorsByIndex(out, map.vertexRegionIndex, map.regionIds.length, sulc, colorForRegion, grays);
 }
 
 // Versión general (decisión 73): cada vértice tiene un índice de
@@ -188,6 +226,7 @@ export function fillVertexColorsByIndex(
   categoryCount: number,
   sulc: Float32Array | null,
   colorForCategory: (index: number) => RGB | null,
+  grays: CortexGrays = DEFAULT_CORTEX_GRAYS,
 ): void {
   const n = vertexIndex.length;
   if (out.length !== n * 3) throw new Error("tamaño del búfer de colores incorrecto");
@@ -199,10 +238,17 @@ export function fillVertexColorsByIndex(
     const category = vertexIndex[v];
     const s = sulc ? sulc[v] : Number.NaN;
     const t = range && !Number.isNaN(s) ? (s - range[0]) / (range[1] - range[0]) : null;
-    let gray: number;
-    if (t !== null) gray = GRAY_SULCUS + (GRAY_GYRUS - GRAY_SULCUS) * t;
-    else if (category === NO_REGION) gray = GRAY_MEDIAL_WALL;
-    else gray = GRAY_NO_DATA;
+    let r: number;
+    let g: number;
+    let b: number;
+    if (t !== null) {
+      r = grays.sulcus[0] + (grays.gyrus[0] - grays.sulcus[0]) * t;
+      g = grays.sulcus[1] + (grays.gyrus[1] - grays.sulcus[1]) * t;
+      b = grays.sulcus[2] + (grays.gyrus[2] - grays.sulcus[2]) * t;
+    } else {
+      const base = category === NO_REGION ? grays.medialWall : grays.noData;
+      [r, g, b] = base;
+    }
 
     const color = category === NO_REGION ? null : (categoryColors[category] ?? null);
     if (color) {
@@ -213,9 +259,9 @@ export function fillVertexColorsByIndex(
       out[v * 3 + 1] = color[1] * shade;
       out[v * 3 + 2] = color[2] * shade;
     } else {
-      out[v * 3] = gray;
-      out[v * 3 + 1] = gray;
-      out[v * 3 + 2] = gray;
+      out[v * 3] = r;
+      out[v * 3 + 1] = g;
+      out[v * 3 + 2] = b;
     }
   }
 }
