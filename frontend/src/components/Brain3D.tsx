@@ -1301,7 +1301,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       </div>
     )}
     {!compact && parcelError}
-    {!compact && surfaceStatus && <p className="brain3d-surface-status">{surfaceStatus}</p>}
+    {/* Siempre presente (aunque vacío) y con altura fija en App.css:
+        que aparezca o cambie el texto al pasar el ratón nunca debe
+        cambiar el tamaño del lienzo (decisión 74b). */}
+    {!compact && painted && (
+      <p className="brain3d-surface-status" title={surfaceStatus ?? undefined}>
+        {surfaceStatus}
+      </p>
+    )}
     {!compact && tooManyFocusConnections && focus && (
       <p className="connectogram-toomany-warning">
         Hay {focus.connections.length} conexiones reales entre los nodos
