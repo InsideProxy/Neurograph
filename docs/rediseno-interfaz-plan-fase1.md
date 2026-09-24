@@ -460,6 +460,17 @@ git commit -m "Temas: tokens de dibujo por tema y resolucion de colores (fase 1)
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
+**Cambios tras la revisión de calidad (ya en el repositorio, commit posterior al de la Task 1):**
+
+- `THEME_IDS` pasa a ser `as const` y `ThemeId` se deriva de él. `THEME_INFO` y `DRAW_TOKENS` son de solo lectura en sus tipos.
+- `hexToSrgb` valida la entrada y lanza un error si no recibe `#rrggbb`.
+- Tipos nuevos: `PaintToken` (tokens de color, sin `dash`) y `OpacityToken` (tokens de opacidad). En `colors.ts`: `PaintRef` (un `PaintToken` o `` `net:${string}` ``) y `ExportAttributeKind` (`"paint" | "opacity"`).
+- `exportColorFor(ref, kind, theme)` recibe el tipo de atributo. Devuelve null si no encaja: por ejemplo, una opacidad usada como relleno, `dash` o una clave del prototipo.
+- `exportResolverFor(theme)` devuelve `(ref, kind) => string | null`.
+- `hasNetworkColor(key)`, con `Object.hasOwn`.
+- `ngFill(ref)`, `ngStroke(ref)` y `ngStrokeOpacity(ref)` escriben los atributos `data-ng-*` con tipo: una errata en una referencia es un error de compilación. Las Tasks 5 y 7 los usan.
+- Las pruebas del tema 1 comparan con literales (`"#837f90"`, `"#ac61d1"`...), no con las constantes de las que salen.
+
 ### Task 2: store de apariencia y tema antes del primer render
 
 **Files:**
@@ -1050,6 +1061,15 @@ class FakeElement implements ExportableElement {
 const resolve = (ref: string) =>
   ({ edge: "#6f737c", "net:cole-anticevic.visual": "#0000ff", edgeOpacityConnectogram: "0.26" })[ref] ?? null;
 
+function recordingResolver() {
+  const calls: [string, string][] = [];
+  const resolveAndRecord = (ref: string, kind: string) => {
+    calls.push([ref, kind]);
+    return resolve(ref);
+  };
+  return { calls, resolve: resolveAndRecord };
+}
+
 describe("applyExportColors", () => {
   it("reescribe fill, stroke y stroke-opacity según las referencias", () => {
     const node = new FakeElement({ fill: "#aaaaaa", "data-ng-fill": "net:cole-anticevic.visual" });
@@ -1066,10 +1086,26 @@ describe("applyExportColors", () => {
     expect(line.attributes["stroke-opacity"]).toBe("0.26");
   });
 
-  it("deja el atributo como estaba si la referencia no se resuelve", () => {
+  it("deja el atributo como estaba si la referencia no se resuelve, y lo avisa", () => {
     const el = new FakeElement({ fill: "#123456", "data-ng-fill": "desconocida" });
-    applyExportColors(new FakeElement({}, [el]), resolve);
+    const unresolved: [string, string][] = [];
+    applyExportColors(new FakeElement({}, [el]), resolve, (ref, attribute) => unresolved.push([ref, attribute]));
     expect(el.attributes.fill).toBe("#123456");
+    expect(unresolved).toEqual([["desconocida", "data-ng-fill"]]);
+  });
+
+  it("pide color para fill y stroke, y opacidad para stroke-opacity", () => {
+    const line = new FakeElement({ "data-ng-stroke": "edge", "data-ng-stroke-opacity": "edgeOpacityConnectogram" });
+    const node = new FakeElement({ "data-ng-fill": "net:cole-anticevic.visual" });
+    const recorder = recordingResolver();
+    applyExportColors(new FakeElement({}, [line, node]), recorder.resolve);
+    expect(recorder.calls).toEqual(
+      expect.arrayContaining([
+        ["net:cole-anticevic.visual", "paint"],
+        ["edge", "paint"],
+        ["edgeOpacityConnectogram", "opacity"],
+      ]),
+    );
   });
 
   it("también trata la propia raíz", () => {
@@ -1095,28 +1131,40 @@ Expected: FAIL, porque no existe `./exportPalette`.
 // data-ng-fill / data-ng-stroke / data-ng-stroke-opacity con una
 // referencia (un token de DrawTokens o "net:<clave>"). Aquí se sustituye
 // su valor por el de la paleta de exportación antes de serializar.
+import type { ExportAttributeKind } from "../theme/colors";
+
 export interface ExportableElement {
   getAttribute(name: string): string | null;
   setAttribute(name: string, value: string): void;
   querySelectorAll(selector: string): ArrayLike<ExportableElement>;
 }
 
-export type ColorResolver = (ref: string) => string | null;
+// Recibe la referencia y el tipo de atributo: un color para fill/stroke, una
+// opacidad para stroke-opacity. exportResolverFor (theme/colors.ts) cumple
+// esta firma.
+export type ColorResolver = (ref: string, kind: ExportAttributeKind) => string | null;
 
-const MAPPINGS: readonly (readonly [dataAttribute: string, target: string])[] = [
-  ["data-ng-fill", "fill"],
-  ["data-ng-stroke", "stroke"],
-  ["data-ng-stroke-opacity", "stroke-opacity"],
+const MAPPINGS: readonly (readonly [dataAttribute: string, target: string, kind: ExportAttributeKind])[] = [
+  ["data-ng-fill", "fill", "paint"],
+  ["data-ng-stroke", "stroke", "paint"],
+  ["data-ng-stroke-opacity", "stroke-opacity", "opacity"],
 ];
 
-export function applyExportColors(root: ExportableElement, resolve: ColorResolver): void {
-  for (const [dataAttribute, target] of MAPPINGS) {
+// onUnresolved: se llama con cada referencia sin valor de exportación. El
+// atributo se queda como estaba, con el color de pantalla.
+export function applyExportColors(
+  root: ExportableElement,
+  resolve: ColorResolver,
+  onUnresolved?: (ref: string, dataAttribute: string) => void,
+): void {
+  for (const [dataAttribute, target, kind] of MAPPINGS) {
     const elements = [root, ...Array.from(root.querySelectorAll(`[${dataAttribute}]`))];
     for (const element of elements) {
       const ref = element.getAttribute(dataAttribute);
       if (ref === null) continue;
-      const value = resolve(ref);
+      const value = resolve(ref, kind);
       if (value !== null) element.setAttribute(target, value);
+      else onUnresolved?.(ref, dataAttribute);
     }
   }
 }
@@ -1150,8 +1198,14 @@ Justo después de las dos líneas `clone.setAttribute("width", ...)` y `clone.se
 
 ```ts
   // Paleta de exportación (decisión 77): colores legibles sobre el blanco
-  // de la exportación, sea cual sea el tema de pantalla.
-  if (resolveColor) applyExportColors(clone, resolveColor);
+  // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
+  // avisa de cada referencia sin color de exportación: quedaría con el
+  // color de pantalla.
+  if (resolveColor) {
+    applyExportColors(clone, resolveColor, (ref, attribute) => {
+      if (import.meta.env.DEV) console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
+    });
+  }
   clone.setAttribute("font-family", EXPORT_FONT_FAMILY);
 ```
 
@@ -1160,7 +1214,7 @@ El parámetro es opcional: los llamadores actuales siguen compilando, y la Task 
 - [ ] **Step 5: comprobar que pasa**
 
 Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/logic/exportPalette.test.ts && npx tsc -b`
-Expected: PASS (3 pruebas) y `tsc` sin errores.
+Expected: PASS (4 pruebas) y `tsc` sin errores.
 
 - [ ] **Step 6: commit**
 
@@ -1183,6 +1237,8 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - Modify: `frontend/src/components/Connectogram.tsx`, `Hemisferios.tsx`, `DetailPanel.tsx`, `FilterPanel.tsx` y `FunctionSynthesisTab.tsx`
 
 Regla para esta tarea: todo color de los SVG exportables (connectograma, hemisferios y leyenda de `DetailPanel`) lleva su atributo `data-ng-*`. Los colores de lo que no se exporta (lupa, resaltado al pasar el ratón, diagrama de síntesis y muestras de `FilterPanel`) no lo necesitan.
+
+Los atributos `data-ng-*` se escriben siempre con los ayudantes tipados de `theme/colors.ts`: `{...ngFill("edge")}`, `{...ngStroke(...)}` y `{...ngStrokeOpacity(...)}`. Nunca se escribe el atributo `data-ng-fill` (ni los otros dos) a mano: con los ayudantes, una referencia mal escrita es un error de compilación. Importa en cada componente solo los que use.
 
 - [ ] **Step 1: prueba de `drawColorsFor` (falla)**
 
@@ -1245,7 +1301,7 @@ Expected: PASS.
 
    ```ts
    import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
-   import { exportResolverFor } from "../theme/colors";
+   import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
    import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
    import { useAppearanceStore } from "../state/appearance";
    ```
@@ -1267,15 +1323,15 @@ Expected: PASS.
    ```
 
 4. **Marcadores de `<defs>`.** En los tres `<path d="M 0 0 L 10 5 L 0 10 z" .../>`:
-   - `fill={NEUTRAL_COLOR}` → `fill={colors.edge} data-ng-fill="edge"`
-   - `fill={ACCENT_SELECTED_COLOR}` → `fill={colors.selected} data-ng-fill="selected"`
-   - `fill={HOVER_HIGHLIGHT_COLOR}` → `fill={colors.hoverHighlight} data-ng-fill="hoverHighlight"`
+   - `fill={NEUTRAL_COLOR}` → `fill={colors.edge} {...ngFill("edge")}`
+   - `fill={ACCENT_SELECTED_COLOR}` → `fill={colors.selected} {...ngFill("selected")}`
+   - `fill={HOVER_HIGHLIGHT_COLOR}` → `fill={colors.hoverHighlight} {...ngFill("hoverHighlight")}`
 
 5. **Conexiones** (el `<path key={conn.id}` dentro de `visibleConnections.map`). Sustituye todo el tramo desde `stroke={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}` hasta `strokeDasharray={isDashed ? "6 4" : undefined}`, los dos incluidos, por el bloque de abajo. En medio están `strokeOpacity` y `strokeWidth`, y el bloque nuevo ya incluye `strokeWidth`: no lo dupliques.
 
    ```tsx
    stroke={isSelected ? colors.selected : colors.edge}
-   data-ng-stroke={isSelected ? "selected" : "edge"}
+   {...ngStroke(isSelected ? "selected" : "edge")}
    strokeOpacity={
      hoveredNodeId !== null
        ? isSelected
@@ -1285,7 +1341,7 @@ Expected: PASS.
          ? colors.edgeOpacitySelected
          : colors.edgeOpacityConnectogram
    }
-   data-ng-stroke-opacity={isSelected ? "edgeOpacitySelected" : "edgeOpacityConnectogram"}
+   {...ngStrokeOpacity(isSelected ? "edgeOpacitySelected" : "edgeOpacityConnectogram")}
    strokeWidth={Math.max(1, conn.weight * 6)}
    strokeDasharray={isDashed ? colors.dash : undefined}
    ```
@@ -1298,12 +1354,12 @@ Expected: PASS.
 
    ```tsx
    fill={colors.networkColor(node.network)}
-   data-ng-fill={`net:${node.network}`}
+   {...ngFill(`net:${node.network}`)}
    stroke={isSelected ? colors.selected : colors.nodeRing}
-   data-ng-stroke={isSelected ? "selected" : "nodeRing"}
+   {...ngStroke(isSelected ? "selected" : "nodeRing")}
    ```
 
-8. **Abreviaturas.** En el `<text x={labelX}`, `fill={NEUTRAL_COLOR}` → `fill={colors.label} data-ng-fill="label"`.
+8. **Abreviaturas.** En el `<text x={labelX}`, `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
 
 9. **Lupa.**
    - Añade `colors={colors}` a `<ConnectogramLens ... />`, `colors: DrawColors;` a `interface LensProps` y `colors,` a los parámetros de `ConnectogramLens`.
@@ -1337,16 +1393,16 @@ Expected: PASS.
 
 1. **Imports.**
    - Quita del import de `"../theme/networks"` estos nombres: `NETWORK_COLORS`, `NEUTRAL_COLOR`, `ACCENT_SELECTED_COLOR`, `INTRA_HEMISPHERE_COLOR` e `INTER_HEMISPHERE_COLOR`. Quedan `CONNECTION_TYPE_LABELS` y `EVIDENCE_LEVEL_LABELS`.
-   - Añade los mismos tres imports que en el connectograma: `exportResolverFor`, `useDrawColors` y `useAppearanceStore`. `type DrawColors` no hace falta.
+   - Añade los mismos imports que en el connectograma: `exportResolverFor`, `ngFill`, `ngStroke` y `ngStrokeOpacity` de `"../theme/colors"`, `useDrawColors` y `useAppearanceStore`. `type DrawColors` no hace falta.
    - Borra `const INTRA_COLOR = INTRA_HEMISPHERE_COLOR;` y `const INTER_COLOR = INTER_HEMISPHERE_COLOR;`, y también el comentario que los precede, desde `// INTRA_COLOR/INTER_COLOR vivían aquí como constantes locales` hasta la línea anterior a las constantes. Pon en su lugar: `// Los colores intra- e interhemisférico son tokens del tema (intra, inter: theme/themes.ts, decisión 77).`
 2. **Hook.** Al principio del componente `Hemisferios`, junto a los demás hooks, añade `const colors = useDrawColors();`.
 3. **Exportar.** `handleExport` pasa `exportResolverFor(useAppearanceStore.getState().theme)` como tercer argumento de `exportSvgAsJpeg`, igual que en el connectograma.
 4. **Marcadores.** En los dos marcadores de `<defs>`:
-   - `fill={NEUTRAL_COLOR}` → `fill={colors.edge} data-ng-fill="edge"`
-   - `fill={ACCENT_SELECTED_COLOR}` → `fill={colors.selected} data-ng-fill="selected"`
-5. **Rótulos.** En los cuatro textos (ANTERIOR, POSTERIOR, IZQUIERDO y DERECHO), `fill={NEUTRAL_COLOR}` → `fill={colors.label} data-ng-fill="label"`.
-6. **Línea media.** En el `<line` de la línea media, `stroke={NEUTRAL_COLOR}` → `stroke={colors.edge} data-ng-stroke="edge"`.
-7. **Elipses.** En las dos elipses, `fill="none" stroke={NEUTRAL_COLOR}` → `fill={colors.hemiFill} data-ng-fill="hemiFill" stroke={colors.edge} data-ng-stroke="edge"`.
+   - `fill={NEUTRAL_COLOR}` → `fill={colors.edge} {...ngFill("edge")}`
+   - `fill={ACCENT_SELECTED_COLOR}` → `fill={colors.selected} {...ngFill("selected")}`
+5. **Rótulos.** En los cuatro textos (ANTERIOR, POSTERIOR, IZQUIERDO y DERECHO), `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
+6. **Línea media.** En el `<line` de la línea media, `stroke={NEUTRAL_COLOR}` → `stroke={colors.edge} {...ngStroke("edge")}`.
+7. **Elipses.** En las dos elipses, `fill="none" stroke={NEUTRAL_COLOR}` → `fill={colors.hemiFill} {...ngFill("hemiFill")} stroke={colors.edge} {...ngStroke("edge")}`.
 
    El comentario que empieza por `{/* Elipses sin relleno (decisión 18, 30/08/2026)` queda desfasado. Añade al final, antes del `*/}`, esta frase: `Desde la decisión 77 el relleno es el token hemiFill del tema: "none" en el tema Original, como hasta ahora, y un tono apenas más claro que el panel en los demás; la exportación lo cambia por el de su paleta.`
 8. **Conexiones.** Sustituye `const color = !isClassified ? NEUTRAL_COLOR : isInter ? INTER_COLOR : INTRA_COLOR;` por:
@@ -1360,9 +1416,9 @@ Expected: PASS.
 
    ```tsx
    stroke={color}
-   data-ng-stroke={colorRef}
+   {...ngStroke(colorRef)}
    strokeOpacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacityHemispheres}
-   data-ng-stroke-opacity={isSelected ? "edgeOpacitySelected" : "edgeOpacityHemispheres"}
+   {...ngStrokeOpacity(isSelected ? "edgeOpacitySelected" : "edgeOpacityHemispheres")}
    strokeWidth={Math.max(1, conn.weight * 5) * (isSelected ? 1.4 : 1)}
    strokeDasharray={isDashed ? colors.dash : undefined}
    ```
@@ -1371,12 +1427,12 @@ Expected: PASS.
 
    ```tsx
    fill={colors.networkColor(node.network)}
-   data-ng-fill={`net:${node.network}`}
+   {...ngFill(`net:${node.network}`)}
    stroke={isSelected ? colors.selected : colors.nodeRing}
-   data-ng-stroke={isSelected ? "selected" : "nodeRing"}
+   {...ngStroke(isSelected ? "selected" : "nodeRing")}
    ```
 
-10. **Etiquetas de los nodos.** `fill={NEUTRAL_COLOR}` → `fill={colors.label} data-ng-fill="label"`.
+10. **Etiquetas de los nodos.** `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
 11. **Comprobación.** Mismo `grep` del paso 3, con `Hemisferios.tsx` y añadiendo `INTRA_\|INTER_` al patrón. Expected: solo aparecen en comentarios.
 
 - [ ] **Step 5: `DetailPanel.tsx`, `FilterPanel.tsx` y `FunctionSynthesisTab.tsx`**
@@ -1387,7 +1443,7 @@ Expected: PASS.
    - Añade estos tres imports. Aquí no hace falta `type DrawColors`: si lo importas sin usarlo, `tsc` da el error TS6133.
 
      ```ts
-     import { exportResolverFor } from "../theme/colors";
+     import { exportResolverFor, ngFill, ngStroke } from "../theme/colors";
      import { useDrawColors } from "../theme/useDrawColors";
      import { useAppearanceStore } from "../state/appearance";
      ```
@@ -1401,14 +1457,14 @@ Expected: PASS.
      r={5}
      cy={-4}
      fill={colors.networkColor(node.network)}
-     data-ng-fill={`net:${node.network}`}
+     {...ngFill(`net:${node.network}`)}
      stroke={colors.nodeRing}
-     data-ng-stroke="nodeRing"
+     {...ngStroke("nodeRing")}
      strokeWidth={1}
    />
    ```
 
-   En el `<text x={14}`, `fill={NEUTRAL_COLOR}` → `fill={colors.label} data-ng-fill="label"`.
+   En el `<text x={14}`, `fill={NEUTRAL_COLOR}` → `fill={colors.label} {...ngFill("label")}`.
 5. **Comentario.** En el que empieza por `{/* Mismo criterio que Connectogram.tsx/Hemisferios.tsx (decisión`, cambia la frase final `El círculo de red mantiene su color real sin tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible sobre los dos fondos.` por `El círculo usa el color de red y el texto el token label del tema; al exportar, applyExportColors los cambia por los de la paleta de exportación (decisión 77).`
 
 `FilterPanel.tsx`:
@@ -1649,9 +1705,12 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
 1. **Imports.** El bloque `import { NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR, ACCENT_SELECTED_COLOR, HOMOLOGY_HIGHLIGHT_COLOR } from "../theme/networks";` pasa a ser:
 
    ```ts
-   import { NETWORK_COLORS, NETWORK_LABELS } from "../theme/networks";
+   import { NETWORK_LABELS } from "../theme/networks";
+   import { hasNetworkColor } from "../theme/colors";
    import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
    ```
+
+   `NETWORK_COLORS` deja de usarse en `Brain3D` y sale del import, porque `noUnusedLocals` daría error.
 
    Añade `cortexGraysFromSrgb,` al import de `"../logic/surfaceParcels"`.
 
@@ -1751,7 +1810,7 @@ Actualiza el comentario del archivo que menciona `NEUTRAL_COLOR`: ahora el color
 
    ```ts
    const netColors = networkSurface.networks.map((n) =>
-     hexToLinearRgb(n.slug in NETWORK_COLORS ? colors.networkColor(n.slug) : n.color)
+     hexToLinearRgb(hasNetworkColor(n.slug) ? colors.networkColor(n.slug) : n.color)
    );
    return { vertexIndex, categoryCount: netColors.length, colorFor: (i) => netColors[i] ?? null };
    ```
@@ -2066,7 +2125,7 @@ Sigue el formato de la decisión 76:
 - Una primera línea `77. Temas de la interfaz (fase 1 del rediseño) -- dd/mm/aaaa.`, con la fecha del día en ese formato (por ejemplo, `24/09/2026`).
 - Después, párrafos sangrados con cuatro espacios. Resume:
   - Qué se hizo: los cuatro temas, los tokens CSS y de dibujo, el store con persistencia, la tipografía local y la exportación con la paleta de exportación, incluido el redibujo del 3D.
-  - Qué no cambia: `NETWORK_COLORS` y la lógica de representación.
+  - Qué no cambia: `NETWORK_COLORS` y la lógica de representación. La única diferencia de color en el tema 1: el respaldo de una red desconocida pasa a ser siempre el gris de «sin clasificar» (`#8a8a8a`). Antes era `#888`, `#888888` o `NEUTRAL_COLOR` según el componente (spec 4.2, «se unifica»).
   - Qué queda para las fases 2 a 4.
   - Un párrafo **Comprobado** con lo que se vio en el paso 3, el número de pruebas y `tsc` limpio.
 - Enlaza `docs/rediseno-interfaz-diseno.md` y este plan.
