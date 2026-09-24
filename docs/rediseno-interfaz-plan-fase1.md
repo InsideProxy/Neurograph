@@ -38,7 +38,7 @@ Nuevos:
 
 | Archivo | Responsabilidad |
 |---|---|
-| `frontend/src/theme/themes.ts` | Ids de tema, información para Ajustes, `DRAW_TOKENS` y `exportDrawTokens` |
+| `frontend/src/theme/themes.ts` | Ids de tema, nombre y descripción para Ajustes, `DRAW_TOKENS` y `exportDrawTokens` |
 | `frontend/src/theme/colors.ts` | `resolveNetworkColor`, `exportColorFor` y `exportResolverFor` (funciones puras) |
 | `frontend/src/theme/useDrawColors.ts` | `drawColorsFor` (pura) y el hook `useDrawColors` |
 | `frontend/src/state/appearance.ts` | Store del tema, lectura y escritura en `localStorage`, `applyThemeToDocument` |
@@ -46,7 +46,7 @@ Nuevos:
 | `frontend/src/components/SettingsMenu.tsx` | Engranaje y panel de Ajustes |
 | `frontend/src/assets/fonts/` | Cuatro `woff2` |
 | `frontend/public/licenses/` | Las dos licencias OFL, que Vite copia a `dist` |
-| Pruebas | `theme/themes.test.ts`, `theme/colors.test.ts`, `theme/themePreview.test.ts`, `state/appearance.test.ts` y `logic/exportPalette.test.ts` |
+| Pruebas | `theme/themes.test.ts`, `theme/colors.test.ts`, `state/appearance.test.ts` y `logic/exportPalette.test.ts` |
 
 Modificados:
 
@@ -61,7 +61,7 @@ Modificados:
 
 La Task 9 las anota en el spec (sección 9) y en la decisión 77:
 
-- **`UI_TOKENS`:** no existe en TypeScript. Los tokens de interfaz viven solo en `index.css`. `THEME_INFO.preview` repite tres por tema para las vistas previas de Ajustes, y una prueba comprueba que coinciden con el CSS.
+- **`UI_TOKENS`:** no existe en TypeScript. Los tokens de interfaz viven solo en `index.css`. La vista previa de cada tema en Ajustes los toma de ahí: cada bloque de tema se aplica también a `[data-theme-preview="<id>"]`, así que no se repiten en TypeScript.
 - **Modo de paleta:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` todavía no lo reciben (`kind` es el tipo de atributo, color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2.
 - **Nombre del hook:** `useDrawColors({ paraExportar })` del spec se escribe `useDrawColors(forExport)`.
 - **Token nuevo:** `nodeGap`, el contorno de los nodos del diagrama de síntesis. Hacía falta para que ningún color quede fijo.
@@ -470,6 +470,7 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 - `hasNetworkColor(key)`, con `Object.hasOwn`.
 - `ngFill(ref)`, `ngStroke(ref)` y `ngStrokeOpacity(ref)` escriben los atributos `data-ng-*` con tipo: una errata en una referencia es un error de compilación. Las Tasks 5 y 7 los usan.
 - Las pruebas del tema 1 comparan con literales (`"#837f90"`, `"#ac61d1"`...), no con las constantes de las que salen.
+- En la Task 3 desapareció `THEME_INFO.preview`: la vista previa de Ajustes usa las variables CSS del propio tema con `data-theme-preview`. Así no hay colores de interfaz repetidos en TypeScript.
 
 ### Task 2: store de apariencia y tema antes del primer render
 
@@ -769,7 +770,10 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
 
 /* Temas (decisiones 18 y 77; docs/rediseno-interfaz-diseno.md, 4.1).
    main.tsx pone data-theme en <html> antes del primer render; sin él se
-   usa el tema 1. Todos los bloques definen las mismas variables.
+   usa el tema 1. Todos los bloques definen las mismas variables. Los
+   mismos bloques se aplican a cualquier elemento con
+   data-theme-preview="<id>": así la vista previa de Ajustes muestra los
+   colores reales de cada tema sin repetirlos en TypeScript.
    Equivalencias con los nombres del spec:
      --code-bg = raised, --text-h = strong, --text-muted = muted,
      --text-faint = faint, --accent-bg = accentSoft,
@@ -778,7 +782,8 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
    su fondo translúcido --*-bg. Los colores que se dibujan dentro de los
    SVG y del 3D no están aquí: están en theme/themes.ts (DRAW_TOKENS). */
 :root,
-:root[data-theme="original"] {
+:root[data-theme="original"],
+[data-theme-preview="original"] {
   --bg: #15161c;
   --panel-bg: #1d1e26;
   --code-bg: #23242c;
@@ -805,7 +810,8 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
   color-scheme: dark;
 }
 
-:root[data-theme="grafito"] {
+:root[data-theme="grafito"],
+[data-theme-preview="grafito"] {
   --bg: #0f1115;
   --panel-bg: #16191e;
   --code-bg: #1d2127;
@@ -832,7 +838,8 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
   color-scheme: dark;
 }
 
-:root[data-theme="noche"] {
+:root[data-theme="noche"],
+[data-theme-preview="noche"] {
   --bg: #0a0e17;
   --panel-bg: #111726;
   --code-bg: #172035;
@@ -859,7 +866,8 @@ Borra desde la primera línea del archivo (`:root {`) hasta la llave `}` que cie
   color-scheme: dark;
 }
 
-:root[data-theme="claro"] {
+:root[data-theme="claro"],
+[data-theme-preview="claro"] {
   --bg: #f3f2ee;
   --panel-bg: #ffffff;
   --code-bg: #f6f5f1;
@@ -962,42 +970,11 @@ Hay que actualizar también el comentario de las líneas 2 a 6 de `App.css`, que
    define cada tema en index.css. */
 ```
 
-- [ ] **Step 4: prueba de que la vista previa de Ajustes coincide con `index.css`**
+- [ ] **Step 4: quitar `preview` de `THEME_INFO`**
 
-`THEME_INFO.preview` (Task 1) repite tres colores de cada tema. Esta prueba falla si alguna vez se desalinean.
+Con los selectores `[data-theme-preview="<id>"]`, la vista previa de Ajustes (Task 8) toma los colores de `index.css`. En `frontend/src/theme/themes.ts`, quita el campo `preview` de la interfaz `ThemeInfo` (con su comentario) y de las cuatro entradas de `THEME_INFO`. Quedan `number`, `name` y `description`. Nada más usa `preview` todavía: compruébalo con `grep -rn "preview" frontend/src`.
 
-`frontend/src/theme/themePreview.test.ts`:
-
-```ts
-import { describe, expect, it } from "vitest";
-import css from "../index.css?raw";
-import { THEME_IDS, THEME_INFO } from "./themes";
-
-function themeBlock(id: string): string {
-  const selector = `:root[data-theme="${id}"] {`;
-  const start = css.indexOf(selector);
-  if (start < 0) throw new Error(`index.css no tiene el bloque ${selector}`);
-  return css.slice(start, css.indexOf("}", start));
-}
-
-function cssVariable(block: string, name: string): string | undefined {
-  return block.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m"))?.[1].trim();
-}
-
-describe("vista previa de los temas en Ajustes", () => {
-  it("usa los mismos colores que index.css", () => {
-    for (const id of THEME_IDS) {
-      const block = themeBlock(id);
-      expect(cssVariable(block, "--bg")).toBe(THEME_INFO[id].preview.bg);
-      expect(cssVariable(block, "--panel-bg")).toBe(THEME_INFO[id].preview.panel);
-      expect(cssVariable(block, "--border")).toBe(THEME_INFO[id].preview.border);
-    }
-  });
-});
-```
-
-Run: `cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz/frontend && npx vitest run src/theme/themePreview.test.ts && npx tsc -b`
-Expected: PASS (1 prueba) y `tsc` sin errores. `?raw` es una importación de Vite, y sus tipos vienen en `vite/client`.
+Por qué no hay una prueba que compare el CSS con TypeScript: vitest vacía cualquier import `….css?raw` (su CSSEnablerPlugin lo convierte en `export default ""`). Leerlo con `node:fs` exigiría los tipos de node en `tsconfig.app.json`. Sin duplicación, no hace falta la prueba.
 
 - [ ] **Step 5: comprobar que compila**
 
@@ -1007,7 +984,7 @@ Expected: `✓ built`. El aviso de tamaño de bloque (más de 500 kB) ya estaba.
 - [ ] **Step 6: commit**
 
 ```bash
-cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/assets/fonts frontend/public/licenses frontend/src/index.css frontend/src/App.css frontend/src/theme/themePreview.test.ts
+cd ~/.config/superpowers/worktrees/Neurograph/rediseno-interfaz && git add frontend/src/assets/fonts frontend/public/licenses frontend/src/index.css frontend/src/App.css frontend/src/theme/themes.ts
 git commit -m "Temas: tipografia Atkinson Hyperlegible local y colores de interfaz por tema
 
 Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
@@ -1963,13 +1940,11 @@ export function SettingsMenu() {
                   aria-pressed={theme === id}
                   onClick={() => setTheme(id)}
                 >
-                  <span
-                    className="settings__preview"
-                    style={{ background: info.preview.bg, borderColor: info.preview.border }}
-                    aria-hidden="true"
-                  >
-                    <span className="settings__preview-side" style={{ background: info.preview.panel }} />
-                    <span className="settings__preview-main" style={{ background: info.preview.panel }}>
+                  {/* data-theme-preview: index.css aplica a este elemento las
+                      variables del tema que representa (decisión 77). */}
+                  <span className="settings__preview" data-theme-preview={id} aria-hidden="true">
+                    <span className="settings__preview-side" />
+                    <span className="settings__preview-main">
                       {PREVIEW_NETWORKS.map((key) => (
                         <span key={key} className="settings__preview-dot" style={{ background: resolveNetworkColor(key) }} />
                       ))}
@@ -2014,9 +1989,9 @@ export function SettingsMenu() {
 .settings__theme:hover { border-color: var(--border-strong); }
 .settings__theme[aria-pressed="true"] { border-color: var(--accent-border); background: var(--accent-bg); box-shadow: 0 0 0 1px var(--accent-border); }
 .settings__theme:focus-visible, .settings__trigger:focus-visible, .settings__panel .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.settings__preview { position: relative; display: block; height: 56px; border-radius: 7px; border: 1px solid; overflow: hidden; }
-.settings__preview-side { position: absolute; left: 7px; top: 7px; bottom: 7px; width: 28px; border-radius: 4px; }
-.settings__preview-main { position: absolute; left: 41px; right: 7px; top: 7px; bottom: 7px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.settings__preview { position: relative; display: block; height: 56px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); overflow: hidden; }
+.settings__preview-side { position: absolute; left: 7px; top: 7px; bottom: 7px; width: 28px; border-radius: 4px; background: var(--panel-bg); }
+.settings__preview-main { position: absolute; left: 41px; right: 7px; top: 7px; bottom: 7px; border-radius: 4px; background: var(--panel-bg); display: flex; align-items: center; justify-content: center; gap: 5px; }
 .settings__preview-dot { width: 9px; height: 9px; border-radius: 50%; }
 .settings__theme-name { font-size: 0.72rem; font-weight: 600; color: var(--text-h); }
 .settings__theme-desc { font-size: 0.64rem; line-height: 1.35; color: var(--text-muted); }
