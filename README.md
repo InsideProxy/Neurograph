@@ -150,6 +150,11 @@ NeuroGraph (puerto 8420, `backend/Dockerfile`) — no hace falta tener
 Python instalado para esto. Comprobar que responde:
 `curl http://127.0.0.1:8420/health`.
 
+La base de datos arranca vacía. Si tienes un volcado
+(`scripts/export_snapshot.ps1`), cárgalo; si no, reconstrúyela desde los
+`.sql` del repositorio con `scripts/rebuild_db_from_sql.sh` (orden de
+carga y lo que no incluye: `backend/database/migrations/README.md`).
+
 **2. Frontend** (necesita Node.js instalado):
 
 ```bash
