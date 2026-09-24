@@ -49,11 +49,18 @@ export function exportSvgAsJpeg(svg: SVGSVGElement, filename: string, resolveCol
 
   // Paleta de exportación (D3 de docs/decisiones-diseno.md): colores legibles sobre el blanco
   // de la exportación, sea cual sea el tema de pantalla. En desarrollo se
-  // avisa de cada referencia sin color de exportación: quedaría con el
-  // color de pantalla.
+  // avisa una vez por cada referencia distinta sin color de exportación
+  // (nunca una vez por elemento: un token roto suele repetirse en muchos
+  // elementos y no hace falta el mismo aviso decenas de veces): quedaría
+  // con el color de pantalla.
   if (resolveColor) {
+    const warnedRefs = new Set<string>();
     applyExportColors(clone, resolveColor, (ref, attribute) => {
-      if (import.meta.env.DEV) console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
+      if (import.meta.env.DEV && !warnedRefs.has(ref)) {
+        warnedRefs.add(ref);
+        // eslint-disable-next-line no-console
+        console.warn(`Exportación: ${attribute}="${ref}" no tiene color de exportación.`);
+      }
     });
   }
   clone.setAttribute("font-family", EXPORT_FONT_FAMILY);

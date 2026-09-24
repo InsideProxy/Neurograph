@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyExportColors, type ExportableElement } from "./exportPalette";
+import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 
 class FakeElement implements ExportableElement {
   attributes: Record<string, string>;
@@ -43,12 +44,12 @@ function recordingResolver() {
 
 describe("applyExportColors", () => {
   it("reescribe fill, stroke y stroke-opacity según las referencias", () => {
-    const node = new FakeElement({ fill: "#aaaaaa", "data-ng-fill": "net:cole-anticevic.visual" });
+    const node = new FakeElement({ fill: "#aaaaaa", ...ngFill("net:cole-anticevic.visual") });
     const line = new FakeElement({
       stroke: "#8b93a0",
-      "data-ng-stroke": "edge",
+      ...ngStroke("edge"),
       "stroke-opacity": "0.24",
-      "data-ng-stroke-opacity": "edgeOpacityConnectogram",
+      ...ngStrokeOpacity("edgeOpacityConnectogram"),
     });
     const root = new FakeElement({}, [new FakeElement({}, [node]), line]);
     applyExportColors(root, resolve);
@@ -58,6 +59,8 @@ describe("applyExportColors", () => {
   });
 
   it("deja el atributo como estaba si la referencia no se resuelve, y lo avisa", () => {
+    // "desconocida" no es un PaintRef válido a propósito -- es justo la referencia
+    // sin resolver que prueba este caso, así que no puede construirse con ngFill.
     const el = new FakeElement({ fill: "#123456", "data-ng-fill": "desconocida" });
     const unresolved: [string, string][] = [];
     applyExportColors(new FakeElement({}, [el]), resolve, (ref, attribute) => unresolved.push([ref, attribute]));
@@ -66,10 +69,11 @@ describe("applyExportColors", () => {
   });
 
   it("pide color para fill y stroke, y opacidad para stroke-opacity", () => {
-    const line = new FakeElement({ "data-ng-stroke": "edge", "data-ng-stroke-opacity": "edgeOpacityConnectogram" });
-    const node = new FakeElement({ "data-ng-fill": "net:cole-anticevic.visual" });
+    const line = new FakeElement({ ...ngStroke("edge"), ...ngStrokeOpacity("edgeOpacityConnectogram") });
+    const node = new FakeElement({ ...ngFill("net:cole-anticevic.visual") });
     const recorder = recordingResolver();
     applyExportColors(new FakeElement({}, [line, node]), recorder.resolve);
+    expect(recorder.calls).toHaveLength(3);
     expect(recorder.calls).toEqual(
       expect.arrayContaining([
         ["net:cole-anticevic.visual", "paint"],
@@ -80,7 +84,7 @@ describe("applyExportColors", () => {
   });
 
   it("también trata la propia raíz", () => {
-    const root = new FakeElement({ fill: "#000000", "data-ng-fill": "edge" });
+    const root = new FakeElement({ fill: "#000000", ...ngFill("edge") });
     applyExportColors(root, resolve);
     expect(root.attributes.fill).toBe("#6f737c");
   });
