@@ -62,7 +62,7 @@ Modificados:
 La Task 9 las anota en el spec (sección 9) y en la decisión 77:
 
 - **`UI_TOKENS`:** no existe en TypeScript. Los tokens de interfaz viven solo en `index.css`. `THEME_INFO.preview` repite tres por tema para las vistas previas de Ajustes, y una prueba comprueba que coinciden con el CSS.
-- **Modo de paleta:** `resolveNetworkColor(key)` y `exportColorFor(ref, theme)` todavía no lo reciben, y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2.
+- **Modo de paleta:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` todavía no lo reciben (`kind` es el tipo de atributo, color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2.
 - **Nombre del hook:** `useDrawColors({ paraExportar })` del spec se escribe `useDrawColors(forExport)`.
 - **Token nuevo:** `nodeGap`, el contorno de los nodos del diagrama de síntesis. Hacía falta para que ningún color quede fijo.
 
