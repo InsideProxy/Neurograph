@@ -395,11 +395,13 @@ function ExportBridge({
       } finally {
         gl.setClearColor(previousClearColor, previousClearAlpha);
         scene.background = previousBackground;
+        // Antes del redibujo: si gl.render lanzara, el modo «exportando»
+        // terminaría igualmente (React aplica el cambio de estado después).
+        captured = true;
+        onExportingChange(false);
         // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
         // él el blanco de la captura se vería en pantalla durante un fotograma.
         gl.render(scene, camera);
-        captured = true;
-        onExportingChange(false);
       }
     });
     return () => {
