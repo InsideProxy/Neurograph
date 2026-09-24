@@ -1,25 +1,17 @@
 import { describe, expect, it } from "vitest";
-import {
-  ACCENT_SELECTED_COLOR,
-  HOMOLOGY_HIGHLIGHT_COLOR,
-  HOVER_HIGHLIGHT_COLOR,
-  INTER_HEMISPHERE_COLOR,
-  INTRA_HEMISPHERE_COLOR,
-  NEUTRAL_COLOR,
-} from "./networks";
 import { DEFAULT_THEME, DRAW_TOKENS, THEME_IDS, exportDrawTokens, hexToSrgb, isThemeId } from "./themes";
 
 describe("DRAW_TOKENS", () => {
   it("el tema original conserva los colores y opacidades de hoy", () => {
     const o = DRAW_TOKENS.original;
-    expect(o.edge).toBe(NEUTRAL_COLOR);
-    expect(o.label).toBe(NEUTRAL_COLOR);
-    expect(o.nodeRing).toBe(NEUTRAL_COLOR);
-    expect(o.selected).toBe(ACCENT_SELECTED_COLOR);
-    expect(o.hoverHighlight).toBe(HOVER_HIGHLIGHT_COLOR);
-    expect(o.intra).toBe(INTRA_HEMISPHERE_COLOR);
-    expect(o.inter).toBe(INTER_HEMISPHERE_COLOR);
-    expect(o.homology).toBe(HOMOLOGY_HIGHLIGHT_COLOR);
+    expect(o.edge).toBe("#837f90");
+    expect(o.label).toBe("#837f90");
+    expect(o.nodeRing).toBe("#837f90");
+    expect(o.selected).toBe("#ac61d1");
+    expect(o.hoverHighlight).toBe("#ffd84a");
+    expect(o.intra).toBe("#2a925e");
+    expect(o.inter).toBe("#cf596d");
+    expect(o.homology).toBe("#da500b");
     expect(o.sceneBg).toBe("#1d1e26");
     expect(o.nodeGap).toBe("#0b0c10");
     expect(o.hemiFill).toBe("none");
@@ -44,8 +36,8 @@ describe("DRAW_TOKENS", () => {
     }
   });
 
-  it("los temas 2 a 4 comparten el discontinuo, porque la exportación no lo reescribe", () => {
-    for (const id of ["grafito", "noche"] as const) expect(DRAW_TOKENS[id].dash).toBe(DRAW_TOKENS.claro.dash);
+  it("la exportación nunca necesita reescribir el discontinuo", () => {
+    for (const id of THEME_IDS) expect(DRAW_TOKENS[id].dash).toBe(exportDrawTokens(id).dash);
   });
 });
 
@@ -59,5 +51,9 @@ describe("utilidades de tema", () => {
 
   it("convierte un hex a sRGB 0-1", () => {
     expect(hexToSrgb("#ff8000")).toEqual([1, 128 / 255, 0]);
+  });
+
+  it("hexToSrgb rechaza un color que no es #rrggbb", () => {
+    expect(() => hexToSrgb("#fff")).toThrow();
   });
 });

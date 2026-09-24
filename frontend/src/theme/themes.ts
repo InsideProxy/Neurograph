@@ -13,8 +13,8 @@ import {
   NEUTRAL_COLOR,
 } from "./networks";
 
-export type ThemeId = "original" | "grafito" | "noche" | "claro";
-export const THEME_IDS: readonly ThemeId[] = ["original", "grafito", "noche", "claro"];
+export const THEME_IDS = ["original", "grafito", "noche", "claro"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME: ThemeId = "grafito";
 
 export function isThemeId(value: unknown): value is ThemeId {
@@ -30,11 +30,11 @@ export interface ThemeInfo {
   preview: { bg: string; panel: string; border: string };
 }
 
-export const THEME_INFO: Record<ThemeId, ThemeInfo> = {
+export const THEME_INFO: Readonly<Record<ThemeId, Readonly<ThemeInfo>>> = {
   original: {
     number: 1,
     name: "Original",
-    description: "Los colores actuales de NeuroGraph",
+    description: "Los colores de siempre de NeuroGraph",
     preview: { bg: "#15161c", panel: "#1d1e26", border: "#34343e" },
   },
   grafito: {
@@ -87,11 +87,17 @@ export interface DrawTokens {
   cortexNoData: Srgb;
 }
 
+type KeysOfType<T, V> = { [K in keyof T]-?: T[K] extends V ? K : never }[keyof T];
+// Tokens que son un color (sirven para fill/stroke) y tokens que son una opacidad.
+export type PaintToken = Exclude<KeysOfType<DrawTokens, string>, "dash">;
+export type OpacityToken = KeysOfType<DrawTokens, number>;
+
 function gray(value: number): Srgb {
   return [value, value, value];
 }
 
 export function hexToSrgb(hex: string): Srgb {
+  if (!/^#?[0-9a-f]{6}$/i.test(hex)) throw new Error(`hexToSrgb: color no válido "${hex}" (se espera #rrggbb)`);
   const h = hex.replace("#", "");
   return [
     parseInt(h.slice(0, 2), 16) / 255,
@@ -100,7 +106,7 @@ export function hexToSrgb(hex: string): Srgb {
   ];
 }
 
-export const DRAW_TOKENS: Record<ThemeId, DrawTokens> = {
+export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
   original: {
     edge: NEUTRAL_COLOR,
     edgeOpacityConnectogram: 0.55,
@@ -201,6 +207,6 @@ export const DRAW_TOKENS: Record<ThemeId, DrawTokens> = {
 
 // Colores de dibujo de la exportación JPEG, siempre sobre blanco (decisión
 // 11). Con el tema 1 salen los mismos de hoy; con los demás, los de Claro.
-export function exportDrawTokens(theme: ThemeId): DrawTokens {
+export function exportDrawTokens(theme: ThemeId): Readonly<DrawTokens> {
   return theme === "original" ? DRAW_TOKENS.original : DRAW_TOKENS.claro;
 }

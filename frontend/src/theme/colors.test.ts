@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NEUTRAL_COLOR } from "./networks";
 import { DRAW_TOKENS } from "./themes";
-import { exportColorFor, exportResolverFor, resolveNetworkColor } from "./colors";
+import { exportColorFor, exportResolverFor, hasNetworkColor, ngFill, ngStrokeOpacity, resolveNetworkColor } from "./colors";
 
 describe("resolveNetworkColor", () => {
   it("devuelve el color original del atlas", () => {
@@ -15,28 +15,60 @@ describe("resolveNetworkColor", () => {
   });
 });
 
+describe("hasNetworkColor", () => {
+  it("distingue una red real de una clave heredada o inexistente", () => {
+    expect(hasNetworkColor("cole-anticevic.visual")).toBe(true);
+    expect(hasNetworkColor("no-existe")).toBe(false);
+    expect(hasNetworkColor("constructor")).toBe(false);
+  });
+});
+
 describe("exportColorFor", () => {
   it("resuelve colores de red con el prefijo net:", () => {
-    expect(exportColorFor("net:cole-anticevic.default", "grafito")).toBe("#ff0000");
+    expect(exportColorFor("net:cole-anticevic.default", "paint", "grafito")).toBe("#ff0000");
+  });
+
+  it("una red desconocida en net: usa el gris de «sin clasificar»", () => {
+    expect(exportColorFor("net:desconocida", "paint", "claro")).toBe("#8a8a8a");
   });
 
   it("con el tema original, los colores de dibujo son los de hoy", () => {
-    expect(exportColorFor("edge", "original")).toBe(NEUTRAL_COLOR);
-    expect(exportColorFor("edgeOpacityConnectogram", "original")).toBe("0.55");
-    expect(exportColorFor("hemiFill", "original")).toBe("none");
+    expect(exportColorFor("edge", "paint", "original")).toBe(NEUTRAL_COLOR);
+    expect(exportColorFor("edgeOpacityConnectogram", "opacity", "original")).toBe("0.55");
+    expect(exportColorFor("hemiFill", "paint", "original")).toBe("none");
   });
 
   it("con los temas 2 a 4, los de Claro", () => {
-    expect(exportColorFor("edge", "noche")).toBe(DRAW_TOKENS.claro.edge);
-    expect(exportColorFor("selected", "grafito")).toBe(DRAW_TOKENS.claro.selected);
+    expect(exportColorFor("edge", "paint", "noche")).toBe(DRAW_TOKENS.claro.edge);
+    expect(exportColorFor("selected", "paint", "grafito")).toBe(DRAW_TOKENS.claro.selected);
   });
 
   it("devuelve null para referencias desconocidas o que no son un color", () => {
-    expect(exportColorFor("inventado", "original")).toBeNull();
-    expect(exportColorFor("cortexSulcus", "original")).toBeNull();
+    expect(exportColorFor("inventado", "paint", "original")).toBeNull();
+    expect(exportColorFor("cortexSulcus", "paint", "original")).toBeNull();
+  });
+
+  it("un tipo que no coincide con el del token devuelve null", () => {
+    expect(exportColorFor("edgeOpacitySelected", "paint", "original")).toBeNull();
+    expect(exportColorFor("edge", "opacity", "original")).toBeNull();
+    expect(exportColorFor("dash", "paint", "original")).toBeNull();
+    expect(exportColorFor("net:cole-anticevic.visual", "opacity", "original")).toBeNull();
+  });
+
+  it("las claves heredadas del prototipo no son un token válido", () => {
+    expect(exportColorFor("toString", "paint", "original")).toBeNull();
+    expect(exportColorFor("__proto__", "paint", "original")).toBeNull();
+    expect(exportColorFor("constructor", "paint", "original")).toBeNull();
   });
 
   it("exportResolverFor fija el tema", () => {
-    expect(exportResolverFor("claro")("edge")).toBe(DRAW_TOKENS.claro.edge);
+    expect(exportResolverFor("claro")("edge", "paint")).toBe(DRAW_TOKENS.claro.edge);
+  });
+});
+
+describe("ayudantes data-ng-*", () => {
+  it("ngFill y ngStrokeOpacity generan el atributo con la referencia", () => {
+    expect(ngFill("edge")).toEqual({ "data-ng-fill": "edge" });
+    expect(ngStrokeOpacity("edgeOpacitySelected")).toEqual({ "data-ng-stroke-opacity": "edgeOpacitySelected" });
   });
 });
