@@ -376,8 +376,8 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .data-menu__trigger:hover .data-menu__caption, .data-menu__trigger[aria-expanded="true"] .data-menu__caption { color: var(--text); }
 .data-menu__text { display: flex; flex-direction: column; line-height: 1.15; }
 .data-menu__caption { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-/* Un nombre de síntesis puede ser largo (revisión de la Task 1): el
-   nombre completo se queda en el title del botón. */
+/* El nombre de un atlas o de una clasificación puede ser largo (revisión
+   de la Task 1): el nombre completo se queda en el title del botón. */
 .data-menu__value { font-size: 0.72rem; font-weight: 600; color: var(--text-h); white-space: nowrap; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 /* Mientras carga la clasificación elegida, el chevron gira. */
 .data-menu__spinner { animation: data-menu-spin 0.9s linear infinite; }
@@ -401,8 +401,10 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 /* Barra superior (spec 5.1). Va de borde a borde: los márgenes negativos
    anulan el relleno de .app. Va en una sola fila (nowrap): así TopBar
-   puede medir si cabe (ver «Compactación», más abajo). */
-.topbar { display: flex; align-items: center; flex-wrap: nowrap; column-gap: 14px; min-height: 56px; margin: -1rem -1.5rem 1rem; padding: 0 12px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: var(--bg); text-align: left; }
+   puede medir si cabe (ver «Compactación», más abajo). flex-shrink: 0 --
+   dentro de .app--workspace (columna flex) el flexbox podría, si no,
+   encogerla por debajo de min-height con poca altura de ventana. */
+.topbar { display: flex; align-items: center; flex-wrap: nowrap; flex-shrink: 0; column-gap: 14px; min-height: 56px; margin: -1rem -1.5rem 1rem; padding: 0 12px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--border); background: var(--bg); text-align: left; }
 .app--workspace > .topbar { margin: 0 -12px 12px; }
 .topbar__brand { display: flex; align-items: center; gap: 10px; }
 .topbar__logo { flex-shrink: 0; }
@@ -426,9 +428,11 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .topbar__tab-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
 .topbar__tab--closable .topbar__tab-btn { padding-right: 2px; }
 /* Las síntesis de IA conservan su naranja: tercera categoría visual
-   (decisión de la usuaria, 11/09/2026). */
-.icon--synthesis { color: var(--synthesis); }
-.topbar__tab-close { align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 4px; padding: 0; border: none; border-radius: 6px; background: none; color: var(--text-muted); cursor: pointer; }
+   (decisión de la usuaria, 11/09/2026). Solo el icono del botón
+   principal: .topbar__tab-close es hermano, fuera de .topbar__tab-btn,
+   así que este selector no lo toca a él. */
+.topbar__tab--closable .topbar__tab-btn .icon { color: var(--synthesis); }
+.topbar__tab-close { align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 4px; padding: 0; border: none; border-radius: 6px; background: none; color: var(--text-muted); cursor: pointer; }
 .topbar__tab-close:hover { background: var(--hover); color: var(--text-h); }
 .topbar__end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .topbar__import { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-bg); color: var(--text); font: inherit; font-size: 0.72rem; font-weight: 500; cursor: pointer; }
@@ -448,17 +452,32 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Con el foco del teclado, lo plegado muestra su nombre (data-tip) bajo
    el botón, como la etiqueta emergente del ratón. Hacia la derecha en
    las pestañas y hacia la izquierda en Importar, para no salirse de la
-   barra: si sobresaliera, TopBar mediría de más. */
-.topbar[data-collapse~="synthesis"] .topbar__tab--closable:not(.topbar__tab--active) .topbar__tab-btn:focus-visible::after,
-.topbar[data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active) .topbar__tab-btn:focus-visible::after,
-.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: nowrap; pointer-events: none; }
+   barra: si sobresaliera, TopBar mediría de más. content lleva dos
+   declaraciones: la segunda (con "/ <alt>") pone el texto alternativo en
+   "" -- el nombre accesible ya lo dan title y data-tab-id/aria-current,
+   así que un lector de pantalla no debe anunciarlo también desde el
+   contenido generado (si no, "Comparar especies Comparar especies"). Los
+   motores que no entienden esa sintaxis descartan la declaración entera y
+   se quedan con la primera. max-width y white-space: normal -- un nombre
+   de síntesis largo envuelve en vez de salirse de la ventana o ensanchar
+   la barra (scrollWidth) mientras TopBar mide. */
+.topbar[data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active):not(.topbar__tab--closable) .topbar__tab-btn:focus-visible::after,
+.topbar[data-collapse~="import"] .topbar__import:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
 .topbar[data-collapse~="import"] .topbar__import:focus-visible::after { left: auto; right: 0; }
+/* Paridad de teclado (spec 8): una síntesis muestra su nombre entero con
+   el foco del teclado siempre, plegada o no y sea o no la activa --
+   .topbar__tab-label se corta a 10rem tanto si cabe como si no, y antes
+   el nombre entero solo vivía en title (sin foco de teclado no se veía). */
+.topbar__tab--closable .topbar__tab-btn:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; white-space: normal; max-width: min(20rem, calc(100vw - 24px)); pointer-events: none; }
 /* Último recurso, si ni así cabe (muchas pestañas de síntesis en una
-   ventana estrecha): dos filas. */
-.topbar[data-collapse~="tabs"] { flex-wrap: wrap; }
+   ventana estrecha): dos filas, con algo de aire vertical entre ellas. */
+.topbar[data-collapse~="tabs"] { flex-wrap: wrap; row-gap: 6px; padding-block: 6px; }
+.topbar[data-collapse~="tabs"] .topbar__tabs { flex-wrap: wrap; }
 
-/* Estado de los datos (spec 5.1, punto 4). */
-.data-status { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 0.7rem; font-weight: 600; color: var(--text-h); white-space: nowrap; }
+/* Estado de los datos (spec 5.1, punto 4). min-height: 28px -- plegado a
+   solo el punto (data-collapse~="status"), el bloque encoge a la altura
+   del punto (8px) y el objetivo de foco/ratón queda demasiado bajo. */
+.data-status { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; min-height: 28px; font-size: 0.7rem; font-weight: 600; color: var(--text-h); white-space: nowrap; }
 .data-status__dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); box-shadow: 0 0 0 3px var(--hover); }
 .data-status--real .data-status__dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
 .data-status--demo .data-status__dot { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }

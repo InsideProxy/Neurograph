@@ -5,7 +5,7 @@
 // siguen en App.
 import { useEffect, useLayoutEffect, useRef, type ReactNode, type Ref } from "react";
 import { formatCount } from "../logic/displayText";
-import { collapseAttribute, smallestFittingLevel, tabAfterClosing } from "../logic/topBarFit";
+import { fitSignature, fitTopBar, tabAfterClosing } from "../logic/topBarFit";
 import { useDrawColors } from "../theme/useDrawColors";
 import { Icon, type IconName } from "./Icon";
 import { SettingsMenu } from "./SettingsMenu";
@@ -71,21 +71,20 @@ function Logo() {
 // de App, por ejemplo al mover el deslizador de peso.
 const lastFit = new WeakMap<HTMLElement, string>();
 
-// Aplica el menor nivel de compactación con el que la barra cabe en una
-// fila (logic/topBarFit.ts; cada paso está en App.css). El nivel va en el
-// atributo data-collapse, que no es estado de React: medir no provoca otro
-// render. Con flex-wrap: nowrap, lo que no cabe sobresale y scrollWidth
-// pasa de clientWidth.
-function fitTopBar(bar: HTMLElement | null, force = false) {
+// Mide la barra y aplica el menor nivel de compactación que cabe en una
+// fila (el cálculo en sí, sin DOM, vive en logic/topBarFit.ts: aquí solo
+// el envoltorio que toca el elemento real). Tras aplicar un nivel nuevo,
+// publica dónde acaba la barra en --topbar-bottom: el aviso flotante de
+// la Task 3 se coloca justo debajo en vez de a una distancia fija, porque
+// la altura cambia con el tema, el zoom o una segunda fila plegada
+// (data-collapse~="tabs").
+function refit(bar: HTMLElement | null, force = false) {
   if (!bar) return;
-  const signature = `${bar.clientWidth}|${bar.innerHTML}`;
-  if (!force && lastFit.get(bar) === signature) return;
-  const level = smallestFittingLevel((n) => {
-    bar.dataset.collapse = collapseAttribute(n);
-    return bar.scrollWidth <= bar.clientWidth;
-  });
-  bar.dataset.collapse = collapseAttribute(level);
-  lastFit.set(bar, signature);
+  const level = fitTopBar(bar, lastFit.get(bar), force);
+  if (level === null) return;
+  lastFit.set(bar, fitSignature(bar));
+  const bottom = Math.round(bar.getBoundingClientRect().bottom);
+  document.documentElement.style.setProperty("--topbar-bottom", `${bottom}px`);
 }
 
 export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProps) {
@@ -96,31 +95,42 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
 
   // Tras cada render, con el contenido nuevo (pestañas, atlas, estado...):
   // se vuelve a medir la barra y, si se acaba de cerrar una pestaña, se
-  // enfoca la que le toca.
+  // enfoca la que le toca. preventScroll: el botón que recibe el foco ya
+  // está a la vista, no hay que desplazar la página hacia él.
   useLayoutEffect(() => {
     const bar = barRef.current;
-    fitTopBar(bar);
+    refit(bar);
     const id = focusAfterClose.current;
     if (!bar || id === null) return;
     focusAfterClose.current = null;
-    [...bar.querySelectorAll<HTMLButtonElement>(".topbar__tab-btn")].find((button) => button.dataset.tabId === id)?.focus();
+    [...bar.querySelectorAll<HTMLButtonElement>(".topbar__tab-btn")]
+      .find((button) => button.dataset.tabId === id)
+      ?.focus({ preventScroll: true });
   });
 
   // ...y cuando cambia el ancho de la ventana o termina de cargar una
   // fuente, que cambia lo que mide cada texto. loadingdone cubre también
-  // las fuentes que se cargan tarde, al usarse por primera vez.
+  // las fuentes que se cargan tarde, al usarse por primera vez. Se observa
+  // el contenedor, no la propia barra: aplicar un nivel puede cambiar la
+  // altura de la barra (la segunda fila de data-collapse~="tabs"), y
+  // observarla a ella misma dispararía "ResizeObserver loop completed
+  // with undelivered notifications".
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    const refit = () => fitTopBar(bar, true);
-    const observer = new ResizeObserver(() => fitTopBar(bar));
-    observer.observe(bar);
+    let cancelled = false;
+    const onFontsChange = () => refit(bar, true);
+    const observer = new ResizeObserver(() => refit(bar));
+    observer.observe(bar.parentElement ?? bar);
     const fonts = document.fonts;
-    void fonts?.ready.then(refit);
-    fonts?.addEventListener("loadingdone", refit);
+    void fonts?.ready.then(() => {
+      if (!cancelled) onFontsChange();
+    });
+    fonts?.addEventListener("loadingdone", onFontsChange);
     return () => {
+      cancelled = true;
       observer.disconnect();
-      fonts?.removeEventListener("loadingdone", refit);
+      fonts?.removeEventListener("loadingdone", onFontsChange);
     };
   }, []);
 
@@ -156,7 +166,7 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
               data-tip={tab.title ?? tab.label}
               onClick={tab.onSelect}
             >
-              <Icon name={tab.icon} className={tab.icon === "synthesis" ? "icon--synthesis" : undefined} />
+              <Icon name={tab.icon} />
               <span className="topbar__tab-label">{tab.label}</span>
             </button>
             {tab.onClose && (
@@ -164,7 +174,7 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
                 type="button"
                 className="topbar__tab-close"
                 aria-label={tab.closeLabel ?? `Cerrar ${tab.label}`}
-                title="Cerrar pestaña"
+                title={tab.closeLabel ?? `Cerrar ${tab.label}`}
                 onClick={() => closeTab(tab)}
               >
                 <Icon name="close" size={14} />
@@ -192,16 +202,39 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
   );
 }
 
-interface DataStatusProps {
-  kind: "real" | "demo" | "loading";
-  regionCount?: number;
-  connectionCount?: number;
-}
+// Discriminada por kind: solo "real" tiene cifras, así que no se puede
+// omitirlas por descuido (revisión de la Task 2).
+type DataStatusProps =
+  | { kind: "real"; regionCount: number; connectionCount: number }
+  | { kind: "demo" }
+  | { kind: "loading" };
 
 // El aviso de siempre de los datos de demostración (antes, la etiqueta
-// DATOS SINTÉTICOS · SOLO ILUSTRATIVOS y su texto emergente).
+// DATOS SINTÉTICOS · SOLO ILUSTRATIVOS y su texto emergente). Va entero en
+// el title; el texto oculto para lectores de pantalla usa una frase más
+// corta (dataStatusDetail).
 const DEMO_DATA_HELP =
   "Datos sintéticos · solo ilustrativos. La API no respondió, o este atlas aún no tiene datos — revisa que el backend esté en marcha (docker compose up -d en desarrollo).";
+
+// Detalle de las cifras o el aviso, en dos versiones: `visible` (para el
+// texto a la vista y el title, con los miles agrupados por formatCount) y
+// `hidden` (para el lector de pantalla, con los dígitos seguidos -- un
+// espacio duro en medio de un número hace que algunas voces lo troceen,
+// "64" pausa "620", en vez de decir "sesenta y cuatro mil620"). null en
+// "loading": no hay nada que detallar todavía.
+function dataStatusDetail(props: DataStatusProps): { visible: string; hidden: string } | null {
+  switch (props.kind) {
+    case "real":
+      return {
+        visible: `${formatCount(props.regionCount)} regiones · ${formatCount(props.connectionCount)} conexiones`,
+        hidden: `${props.regionCount} regiones · ${props.connectionCount} conexiones`,
+      };
+    case "demo":
+      return { visible: DEMO_DATA_HELP, hidden: "la API no respondió" };
+    case "loading":
+      return null;
+  }
+}
 
 // Estado de los datos (spec 5.1, punto 4): un punto de color con «Datos
 // reales» o «Datos de demostración», siempre a la vista en la vista Atlas
@@ -210,20 +243,16 @@ const DEMO_DATA_HELP =
 // nunca, porque es un aviso. La etiqueta emergente dice qué es y da las
 // cifras, y el texto oculto lo lee a los lectores de pantalla. Es una
 // región role="status": al cambiar de atlas, el cambio se anuncia.
-export function DataStatus({ kind, regionCount = 0, connectionCount = 0 }: DataStatusProps) {
+export function DataStatus(props: DataStatusProps) {
+  const { kind } = props;
   const text = kind === "real" ? "Datos reales" : kind === "demo" ? "Datos de demostración" : "Cargando…";
-  const detail =
-    kind === "real"
-      ? `${formatCount(regionCount)} regiones · ${formatCount(connectionCount)} conexiones`
-      : kind === "demo"
-        ? DEMO_DATA_HELP
-        : null;
-  const title = kind === "real" ? `${text} · ${detail}` : (detail ?? undefined);
+  const detail = dataStatusDetail(props);
+  const title = kind === "real" ? `${text} · ${detail?.visible}` : (detail?.visible ?? undefined);
   return (
     <span className={`data-status data-status--${kind}`} role="status" title={title}>
       <span className="data-status__dot" aria-hidden="true" />
       <span className="data-status__text">{text}</span>
-      {detail && <span className="visually-hidden">. {detail}</span>}
+      {detail && <span className="visually-hidden">: {detail.hidden}</span>}
     </span>
   );
 }

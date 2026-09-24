@@ -39,3 +39,38 @@ export function tabAfterClosing(tabs: readonly { id: string; onClose?: unknown }
   if (index === -1) return null;
   return (closable[index + 1] ?? closable[index - 1] ?? tabs[0]).id;
 }
+
+// Forma mínima que necesita fitTopBar para medir y aplicar un nivel: así
+// se prueba en node con un elemento de mentira, sin DOM real (sección 10
+// de comun.md). dataset es mutable a propósito: fitTopBar escribe ahí el
+// nivel que va probando.
+export interface FittableBar {
+  readonly clientWidth: number;
+  readonly scrollWidth: number;
+  readonly innerHTML: string;
+  readonly dataset: { collapse?: string };
+}
+
+// Firma del ancho y el contenido actuales de la barra: si no cambian
+// desde la última medida (TopBar.tsx la guarda por barra en un WeakMap),
+// el resultado sería el mismo.
+export function fitSignature(bar: FittableBar): string {
+  return `${bar.clientWidth}|${bar.innerHTML}`;
+}
+
+// Aplica el menor nivel de compactación con el que `bar` cabe en una fila:
+// prueba cada nivel escribiendo su data-collapse y mirando si scrollWidth
+// ya no pasa de clientWidth (con flex-wrap: nowrap en el CSS real, lo que
+// no cabe sobresale). Sin `force`, no mide si la firma no cambió desde
+// `lastSignature`: devuelve null, nada que aplicar. Devuelve el nivel
+// aplicado si midió.
+export function fitTopBar(bar: FittableBar, lastSignature: string | undefined, force = false): number | null {
+  const signature = fitSignature(bar);
+  if (!force && lastSignature === signature) return null;
+  const level = smallestFittingLevel((n) => {
+    bar.dataset.collapse = collapseAttribute(n);
+    return bar.scrollWidth <= bar.clientWidth;
+  });
+  bar.dataset.collapse = collapseAttribute(level);
+  return level;
+}
