@@ -66,11 +66,11 @@ export function SettingsMenu() {
     // relatedTarget nulo no significa que el foco haya salido del bloque:
     // en Chromium, un clic en una parte no enfocable del panel (el
     // titulo, "TEMA", el relleno) deja el foco en <body> sin
-    // relatedTarget; en WebKit/Firefox de macOS (WebKitGTK en Tauri
-    // Linux), los botones no toman el foco al pulsarlos, asi que elegir
-    // una tarjeta tampoco pone relatedTarget dentro del panel. En ambos
-    // casos no hay que cerrar aqui -- el clic realmente fuera ya lo
-    // cierra el "pointerdown" del otro efecto (revision de la tarea 8).
+    // relatedTarget; en macOS, WebKit (Safari) y Firefox no dan el foco
+    // a los botones al pulsarlos, asi que elegir una tarjeta tampoco pone
+    // relatedTarget dentro del panel. En ambos casos no hay que cerrar
+    // aqui -- el clic realmente fuera ya lo cierra el "pointerdown" del
+    // otro efecto (revision de la tarea 8).
     const next = event.relatedTarget as Node | null;
     if (!next || event.currentTarget.contains(next)) return;
     setOpen(false);
