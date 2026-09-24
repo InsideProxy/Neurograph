@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { Hemisferios } from "./components/Hemisferios";
@@ -11,11 +11,14 @@ import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
 import { DataContextMenu } from "./components/DataContextMenu";
 import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
+import { ToastRegion } from "./components/Toast";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
 import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
 import { pickAndReadSynthesisFile, type PickedSynthesisFile } from "./logic/synthesisImport";
 import { validateSynthesisFile } from "./logic/synthesisValidation";
+import { IMPORT_DESKTOP_ONLY_MESSAGE, runInDesktop } from "./logic/desktopOnly";
+import { dismissToast, showToast, type ToastContent, type ToastEntry } from "./logic/toastQueue";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -70,6 +73,11 @@ const ATLASES: AtlasOption[] = [
 // ellas se ve depende de `activeSynthesisTabId`, no de `view` por sí solo.
 type View = "atlas" | "species" | "tractography" | "tractography-nodes" | "synthesis";
 
+// Orígenes de los avisos (D4; spec 5.6): un aviso nuevo sustituye al
+// anterior del mismo origen.
+const IMPORT_TOAST = "importar";
+const NETWORK_TOAST = "redes";
+
 export default function App() {
   const [view, setView] = useState<View>("atlas");
   // Espacio de trabajo (decisión 74): qué vista va en grande, y si el
@@ -86,7 +94,6 @@ export default function App() {
   const [networkSources, setNetworkSources] = useState<{ atlasId: string; items: NetworkSourceSummary[] } | null>(
     null,
   );
-  const [networkSourceError, setNetworkSourceError] = useState<string | null>(null);
 
   // Pestañas de síntesis de IA (decisión 71): cada una guarda su propio
   // resultado YA VALIDADO y congelado en el momento de importar -- no
@@ -97,7 +104,13 @@ export default function App() {
   // real de NeuroGraph, solo quita la pestaña).
   const [synthesisTabs, setSynthesisTabs] = useState<{ tabId: string; validated: ValidatedSynthesis }[]>([]);
   const [activeSynthesisTabId, setActiveSynthesisTabId] = useState<string | null>(null);
-  const [synthesisImportError, setSynthesisImportError] = useState<string | null>(null);
+  // Avisos flotantes (D4 de docs/decisiones-diseno.md; spec 5.6). Sustituyen
+  // a las dos franjas de error de antes: la de importar una síntesis y la
+  // de cambiar la clasificación de redes. Se quedan hasta que se cierran.
+  const [toasts, setToasts] = useState<ToastEntry[]>([]);
+  const showNotice = (key: string, content: ToastContent) => setToasts((queue) => showToast(queue, key, content));
+  // Al cerrar el último aviso, el foco vuelve a «Importar» (ToastRegion).
+  const importButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +152,14 @@ export default function App() {
           // Falló solo el cambio de clasificación: se avisa y se vuelve a
           // la original, nunca se cae a datos de demostración por esto.
           const message = err instanceof Error ? err.message : "error desconocido";
-          setNetworkSourceError(`No se pudo cargar la clasificación '${networkSource}' (${message}).`);
+          // setToasts y no showNotice: un setter de estado no es dependencia del efecto.
+          setToasts((queue) =>
+            showToast(queue, NETWORK_TOAST, {
+              tone: "error",
+              message: `No se pudo cargar la clasificación de redes «${networkSourceShortLabel(networkSource)}». Se vuelve a la clasificación por defecto del atlas.`,
+              details: `No se pudo cargar la clasificación '${networkSource}' (${message}).`,
+            }),
+          );
           setNetworkSource(null);
           return;
         }
@@ -153,7 +173,7 @@ export default function App() {
   function handleChangeAtlas(atlasId: string) {
     setSelectedAtlasId(atlasId);
     setNetworkSource(null);
-    setNetworkSourceError(null);
+    setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
     setSource({ kind: "loading" });
   }
 
@@ -173,12 +193,23 @@ export default function App() {
   // que el archivo ya viniera bien resuelto, aunque quien lo generó ya
   // haya usado la herramienta MCP search_region para construirlo.
   async function handleImportSynthesis() {
-    setSynthesisImportError(null);
+    setToasts((queue) => dismissToast(queue, IMPORT_TOAST));
     let picked: PickedSynthesisFile | null;
     try {
-      picked = await pickAndReadSynthesisFile();
+      // En el navegador (npm run dev) no hay diálogo de Tauri: ni se
+      // intenta abrir (D4 de docs/decisiones-diseno.md; spec 5.6).
+      const outcome = await runInDesktop(pickAndReadSynthesisFile);
+      if (outcome.kind === "browser") {
+        showNotice(IMPORT_TOAST, { tone: "info", message: IMPORT_DESKTOP_ONLY_MESSAGE });
+        return;
+      }
+      picked = outcome.value;
     } catch (e) {
-      setSynthesisImportError(`No se pudo abrir el selector de archivos: ${e instanceof Error ? e.message : String(e)}`);
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: "No se pudo abrir o leer el archivo.",
+        details: e instanceof Error ? e.message : String(e),
+      });
       return;
     }
     if (picked === null) {
@@ -188,20 +219,31 @@ export default function App() {
     let raw: unknown;
     try {
       raw = JSON.parse(picked.content);
-    } catch {
-      setSynthesisImportError(`'${picked.path}' no contiene un JSON válido.`);
+    } catch (e) {
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: "El archivo elegido no contiene un JSON válido.",
+        details: `Archivo: ${picked.path}\n${e instanceof Error ? e.message : String(e)}`,
+      });
       return;
     }
     if (source.kind !== "real") {
-      setSynthesisImportError(
-        "No se puede importar una síntesis de IA ahora mismo: no hay datos reales cargados contra los que " +
-          "verificar sus regiones (estás viendo datos sintéticos, o la API todavía no respondió).",
-      );
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message:
+          "No se puede importar ahora: no hay datos reales cargados contra los que verificar sus regiones " +
+          "(estás viendo datos de demostración, o la API todavía no respondió).",
+      });
       return;
     }
     const result = validateSynthesisFile(raw, selectedAtlasId, source.nodes);
     if (!result.ok) {
-      setSynthesisImportError(result.errors.join("\n"));
+      const problems = result.errors.length === 1 ? "1 problema" : `${result.errors.length} problemas`;
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: `La síntesis no se ha importado: tiene ${problems}.`,
+        details: result.errors.join("\n"),
+      });
       return;
     }
     const tabId = `synthesis-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -249,7 +291,7 @@ export default function App() {
         }))}
         value={chosenNetworkSource}
         onChange={(value) => {
-          setNetworkSourceError(null);
+          setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
           setNetworkSource(value === defaultNetworkSource ? null : value);
         }}
         pending={networkSourcePending}
@@ -300,10 +342,6 @@ export default function App() {
     ),
   ];
 
-  const synthesisImportBanner = synthesisImportError ? (
-    <p className="synthesis-import-error">{synthesisImportError}</p>
-  ) : null;
-
   // Barra superior (D4 de docs/decisiones-diseno.md; spec 5.1). Sustituye
   // a la franja compacta de la decisión 74 (D1): marca, pestañas con
   // icono, contexto de datos, Importar y Ajustes. El contexto (atlas,
@@ -315,9 +353,12 @@ export default function App() {
   // pierde y el estado de los datos no se anuncia.
   const renderHeader = (context: ReactNode = null) => (
     <Fragment key="barra">
-      <TopBar tabs={tabs} context={context} onImport={handleImportSynthesis} />
-      {synthesisImportBanner}
-      {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
+      <TopBar tabs={tabs} context={context} onImport={handleImportSynthesis} importRef={importButtonRef} />
+      <ToastRegion
+        toasts={toasts}
+        onDismiss={(key) => setToasts((queue) => dismissToast(queue, key))}
+        onEmptied={() => importButtonRef.current?.focus()}
+      />
     </Fragment>
   );
 

@@ -178,11 +178,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    dibujadas sobre blanco, en cualquier tema. */
 .species-panel__figure img { max-width: 100%; height: auto; border-radius: 4px; background: #ffffff; }
 
-/* Aviso de error de "Importar síntesis de IA" (decisión 71, 11/09/2026):
-   nunca silencioso -- si la validación real rechaza el archivo, se ve por
-   qué. El botón Importar está ahora en la barra superior (D4). */
-.synthesis-import-error { white-space: pre-line; padding: 0.6rem 0.9rem; background: var(--error-bg); color: var(--error); border-radius: 6px; font-size: 0.82rem; margin: 0.4rem 0; }
-
 /* Banner de síntesis de IA: TERCERA categoría visual, deliberadamente
    distinta tanto de .real-badge (verde) como de .demo-badge (ámbar) --
    decisión de la usuaria, 11/09/2026, "una tercera categoría visual,
@@ -481,3 +476,22 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .data-status__dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); box-shadow: 0 0 0 3px var(--hover); }
 .data-status--real .data-status__dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
 .data-status--demo .data-status__dot { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }
+
+/* Avisos flotantes (spec 5.6), encima de todo: arriba a la derecha, bajo
+   la barra y sobre la columna derecha, con su ancho. Así no tapan la
+   vista grande ni su recuadro de lectura. top usa --topbar-bottom (la
+   publica TopBar tras medirse, ver refit en components/TopBar.tsx) y no
+   un valor fijo, porque la barra puede ocupar dos filas si no cabe en
+   una (data-collapse~="tabs"): con un valor fijo el aviso quedaría
+   encima de la segunda fila. */
+.toast-region { position: fixed; top: calc(var(--topbar-bottom, 56px) + 12px); right: 12px; z-index: 40; display: flex; flex-direction: column; gap: 8px; width: min(300px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel-bg); box-shadow: var(--shadow); text-align: left; }
+.toast__icon { margin-top: 1px; color: var(--text-h); }
+.toast--error .toast__icon { color: var(--error); }
+.toast__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.toast__message { margin: 0; font-size: 0.72rem; font-weight: 600; line-height: 1.4; color: var(--text-h); }
+.toast__details > summary { cursor: pointer; font-size: 0.7rem; color: var(--text-muted); }
+.toast__details pre { max-height: 10rem; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: 6px; background: var(--code-bg); color: var(--text); font-family: var(--mono); font-size: 0.7rem; white-space: pre-wrap; word-break: break-word; }
+.toast__buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.toast__close { height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--code-bg); color: var(--text); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
+.toast__close:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
