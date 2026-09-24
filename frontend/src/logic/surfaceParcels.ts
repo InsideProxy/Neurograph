@@ -147,8 +147,8 @@ export type RGB = [number, number, number];
 // colores reales de cada red se verían lavados en la superficie y no
 // coincidirían con los del connectograma.
 //
-// Grises de la corteza en RGB lineal. Cada tema tiene los suyos (D3,
-// DrawTokens de theme/themes.ts). Estos son los de siempre (tema 1).
+// Grises de la corteza en RGB lineal. Cada tema tiene los suyos (D3 de
+// docs/decisiones-diseno.md, DrawTokens de theme/themes.ts).
 export interface CortexGrays {
   sulcus: RGB;
   gyrus: RGB;
@@ -161,6 +161,7 @@ function uniformGray(srgb: number): RGB {
   return [v, v, v];
 }
 
+// Estos son los de siempre (tema 1).
 export const DEFAULT_CORTEX_GRAYS: CortexGrays = {
   sulcus: uniformGray(0.35),
   gyrus: uniformGray(0.72),
@@ -234,6 +235,16 @@ export function fillVertexColorsByIndex(
   const categoryColors = new Array<RGB | null>(categoryCount);
   for (let r = 0; r < categoryCount; r++) categoryColors[r] = colorForCategory(r);
 
+  // Extremos del degradado surco -> giro, izados fuera del bucle: con
+  // decenas de miles de vértices por hemisferio, restar y desestructurar
+  // un array en cada iteración duplicaba el tiempo (revisión de la tarea 6).
+  const s0 = grays.sulcus[0],
+    s1 = grays.sulcus[1],
+    s2 = grays.sulcus[2];
+  const d0 = grays.gyrus[0] - s0,
+    d1 = grays.gyrus[1] - s1,
+    d2 = grays.gyrus[2] - s2;
+
   for (let v = 0; v < n; v++) {
     const category = vertexIndex[v];
     const s = sulc ? sulc[v] : Number.NaN;
@@ -242,12 +253,14 @@ export function fillVertexColorsByIndex(
     let g: number;
     let b: number;
     if (t !== null) {
-      r = grays.sulcus[0] + (grays.gyrus[0] - grays.sulcus[0]) * t;
-      g = grays.sulcus[1] + (grays.gyrus[1] - grays.sulcus[1]) * t;
-      b = grays.sulcus[2] + (grays.gyrus[2] - grays.sulcus[2]) * t;
+      r = s0 + d0 * t;
+      g = s1 + d1 * t;
+      b = s2 + d2 * t;
     } else {
       const base = category === NO_REGION ? grays.medialWall : grays.noData;
-      [r, g, b] = base;
+      r = base[0];
+      g = base[1];
+      b = base[2];
     }
 
     const color = category === NO_REGION ? null : (categoryColors[category] ?? null);
