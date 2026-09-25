@@ -64,9 +64,19 @@ interface FilterPanelProps {
   // ...y «N de M conexiones pasan los filtros»: N, las que pasan todos
   // los filtros; M, las cargadas para el atlas.
   connectionTotals: { visible: number; loaded: number };
+  // Deshacer y rehacer (D4; spec 5.7): los botones los pinta App
+  // (HistoryButtons), junto a «Limpiar». El panel no sabe nada del
+  // historial.
+  historyControls?: ReactNode;
 }
 
-export function FilterPanel({ nodes, onCollapse, connectionCountsByType, connectionTotals }: FilterPanelProps) {
+export function FilterPanel({
+  nodes,
+  onCollapse,
+  connectionCountsByType,
+  connectionTotals,
+  historyControls,
+}: FilterPanelProps) {
   const {
     hiddenNetworks,
     hiddenConnectionTypes,
@@ -196,15 +206,18 @@ export function FilterPanel({ nodes, onCollapse, connectionCountsByType, connect
 
       <div className="filters__selection">
         <span>{selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}</span>
-        <button
-          type="button"
-          className="filters__text-btn filters__text-btn--strong"
-          disabled={!hasSelection}
-          title="Quita el resaltado actual (nodos o conexión seleccionada) en las tres vistas"
-          onClick={clearNodeSelection}
-        >
-          Limpiar
-        </button>
+        <span className="filters__selection-actions">
+          <button
+            type="button"
+            className="filters__text-btn filters__text-btn--strong"
+            disabled={!hasSelection}
+            title="Quita el resaltado actual (nodos o conexión seleccionada) en las tres vistas"
+            onClick={clearNodeSelection}
+          >
+            Limpiar
+          </button>
+          {historyControls}
+        </span>
       </div>
 
       <div className="filters__section" role="group" aria-labelledby={`${headingId}-networks`}>

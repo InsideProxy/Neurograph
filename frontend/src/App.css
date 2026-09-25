@@ -689,3 +689,17 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    desplaza en horizontal, sin ensanchar el panel entero. */
 .detail-panel .detail__legend { max-width: 100%; overflow-x: auto; }
 .ws-detail .detail-panel--empty { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.72rem; line-height: 1.5; }
+
+/* Deshacer y rehacer (spec 5.7), en la fila de selección de Filtros. Con
+   el foco del teclado, la etiqueta emergente (data-tip) se ve también:
+   hacia la izquierda y como mucho de 12rem, para no salirse del panel. */
+.filters__selection { flex-wrap: wrap; }
+.filters__selection-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.history { display: inline-flex; gap: 2px; }
+.history__btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-h); cursor: pointer; }
+.history__btn:hover:not([aria-disabled="true"]) { background: var(--hover); }
+.history__btn[aria-disabled="true"] { color: var(--text-faint); cursor: default; }
+.history__btn:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; width: max-content; max-width: 12rem; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; line-height: 1.35; text-align: left; white-space: normal; pointer-events: none; }
+/* Botón de acción de un aviso, como «Deshacer». */
+.toast__action { height: 30px; padding: 0 10px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-bg); color: var(--text-h); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
+.toast__action:hover { border-color: var(--accent); }

@@ -2,15 +2,52 @@
 // 5.6). Sustituyen a las franjas rojas fijas de App.tsx. Van arriba a la
 // derecha, bajo la barra y sobre la columna derecha, sin tapar la vista
 // grande. Cada aviso es role="alert", con un mensaje comprensible y, si lo
-// hay, el texto técnico completo en «Detalles». Se quedan hasta que se
-// cierran.
-import { useLayoutEffect, useRef } from "react";
+// hay, el texto técnico completo en «Detalles», y se queda hasta que se
+// cierra. Los discretos (polite), como el aviso con «Deshacer» (5.7), no
+// llevan rol: su texto lo anuncia una región viva siempre presente. Pueden
+// llevar un botón de acción e irse solos.
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ToastEntry } from "../logic/toastQueue";
 import { Icon } from "./Icon";
 
-export function Toast({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () => void }) {
+export function Toast({
+  toast,
+  onDismiss,
+  onAction,
+  onExpire,
+}: {
+  toast: ToastEntry;
+  onDismiss: () => void;
+  onAction?: () => void;
+  // Se ha ido solo (autoDismissMs): no mueve el foco.
+  onExpire?: () => void;
+}) {
+  // Mientras tiene el ratón encima o el foco dentro, el tiempo no corre; al
+  // salir, vuelve a empezar.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const expireRef = useRef(onExpire);
+  useEffect(() => {
+    expireRef.current = onExpire;
+  });
+  useEffect(() => {
+    if (toast.autoDismissMs === undefined || hovered || focused) return;
+    const timer = setTimeout(() => expireRef.current?.(), toast.autoDismissMs);
+    return () => clearTimeout(timer);
+  }, [toast.autoDismissMs, toast.stamp, hovered, focused]);
+
   return (
-    <div className={`toast toast--${toast.tone}`} role="alert" data-toast-key={toast.key}>
+    <div
+      className={`toast toast--${toast.tone}`}
+      role={toast.polite ? undefined : "alert"}
+      data-toast-key={toast.key}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+      }}
+    >
       <Icon name={toast.tone === "error" ? "alert" : "info"} size={18} className="toast__icon" />
       <div className="toast__body">
         <p className="toast__message">{toast.message}</p>
@@ -21,6 +58,11 @@ export function Toast({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () =
           </details>
         )}
         <div className="toast__buttons">
+          {toast.action && (
+            <button type="button" className="toast__action" onClick={onAction}>
+              {toast.action.label}
+            </button>
+          )}
           <button type="button" className="toast__close" onClick={onDismiss}>
             Entendido
           </button>
@@ -30,10 +72,13 @@ export function Toast({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () =
   );
 }
 
-// Al cerrar un aviso con su botón, el foco pasa al botón del aviso
-// siguiente (o del anterior, si era el último). Si no queda ninguno, lo
-// decide quien pinta la región (onEmptied): App lo devuelve a «Importar».
-// Sin esto, el foco caería en la página, porque el botón desaparece.
+// Al cerrar un aviso con «Entendido», el foco pasa al «Entendido» del
+// siguiente (o del anterior, si era el último). Si no queda ninguno, va
+// adonde diga el aviso (returnFocus) o, si no dice nada, adonde decida quien
+// pinta la región (onEmptied): App lo devuelve a «Importar». Tras usar la
+// acción de un aviso, va siempre adonde diga el aviso. Sin esto, el foco
+// caería en la página, porque el botón desaparece. Un aviso que se va solo
+// no mueve el foco.
 export function ToastRegion({
   toasts,
   onDismiss,
@@ -56,20 +101,39 @@ export function ToastRegion({
     toast?.querySelector<HTMLButtonElement>(".toast__close")?.focus();
   });
 
-  if (toasts.length === 0) return null;
-
-  const dismiss = (index: number) => {
+  const leave = (index: number, runAction: boolean) => {
+    const toast = toasts[index];
     const next = toasts[index + 1] ?? toasts[index - 1];
-    onDismiss(toasts[index].key);
-    if (next) focusAfterDismiss.current = next.key;
-    else onEmptied?.();
+    if (runAction) toast.action?.run();
+    onDismiss(toast.key);
+    if (next && !runAction) focusAfterDismiss.current = next.key;
+    else (toast.returnFocus ?? onEmptied)?.();
   };
 
   return (
-    <div ref={regionRef} className="toast-region">
-      {toasts.map((toast, index) => (
-        <Toast key={toast.key} toast={toast} onDismiss={() => dismiss(index)} />
-      ))}
-    </div>
+    <>
+      {/* Región viva de los avisos discretos: siempre presente, para que el
+          lector de pantalla anuncie el texto cuando cambia. */}
+      <div className="visually-hidden" aria-live="polite">
+        {toasts
+          .filter((toast) => toast.polite)
+          .map((toast) => (
+            <span key={`${toast.key}-${toast.stamp ?? 0}`}>{toast.message}</span>
+          ))}
+      </div>
+      {toasts.length > 0 && (
+        <div ref={regionRef} className="toast-region">
+          {toasts.map((toast, index) => (
+            <Toast
+              key={toast.key}
+              toast={toast}
+              onDismiss={() => leave(index, false)}
+              onAction={() => leave(index, true)}
+              onExpire={() => onDismiss(toast.key)}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }

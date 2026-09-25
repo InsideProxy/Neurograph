@@ -13,6 +13,8 @@ import { DataContextMenu } from "./components/DataContextMenu";
 import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
 import { Icon } from "./components/Icon";
 import { ToastRegion } from "./components/Toast";
+import { HistoryButtons } from "./components/HistoryButtons";
+import { useHistoryShortcuts } from "./components/useHistoryShortcuts";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
 import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
@@ -21,7 +23,9 @@ import { validateSynthesisFile } from "./logic/synthesisValidation";
 import { IMPORT_DESKTOP_ONLY_MESSAGE, runInDesktop } from "./logic/desktopOnly";
 import { dismissToast, showToast, type ToastContent, type ToastEntry } from "./logic/toastQueue";
 import { countConnections, type ConnectionCounts } from "./logic/filterCounts";
+import { stepNotice } from "./logic/historyStep";
 import { useFiltersStore } from "./state/filters";
+import { resetHistory, undo, useHistoryStore } from "./state/history";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -80,6 +84,9 @@ type View = "atlas" | "species" | "tractography" | "tractography-nodes" | "synth
 // anterior del mismo origen.
 const IMPORT_TOAST = "importar";
 const NETWORK_TOAST = "redes";
+// Aviso con «Deshacer» (D4; spec 5.7): se va solo a los 8 s.
+const UNDO_TOAST = "deshacer";
+const UNDO_NOTICE_MS = 8000;
 
 const NO_CONNECTION_COUNTS: ConnectionCounts = {
   byType: { structural: 0, functional: 0, effective: 0 },
@@ -184,6 +191,11 @@ export default function App() {
     setNetworkSource(null);
     setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
     setSource({ kind: "loading" });
+    // D4 (spec 5.7): el atlas nuevo empieza con el historial de deshacer
+    // vacío. App no vacía la selección al cambiar de atlas (los ids del
+    // anterior se quedan en el store y las vistas los ignoran), así que la
+    // instantánea de partida es la selección tal como queda.
+    resetHistory();
   }
 
   const sourcesForAtlas = networkSources?.atlasId === selectedAtlasId ? networkSources.items : [];
@@ -223,6 +235,57 @@ export default function App() {
     focusFiltersToggle.current = true;
     setFiltersCollapsed(collapsed);
   };
+
+  // Deshacer y rehacer con el teclado, en la vista Atlas (D4 de
+  // docs/decisiones-diseno.md; spec 5.7).
+  useHistoryShortcuts(view === "atlas");
+
+  // Con otra clasificación de redes, las redes guardadas en el historial
+  // dejan de valer (spec 5.7). Se vacía cuando llega, no al elegirla:
+  // mientras carga se sigue viendo la anterior, y si falla, se queda.
+  const loadedNetworkSource = source.kind === "real" ? source.networkSource : null;
+  useEffect(() => {
+    resetHistory();
+  }, [loadedNetworkSource]);
+
+  // Aviso con «Deshacer» (spec 5.7): sale cuando un paso quita dos o más
+  // regiones de la selección (logic/historyStep.ts, stepNotice). Su texto lo
+  // anuncia la región viva de ToastRegion, sin mover el foco. Se va solo a
+  // los 8 s, salvo mientras tiene el ratón encima o el foco, y con el
+  // siguiente cambio del historial.
+  const undoButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const loadedIds = new Set(source.kind === "loading" ? [] : source.nodes.map((node) => node.id));
+    // Tras el «Deshacer» del aviso, el foco va al botón ↶ si se ve (con
+    // Filtros plegado no está), y si no, al título de la vista grande.
+    // Nunca a «Importar».
+    const focusAfterUndo = () => {
+      const button = undoButtonRef.current;
+      if (button && button.getClientRects().length > 0) button.focus();
+      else document.querySelector<HTMLElement>(".ws-view--main .ws-view__header h2")?.focus();
+    };
+    return useHistoryStore.subscribe((state, previous) => {
+      if (state.version === previous.version) return;
+      const notice = state.lastStep && stepNotice(state.lastStep.before, state.lastStep.after, (id) => loadedIds.has(id));
+      if (!notice) {
+        // Si el foco estaba en el aviso, no se pierde con él.
+        if (document.activeElement?.closest(`[data-toast-key="${UNDO_TOAST}"]`)) focusAfterUndo();
+        setToasts((queue) => dismissToast(queue, UNDO_TOAST));
+        return;
+      }
+      setToasts((queue) =>
+        showToast(queue, UNDO_TOAST, {
+          tone: "info",
+          polite: true,
+          message: notice,
+          action: { label: "Deshacer", run: undo },
+          autoDismissMs: UNDO_NOTICE_MS,
+          stamp: state.version,
+          returnFocus: focusAfterUndo,
+        }),
+      );
+    });
+  }, [source]);
 
   const selectedAtlas = ATLASES.find((a) => a.id === selectedAtlasId)!;
 
@@ -542,6 +605,9 @@ export default function App() {
               onCollapse={() => toggleFilters(true)}
               connectionCountsByType={connectionCounts.byType}
               connectionTotals={{ visible: connectionCounts.visible, loaded: connectionCounts.loaded }}
+              historyControls={
+                <HistoryButtons nodes={source.nodes} connections={source.connections} undoRef={undoButtonRef} />
+              }
             />
           )}
         </div>

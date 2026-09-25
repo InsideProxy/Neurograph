@@ -6,12 +6,32 @@
 
 export type ToastTone = "error" | "info";
 
+// Un botón con una acción, además de «Entendido»: el «Deshacer» del aviso
+// de deshacer (spec 5.7).
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 export interface ToastContent {
   tone: ToastTone;
   // Mensaje comprensible, a la vista.
   message: string;
   // Texto técnico completo, en «Detalles».
   details?: string;
+  // Un aviso discreto, como el de deshacer, no interrumpe: no lleva
+  // role="alert", y su texto lo anuncia la región viva de ToastRegion
+  // (aria-live="polite").
+  polite?: boolean;
+  action?: ToastAction;
+  // Se va solo pasado este tiempo, salvo mientras tiene el ratón encima o
+  // el foco. stamp distingue un aviso nuevo del anterior del mismo origen:
+  // con él, el tiempo vuelve a empezar y el texto se vuelve a anunciar.
+  autoDismissMs?: number;
+  stamp?: number;
+  // Adónde va el foco tras usar su acción, o al cerrarlo si es el último
+  // aviso, en lugar de volver a «Importar».
+  returnFocus?: () => void;
 }
 
 export interface ToastEntry extends ToastContent {
