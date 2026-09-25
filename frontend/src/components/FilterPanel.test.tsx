@@ -80,14 +80,15 @@ describe("FilterPanel", () => {
   });
 
   // Marcas de regiones (spec 5.9). Con renderToStaticMarkup, el store de
-  // marcas da su estado inicial: ninguna.
-  it("la línea de las marcas va bajo la selección, antes de las redes, y la ayuda explica cómo marcar", () => {
+  // marcas da su estado inicial: ninguna. Contextual (decisión del usuario,
+  // 25/09/2026): sin marcas no se dibuja la línea, solo su región viva.
+  it("sin marcas no se dibuja la línea, pero su región viva sigue entre la selección y las redes, y la ayuda explica cómo marcar", () => {
     const selection = html.indexOf('class="filters__selection"');
-    const marks = html.indexOf('class="filters__marks"');
+    const marksLive = html.indexOf("Ninguna región marcada");
     expect(selection).toBeGreaterThan(-1);
-    expect(marks).toBeGreaterThan(selection);
-    expect(marks).toBeLessThan(html.indexOf('class="filters__section"'));
-    expect(html).toContain('<span class="filters__marks-swatch" aria-hidden="true"></span><span>Sin marcas</span>');
+    expect(html).not.toContain('class="filters__marks"');
+    expect(marksLive).toBeGreaterThan(selection);
+    expect(marksLive).toBeLessThan(html.indexOf('class="filters__section"'));
     expect(html).toContain(
       "<p>Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro (⌘+Intro) en el buscador, la marca o la desmarca:",
     );

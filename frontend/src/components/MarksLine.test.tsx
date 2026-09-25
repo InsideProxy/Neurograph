@@ -20,7 +20,6 @@ vi.mock("../state/filters", async () => {
 });
 
 const noop = () => {};
-const HINT = "Ctrl+clic en una región para marcarla";
 const FIVE = {
   count: 5,
   names: ["TE1m (izq.)", "IFJa (der.)", "V1 (izq.)"],
@@ -29,8 +28,7 @@ const FIVE = {
 };
 const NONE = { count: 0, names: [], allNames: [], hidden: 0 };
 
-const line = (summary: typeof FIVE) =>
-  renderToStaticMarkup(<MarksLineView summary={summary} gestureHint={HINT} onClear={noop} />);
+const line = (summary: typeof FIVE) => renderToStaticMarkup(<MarksLineView summary={summary} onClear={noop} />);
 
 // Profundidad máxima de <button> anidados: un botón dentro de otro no es HTML válido.
 function maxButtonDepth(html: string): number {
@@ -68,8 +66,10 @@ describe("MarksLine", () => {
         '<span class="filters__marks-text">TE1m (izq.), IFJa (der.), V1 (izq.) y 2 más</span>' +
         '<span class="filters__marks-hidden">1 oculta por los filtros</span></p>',
     );
-    expect(html).not.toContain(HINT);
-    expect(html).toMatch(/<button type="button" class="[^"]*" aria-disabled="false"[^>]*>Quitar marcas<\/button>/);
+    expect(html).toContain(
+      '<button type="button" class="filters__text-btn filters__text-btn--strong" title="Quita las marcas de todas las regiones (se puede deshacer)">Quitar marcas</button>',
+    );
+    expect(html).not.toContain("aria-disabled");
     expect(maxButtonDepth(html)).toBe(1);
   });
 
@@ -79,24 +79,24 @@ describe("MarksLine", () => {
     expect(html).not.toContain("filters__marks-hidden");
   });
 
-  it("sin marcas lo dice y explica el gesto; «Quitar marcas» queda desactivado sin perder la posibilidad de tener el foco", () => {
+  // Contextual (decisión del usuario, 25/09/2026): sin marcas no se dibuja
+  // nada, ni el rótulo ni el botón, para aprovechar el espacio. Solo queda
+  // montada la región viva, para poder anunciar que ya no hay ninguna.
+  it("sin marcas no se dibuja nada, salvo la región viva que lo anuncia", () => {
     const html = line(NONE);
-    expect(html).toContain('<span class="filters__marks-swatch" aria-hidden="true"></span><span>Sin marcas</span>');
-    expect(html).toContain(`<p class="filters__marks-detail"><span class="filters__marks-text">${HINT}</span></p>`);
-    expect(html).toMatch(/<button type="button" class="[^"]*" aria-disabled="true"[^>]*>Quitar marcas<\/button>/);
-    expect(html).not.toContain('disabled=""');
+    expect(html).toBe('<span class="visually-hidden" role="status">Ninguna región marcada</span>');
   });
 
-  it("«Quitar marcas» las quita, y sin marcas no hace nada", () => {
-    const clears = (summary: typeof FIVE) => {
-      const onClear = vi.fn();
-      const button = findButton(MarksLineView({ summary, gestureHint: HINT, onClear }));
-      expect(button).not.toBeNull();
-      button?.props.onClick();
-      return onClear.mock.calls.length;
-    };
-    expect(clears(FIVE)).toBe(1);
-    expect(clears(NONE)).toBe(0);
+  it("«Quitar marcas» llama a onClear", () => {
+    const onClear = vi.fn();
+    const button = findButton(MarksLineView({ summary: FIVE, onClear }));
+    expect(button).not.toBeNull();
+    button?.props.onClick();
+    expect(onClear.mock.calls.length).toBe(1);
+  });
+
+  it("sin marcas no hay botón que pulsar", () => {
+    expect(findButton(MarksLineView({ summary: NONE, onClear: noop }))).toBeNull();
   });
 
   // Las marcas cambian con un clic en las vistas o con Ctrl+Intro en el
