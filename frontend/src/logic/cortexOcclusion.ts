@@ -19,8 +19,8 @@
 //   debajo de la superficie (la mitad de un marcador en su vértice ancla) no
 //   se corta de golpe.
 // - Sin la corteza pintada (malla translúcida, atlas volumétricos o la vista
-//   de repuesto si la corteza falla) no hay pasada: ngOcclusionOn vale 0 y
-//   todo se ve entero.
+//   de repuesto si la corteza falla) no hay pasada, y los materiales no
+//   llevan el parche: todo se ve entero, como antes de la D5.
 //
 // Aquí está lo que se puede probar sin WebGL: las cuentas (las mismas que
 // hace el shader), el parche del código de los shaders, los uniforms y las
@@ -266,13 +266,17 @@ export function createCortexOcclusion(onMissing: (missing: string[]) => void = w
 }
 
 /**
- * Props que la oclusión añade a un material de la capa de foco: siempre el
- * parche del shader, que sin la pasada no cambia nada (ngOcclusionOn vale
- * 0). Los materiales opacos (marcadores, contornos y conos) pasan además a
- * `transparent` con la corteza pintada (`overlay`): si no, three.js no
- * mezcla su alfa y no podrían verse tenues. Los dibuja entonces con las
- * líneas, de atrás adelante, y los renderOrder no cambian. Sin la corteza
- * pintada siguen opacos y se dibujan como antes de la D5.
+ * Props que la oclusión añade a un material de la capa de foco, solo con la
+ * corteza pintada (`overlay`): el parche del shader y, en los materiales
+ * opacos (marcadores, contornos y conos), `transparent`. Sin `transparent`,
+ * three.js no mezcla su alfa y no podrían verse tenues; con él, los dibuja
+ * con las líneas, de atrás adelante, y los renderOrder no cambian.
+ *
+ * Sin la corteza pintada no añade nada, y los materiales se dibujan como
+ * antes de la D5. Sin el parche no leen los uniforms, así que tampoco les
+ * afecta la oclusión si quedara encendida sin pasada. Un material opaco con
+ * el parche escribiría sin mezclar un alfa menor que 1 en el lienzo, que
+ * react-three-fiber crea con canal alfa, y la página se vería a través de él.
  *
  * Todas son constantes en la vida de un elemento: `overlay` solo cambia
  * montando otra rama de Brain3D.tsx (corteza pintada, translúcida o la
@@ -283,10 +287,11 @@ export function occlusionMaterialProps(
   occlusion: CortexOcclusion,
   { opaque, overlay }: { opaque: boolean; overlay: boolean },
 ) {
+  if (!overlay) return {};
   return {
     onBeforeCompile: occlusion.onBeforeCompile,
     customProgramCacheKey: occlusion.customProgramCacheKey,
-    ...(opaque && overlay ? { transparent: true } : {}),
+    ...(opaque ? { transparent: true } : {}),
   };
 }
 

@@ -37,7 +37,7 @@
 // abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
 // propia (src/logic/textSprite.ts) en vez de troika-three-text o
 // @react-three/drei <Text> -- mismo criterio.
-import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
@@ -362,7 +362,14 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
 function CortexOcclusionPass({ occlusion }: { occlusion: CortexOcclusion }) {
   const [target] = useState(createOcclusionTarget);
   const [overrideMaterial] = useState(createOcclusionOverrideMaterial);
-  useEffect(
+  // useLayoutEffect, no useEffect: la limpieza corre en el mismo commit que
+  // quita el useFrame de la pasada (react-three-fiber lo suscribe con un
+  // efecto de layout). Con useEffect, un fotograma podía caer entre los dos
+  // y dibujar con la oclusión aún encendida pero sin pasada, con la
+  // profundidad de la corteza de un fotograma anterior. Además, los
+  // materiales de fuera de la corteza pintada no llevan el parche
+  // (occlusionMaterialProps): la oclusión no les llega.
+  useLayoutEffect(
     () => () => {
       detachCortexOcclusion(occlusion);
       target.dispose();

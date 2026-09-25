@@ -236,19 +236,40 @@ describe("patchOcclusionShader", () => {
     });
   }
 
-  it("la cuenta del shader es la de occlusionFactor y la de perspectiveDepthToViewZ de three.js", () => {
+  // Las dos funciones enteras, no trozos sueltos: con trozos, cinco cambios
+  // que rompen la oclusión pasaban todas las pruebas (quitar la guarda de
+  // ngOcclusionOn, quitar el signo de ngCortexViewDepth, #ifndef en vez de
+  // #ifdef, cambiar near y far, leer el canal .y en vez del .x). Es la cuenta
+  // de occlusionFactor y la de perspectiveDepthToViewZ de three.js, que se
+  // vigila al final del archivo.
+  it("las dos funciones del parche, enteras: guarda, uv, signo, near/far, canal y ramas", () => {
     const shader = THREE.ShaderLib.basic;
     const patch = patchOcclusionShader(shader.vertexShader, shader.fragmentShader);
     if (!patch.ok) throw new Error("no se aplicó");
     expect(patch.fragmentShader).toContain(
-      "return 1.0 - ( 1.0 - ngOcclusionMin ) * smoothstep( ngOcclusionStart, ngOcclusionEnd, ngBehind );",
+      [
+        "float ngPerspectiveDepthToViewZ( const in float depth, const in float near, const in float far ) {",
+        "\t#ifdef USE_REVERSED_DEPTH_BUFFER",
+        "\t\treturn ( near * far ) / ( ( near - far ) * depth - near );",
+        "\t#else",
+        "\t\treturn ( near * far ) / ( ( far - near ) * depth - far );",
+        "\t#endif",
+        "}",
+        "float ngOcclusionFactor() {",
+        "\tif ( ngOcclusionOn < 0.5 ) return 1.0;",
+        "\tvec2 ngUv = ngClipPosition.xy / ngClipPosition.w * 0.5 + 0.5;",
+        "\tfloat ngCortexViewDepth = - ngPerspectiveDepthToViewZ( texture2D( ngCortexDepth, ngUv ).x, ngCameraNear, ngCameraFar );",
+        "\tfloat ngBehind = ngViewDepth - ngCortexViewDepth;",
+        "\treturn 1.0 - ( 1.0 - ngOcclusionMin ) * smoothstep( ngOcclusionStart, ngOcclusionEnd, ngBehind );",
+        "}",
+      ].join("\n"),
     );
-    expect(patch.fragmentShader).toContain("float ngBehind = ngViewDepth - ngCortexViewDepth;");
-    expect(patch.fragmentShader).toContain("vec2 ngUv = ngClipPosition.xy / ngClipPosition.w * 0.5 + 0.5;");
-    expect(patch.fragmentShader).toContain("return ( near * far ) / ( ( far - near ) * depth - far );");
-    expect(patch.fragmentShader).toContain("return ( near * far ) / ( ( near - far ) * depth - near );");
-    // Sin incluir <packing>: el shader tendría dos veces sus funciones si
-    // alguna familia ya lo incluyera.
+  });
+
+  it("no incluye <packing>: el shader tendría dos veces sus funciones si alguna familia ya lo incluyera", () => {
+    const shader = THREE.ShaderLib.basic;
+    const patch = patchOcclusionShader(shader.vertexShader, shader.fragmentShader);
+    if (!patch.ok) throw new Error("no se aplicó");
     expect(patch.fragmentShader).not.toContain("#include <packing>");
   });
 
@@ -364,21 +385,27 @@ describe("createCortexOcclusion", () => {
   });
 });
 
+// Con toStrictEqual y no toEqual, que daría por buena una prop con valor
+// undefined: react-three-fiber la pondría así en el material, en lugar de la
+// función de three.js o del transparent que ya lleva el elemento.
 describe("occlusionMaterialProps", () => {
   const occlusion = createCortexOcclusion();
   const patch = { onBeforeCompile: occlusion.onBeforeCompile, customProgramCacheKey: occlusion.customProgramCacheKey };
 
-  it("siempre el parche compartido, también sin la corteza pintada (la oclusión está entonces apagada)", () => {
-    expect(occlusionMaterialProps(occlusion, { opaque: false, overlay: true })).toEqual(patch);
-    expect(occlusionMaterialProps(occlusion, { opaque: false, overlay: false })).toEqual(patch);
+  it("con la corteza pintada, el parche compartido", () => {
+    expect(occlusionMaterialProps(occlusion, { opaque: false, overlay: true })).toStrictEqual(patch);
   });
 
   it("transparent solo en lo que era opaco y va encima de la corteza pintada", () => {
-    expect(occlusionMaterialProps(occlusion, { opaque: true, overlay: true })).toEqual({ ...patch, transparent: true });
+    expect(occlusionMaterialProps(occlusion, { opaque: true, overlay: true })).toStrictEqual({
+      ...patch,
+      transparent: true,
+    });
   });
 
-  it("sin la corteza pintada, lo opaco sigue opaco: se dibuja como antes de la D5", () => {
-    expect(occlusionMaterialProps(occlusion, { opaque: true, overlay: false })).toEqual(patch);
+  it("sin la corteza pintada, nada: ni el parche ni transparent, como antes de la D5", () => {
+    expect(occlusionMaterialProps(occlusion, { opaque: false, overlay: false })).toStrictEqual({});
+    expect(occlusionMaterialProps(occlusion, { opaque: true, overlay: false })).toStrictEqual({});
   });
 
   it("son propiedades de los materiales de three.js: el programa lleva la clave de la oclusión", () => {
