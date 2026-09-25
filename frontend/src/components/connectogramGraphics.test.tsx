@@ -269,3 +269,72 @@ describe("arcos de hemisferio (6.1)", () => {
     }
   });
 });
+
+// La leyenda va bajo el dibujo, no encima (decisión del usuario del
+// 25/09/2026): encima, como en la maqueta, tapaba nodos, y también la lupa.
+describe("leyenda del connectograma (5.4)", () => {
+  it("en la vista grande, bajo el dibujo y fuera del <svg>, con sus cuatro entradas; la discontinua, con el discontinuo del tema", () => {
+    const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} />);
+    const legend = /<ul class="connectogram-legend" aria-label="Leyenda del connectograma">(.*?)<\/ul>/.exec(html);
+    expect(legend).not.toBeNull();
+    // Fuera del hueco del dibujo, que el <svg> llena, justo después de él y
+    // antes del recuadro de lectura.
+    expect(html).toContain(`</svg></div>${legend![0]}<div class="connectogram-readout">`);
+    const entries = [...legend![1].matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
+    expect(entries.map((entry) => entry.replace(/<svg .*?<\/svg>/, ""))).toEqual([
+      "Evidencia no directa (indirecta o hipótesis)",
+      "Evidencia directa",
+      "Efectiva (con dirección)",
+      "Color del punto = red",
+    ]);
+    for (const entry of entries) expect(entry).toMatch(/^<svg class="connectogram-legend__sample"[^>]*aria-hidden="true"/);
+    expect(entries[0]).toContain(`stroke-dasharray="${TOKENS.dash}"`);
+    expect(entries[1]).not.toContain("stroke-dasharray");
+  });
+
+  it("no está en la miniatura", () => {
+    expect(renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} compact />)).not.toContain("connectogram-legend");
+  });
+});
+
+// Los estilos de la leyenda (App.css), que en node no se aplican: se leen como
+// texto, como en marksWiring.test.ts. Se pide "node:fs" con
+// process.getBuiltinModule porque tsconfig.app.json solo carga los tipos de
+// vite/client.
+interface NodeFs {
+  readFileSync(path: URL, encoding: "utf8"): string;
+}
+const { readFileSync } = (
+  globalThis as unknown as { process: { getBuiltinModule(id: "node:fs"): NodeFs } }
+).process.getBuiltinModule("node:fs");
+const APP_CSS = readFileSync(new URL("../App.css", import.meta.url), "utf8");
+
+// Las declaraciones de las reglas de App.css con ese selector, sin comentarios.
+function declarations(selector: string): string {
+  const rules = [...APP_CSS.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  return rules
+    .filter(([, selectors]) => selectors.split(",").some((each) => each.trim() === selector))
+    .map(([, , body]) => body)
+    .join(" ");
+}
+
+describe("leyenda del connectograma: estilos", () => {
+  it("ocupa su fila bajo el dibujo, sin taparlo, y el hueco del dibujo se queda con el alto que sobra", () => {
+    const legend = declarations(".connectogram-legend");
+    expect(legend).not.toContain("position:");
+    expect(legend).toContain("flex: 0 0 auto;");
+    expect(legend).toContain("flex-wrap: wrap;");
+    expect(declarations(".viz-panel")).toContain("flex-direction: column;");
+    expect(declarations(".viz-panel__area")).toContain("flex: 1 1 0;");
+  });
+
+  it("sin selección de texto, a 0,7rem, y con el fondo del panel al 84 %, opaco si no hay color-mix()", () => {
+    const legend = declarations(".connectogram-legend");
+    expect(legend).toContain("-webkit-user-select: none;");
+    expect(legend).toContain(" user-select: none;");
+    expect(legend).toContain("font-size: 0.7rem;");
+    expect(legend).toContain("background: var(--panel-bg);");
+    expect(legend).toContain("background: color-mix(in srgb, var(--panel-bg) 84%, transparent);");
+    expect(APP_CSS).toMatch(/@supports \(color: color-mix\([^)]*\)\) \{\s*\.connectogram-legend \{ background: color-mix/);
+  });
+});

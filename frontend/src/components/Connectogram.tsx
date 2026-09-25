@@ -44,6 +44,7 @@ import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { currentExportResolver, useDrawColors, type DrawColors } from "../theme/useDrawColors";
+import { ConnectogramLegend } from "./ConnectogramLegend";
 import { Icon } from "./Icon";
 import { MarkedLabel } from "./MarkedLabel";
 import { RegionSummary } from "./NetworkTag";
@@ -764,6 +765,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       )}
     </svg>
     </div>
+    {/* Leyenda (fase 4 del rediseño; spec 5.4): bajo el dibujo y fuera del
+        <svg>, así que no se exporta ni tapa nodos. Solo en la vista grande.
+        El hueco del dibujo, encima, se queda con el alto que sobra, y el
+        círculo se ajusta a él (ResizeObserver, arriba). */}
+    {!compact && <ConnectogramLegend dash={colors.dash} />}
     {!compact && <div className="connectogram-readout">{readout}</div>}
     </div>
   );
