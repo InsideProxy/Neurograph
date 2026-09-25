@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Reconstruye la base de datos de NeuroGraph desde cero a partir de los
-# archivos .sql del repositorio (migraciones + seeds + salida_*.sql), en
+# archivos .sql del repositorio (migraciones + seeds + init/salida_*.sql), en
 # el orden de dependencias establecido en la H1 (antes decision 75)
 # de docs/decisiones-herramientas.md y documentado en
 # backend/database/migrations/README.md.
 #
 # Solo para cuando NO hay volcado (scripts/export_snapshot.ps1, decision
 # 53). Con volcado disponible, cargarlo es siempre preferible: es la
-# base de datos real, no una reconstruccion. Esta reconstruccion no
-# incluye los 41 tractos del atlas ORG ni sus geometrias (no hay SQL de
-# ellos en el repositorio -- ver H1 en docs/decisiones-herramientas.md).
+# base de datos real, no una reconstruccion. La tractografia ORG no esta
+# en la carga inicial: se instala despues con
+# scripts/install_tractography.sh (H4 de docs/decisiones-herramientas.md).
 #
 # Mismo procedimiento que scripts/apply_sql.ps1: docker cp + psql -f
 # dentro del contenedor, nunca una tuberia (riesgo 7: acentos/n).
@@ -28,6 +28,7 @@ USUARIO=neurograph
 BASE=neurograph
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 SEED=backend/database/seed
+INIT=init
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"; docker exec "$CONTENEDOR" rm -f /tmp/neurograph_rebuild.sql >/dev/null 2>&1 || true' EXIT
 
@@ -60,33 +61,33 @@ DATOS=(
   $SEED/register_dataset_hcp_s1200_groupavg.sql
   $SEED/register_dataset_hcp_s1200_groupavg_extracted.sql
   $SEED/register_dataset_brainnetome.sql
-  salida_mni152_meshes.sql
+  $INIT/salida_mni152_meshes.sql
   # 2. Atlas, regiones y coordenadas (mmp1 da de alta la especie humana)
-  salida_mmp1.sql
-  salida_subcortex.sql
-  salida_gordon333.sql
-  salida_brainnetome.sql
-  salida_macaque_wang2017.sql
-  salida_cheng2021_ipl.sql
+  $INIT/salida_mmp1.sql
+  $INIT/salida_subcortex.sql
+  $INIT/salida_gordon333.sql
+  $INIT/salida_brainnetome.sql
+  $INIT/salida_macaque_wang2017.sql
+  $INIT/salida_cheng2021_ipl.sql
   # 3. Estudios: register_atlas_studies ANTES de los backfills (si no,
   #    su ON CONFLICT volveria a escribir name/doi/year)
   $SEED/register_atlas_studies.sql
-  salida_backfill_atlas_study_metadata.sql
-  salida_backfill_zhang2018_study_metadata.sql
-  salida_zotero_kerezoudis_2026.sql
+  $INIT/salida_backfill_atlas_study_metadata.sql
+  $INIT/salida_backfill_zhang2018_study_metadata.sql
+  $INIT/salida_zotero_kerezoudis_2026.sql
   # 4. Nombres largos de HCP-MMP1.0: despues de todo lo que escribe esas regiones
-  salida_backfill_hcp_mmp1_names.sql
+  $INIT/salida_backfill_hcp_mmp1_names.sql
   # 5. Redes y pertenencias
   $SEED/register_cole_anticevic_networks.sql
   $SEED/register_cerebellum_network_distribution.sql
-  salida_rsn_networks.sql
+  $INIT/salida_rsn_networks.sql
   # 6. Conexiones
   $SEED/register_connections_brainnetome.sql
   $SEED/register_yeh2022_tract_region.sql
-  salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
-  salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
+  $INIT/salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
+  $INIT/salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
   # 7. Homologias (necesitan regiones humanas y de macaco)
-  salida_motor_sma_synthesis.sql
+  $INIT/salida_motor_sma_synthesis.sql
 )
 
 psql_c() { docker exec "$CONTENEDOR" psql -U "$USUARIO" -d "$BASE" -Atc "$1"; }
@@ -103,7 +104,7 @@ aplicar() {
   fi
   # Los archivos con su propio BEGIN/COMMIT no se envuelven en otra transaccion.
   grep -qx 'BEGIN;' "$archivo" && transaccion=
-  printf '  %-58s ' "$1"
+  printf '  %-64s ' "$1"
   docker cp "$fuente" "$CONTENEDOR:/tmp/neurograph_rebuild.sql"
   if docker exec "$CONTENEDOR" psql $transaccion -v ON_ERROR_STOP=1 -q \
        -U "$USUARIO" -d "$BASE" -f /tmp/neurograph_rebuild.sql >/dev/null 2>"$TMP/err"; then
@@ -136,6 +137,9 @@ select '  networks', count(*) from networks union all
 select '  region_network_memberships', count(*) from region_network_memberships union all
 select '  connections', count(*) from connections union all
 select '  tracts', count(*) from tracts union all
+select '  tract_geometries (0 hasta instalar la tractografia)', count(*) from tract_geometries union all
+select '  tractography_nodes', count(*) from tractography_nodes union all
+select '  tractography_edges', count(*) from tractography_edges union all
 select '  homologies', count(*) from homologies union all
 select '  studies', count(*) from studies union all
 select '  datasets', count(*) from datasets union all

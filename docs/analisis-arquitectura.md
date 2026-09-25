@@ -8,21 +8,6 @@ fecha: 2026-08-28
 
 La propia especificación maestra (secciones 29 y 30) pide que, antes de escribir código, se analice el documento, se señalen inconsistencias y ambigüedades, se propongan las decisiones arquitectónicas pendientes y se espere confirmación. Este documento sigue ese orden. No se ha creado repositorio ni código todavía.
 
-## Documentos relacionados
-
-Este documento recoge el análisis inicial y, en la sección 7, los criterios funcionales de la app: datos, criterio científico, API y MCP. Los demás temas tienen documento propio:
-
-- `docs/plan-de-desarrollo.md`: fases del desarrollo y su estado.
-- `docs/portabilidad.md`: separación entre la instalación y la biblioteca de datos (SSD).
-- `docs/protocolo-ingesta-ia.md`: pasos para ingerir con ayuda de IA un formato de datos nuevo.
-- `docs/protocolo-sintesis-ia.md`: formato y reglas del archivo de síntesis de literatura hecho por IA.
-- `docs/decisiones-diseno.md` (hijo de este): decisiones de interfaz, estética y correcciones visuales (D1, D2…).
-- `docs/decisiones-herramientas.md` (hijo de este): instalación, Docker, reconstrucción de la base de datos y otras herramientas auxiliares (H1, H2…).
-- `docs/instalador-linux-diseno.md`: diseño del instalador para Linux (borrador).
-- `backend/database/migrations/README.md`: cómo aplicar las migraciones y reconstruir la base de datos.
-
-Los dos hijos empiezan el 24/09/2026. Las decisiones anteriores de diseño o de instalación siguen en la sección 7 con su número (por ejemplo, la 18 del tema oscuro o de la 54 a la 70 del ejecutable de Windows). Las 74, 75 y 76 se trasladaron a los hijos y aquí queda una línea con su número que remite a ellas.
-
 ## 1. Resumen del sistema
 
 NeuroGraph es un instrumento científico computacional para neuroinformática: permite consultar, analizar y visualizar redes cerebrales (regiones, tractos, conectividad, literatura, homologías entre especies) a partir de una "biblioteca" de datos portátil (SSD externo). La IA (Claude u otro modelo) actúa como intérprete y planificador de consultas, nunca como motor científico. Hay un motor científico en Python, una base de datos relacional (PostgreSQL + pgvector), una API propia independiente de la IA, una capa MCP que envuelve esa API, y un motor de visualización que produce dos vistas sincronizadas: un connectograma 2D (diagrama de cuerdas) y un cerebro 3D con tractografía.
@@ -142,8 +127,6 @@ Se mantienen las diez fases de la especificación, con dos añadidos:
 17. **`python script.py > salida.sql` en PowerShell puede escribir bytes que no son UTF-8 aunque el propio script solo use `str`/`print` (confirmado empíricamente el 30/08/2026, al aplicar el backfill de `hemisphere`).** `scripts/register_gordon333.py` incluye un guion largo ("—") en `ATLAS_NAME`; al redirigir su salida con `python scripts\register_gordon333.py ... > salida.sql` en PowerShell (incluso envuelto en `cmd /c "..."`, que sí evita la corrupción de tuberías del riesgo 7), Python escribió ese carácter usando la página de códigos del sistema de la usuaria (cp1252) en vez de UTF-8 -- cp1252 sí puede representar "—" como un único byte (`0x97`), pero ese byte no es una secuencia UTF-8 válida por sí solo. Al aplicar el archivo con `psql -f` (el propio patrón correcto del riesgo 7), PostgreSQL lo rechazó con `invalid byte sequence for encoding "UTF8": 0x97`. Ni HCP-MMP1.0 ni Brainnetome fallaron porque sus `ATLAS_NAME` no llevan ese carácter; las 333 regiones de Gordon 333 sí se insertaron bien porque `region_name()` solo usa "í" (que cp1252 sí codifica de forma compatible con UTF-8 para ese carácter en concreto) -- es decir, el fallo fue real pero silencioso hasta que PostgreSQL lo rechazó explícitamente, nunca corrompió una fila sin avisar. Causa raíz: la codificación de `stdout` al redirigir a un archivo en Windows depende de la configuración regional del sistema, no de que el script use únicamente `str` de Python. Corregido en los diez `scripts/register_*.py`: `sys.stdout.reconfigure(encoding="utf-8")` como primera línea de `main()`, para que la salida sea UTF-8 siempre, sin depender de que quien lo ejecute recuerde poner `$env:PYTHONUTF8=1` antes (paliativo que sí funciona, pero es fácil de olvidar en una sesión de PowerShell nueva).
 
 ## 7. Decisiones confirmadas por la usuaria
-
-Desde el 24/09/2026 aquí solo se anotan decisiones funcionales. Las de diseño van en `docs/decisiones-diseno.md` y las de instalación y herramientas, en `docs/decisiones-herramientas.md` (ver «Documentos relacionados» al principio).
 
 1. **Stack de interfaz gráfica — Opción A**: web local (Tauri/Electron pendiente de Rust + Three.js + D3), corriendo como servidor Vite de desarrollo mientras tanto. **Reconfirmado explícitamente por la usuaria el 30/08/2026**, al preguntar cómo usaría el programa otra persona: sigue pendiente empaquetar NeuroGraph como aplicación de escritorio real (Tauri, ya elegido aquí sobre Electron por ser más ligero) en vez de depender de un navegador y de levantar Docker/Vite a mano -- ver el pendiente explícito al cierre de `docs/plan-de-desarrollo.md`.
 2. **Alcance de tractografía — ambos modos, a elección del usuario final.** El modelo de datos de conectividad es el mismo para los dos casos, así que no compromete la arquitectura. Se prioriza primero *importar* tractogramas ya calculados (más simple, cubre el caso de uso inmediato); *ejecutar* pipelines completos de dMRI queda como fase posterior explícita, no como parte del MVP.
@@ -1066,9 +1049,3 @@ Desde el 24/09/2026 aquí solo se anotan decisiones funcionales. Las de diseño 
     **Verificación.** Contra una copia local desechable de la base de datos (PostgreSQL 16 en el entorno de la sesión, cargada con el volcado real `neurograph_snapshot.sql` de la usuaria + el SQL nuevo, aplicado dos veces para comprobar la idempotencia; nunca contra su base de datos real): HCP-MMP1.0 devuelve 360 nodos únicos con cualquier clasificación; subcórtex 19 (antes 37); V1 izquierda = Vis (Yeo 7) / VisPeri, 62 % (Yeo 17) / Visual (Power). `pytest` completo 304 pasadas, 8 omitidas; `ruff` limpio en todo lo tocado; `tsc -b` limpio; `vitest` 53/53 (14 nuevas); `oxlint` sin avisos nuevos (9, uno menos que antes: desaparece el de `App.tsx`); `vite build` correcto; prueba en navegador (Chromium sin interfaz, `/regions` simulado con la salida real del servicio sobre esa copia): selector con las 4 clasificaciones, cambio de clasificación sin recargar la vista, los tres mapas por vértice pintados, línea bajo el cursor, clic → foco pintado solo dentro de la región, y vuelta automática a "regiones pintadas" al elegir Cole-Anticevic.
 
     **Aplicar en el equipo de la usuaria:** el SQL (`salida_rsn_networks.sql`, entregado en la raíz del repositorio y regenerable con el script) en Docker y en el Postgres embebido, y recompilar el backend empaquetado (cambió `regions_service`).
-
-74. Movida a `docs/decisiones-diseno.md`: es la **D1** (disposición de la vista "Un atlas", 24/09/2026). La corrección 74b es allí la **D1b**.
-
-75. Movida a `docs/decisiones-herramientas.md`: es la **H1** (reconstrucción de la base de datos desde los `.sql` del repositorio, 24/09/2026).
-
-76. Movida a `docs/decisiones-diseno.md`: es la **D2** (lupa en el connectograma, 24/09/2026). La 76b y la 76c son allí la **D2b** y la **D2c**.

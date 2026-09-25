@@ -22,7 +22,7 @@ completo, no un `UPDATE` parcial -- el resultado neto es solo rellenar
 los tres campos que faltaban.
 
 Uso:
-    python scripts/backfill_zhang2018_study_metadata.py > salida_backfill_zhang2018_study_metadata.sql
+    python scripts/backfill_zhang2018_study_metadata.py > init/salida_backfill_zhang2018_study_metadata.sql
 
 No requiere conexión a la base de datos: solo imprime el SQL (patrón
 `docker cp` + `psql -f` / `scripts/apply_sql.ps1`, ver

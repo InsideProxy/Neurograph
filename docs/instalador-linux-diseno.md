@@ -1,6 +1,7 @@
 # Instalador Linux de NeuroGraph — diseño (borrador)
 
 **Estado, 24/09/2026:** el bloque A está aprobado y el bloque B aún no se ha presentado. No hay código todavía.
+**25/09/2026:** se añade la tractografía como paso propio (H4 de `docs/decisiones-herramientas.md`); su script ya existe.
 
 ## Objetivo
 
@@ -29,6 +30,7 @@ para aprovechar los datos en informes y papers.
 | Alcance de la v1 | Instalar, cargar los datos iniciales (orden de la H1 de `docs/decisiones-herramientas.md`) y desinstalar (por defecto conserva los datos). Quedan fuera: actualizar sin perder datos, y el selector de archivos del navegador para "Importar síntesis de IA" (ese botón usa el diálogo nativo de Tauri y no funciona en el navegador). |
 | Web y API | Igual que en desarrollo. La web se sirve con nginx (solo archivos estáticos) en el puerto 5173 por defecto. La API escucha en `127.0.0.1:8420` por defecto. Si un puerto está ocupado, se usa el siguiente libre y se avisa. Si la API no queda en el 8420, el número se ajusta solo en la copia compilada de la web dentro de la imagen, con verificación; el código fuente no se toca. Postgres no expone ningún puerto en el ordenador. |
 | MCP | Conector local para IAs de terminal. Un comando `neurograph-mcp` enciende NeuroGraph si hace falta y ejecuta el MCP dentro del contenedor de la API. No cambia nada del MCP. |
+| Tractografía (25/09/2026) | Paso propio, después de la carga inicial: `scripts/install_tractography.sh` descarga unos 500 MB de Zenodo, genera el SQL (unos 160 MB, en la biblioteca, no en git) y lo carga. Hoy necesita Python 3.10 o posterior en el ordenador; queda por decidir si en el instalador se ejecuta dentro de un contenedor para no pedirlo (bloque B). |
 | Al terminar | El script explica cómo abrir y apagar NeuroGraph, da la URL y explica cómo conectar el MCP. También deja un archivo con instrucciones para Claude Code, Codex CLI (OpenAI), Gemini CLI y un JSON genérico para otros clientes. |
 
 ## Bloque A (aprobado): qué se instala y cómo
@@ -64,14 +66,15 @@ instalacion/
 **Pasos que ve la persona:**
 
 ```
-[1/8] Comprobando el ordenador ............ ✔  Linux, internet, espacio, memoria
-[2/8] Docker .............................. ✔  si falta: pide la contraseña y lo instala
-[3/8] Permiso para usar Docker ............ ✔  sin reiniciar sesión
-[4/8] Comprobando puertos ................. ✔  web 5173 · API 8420 (si están ocupados: el siguiente libre, con aviso)
-[5/8] Preparando NeuroGraph ............... ✔  5-10 min la primera vez
-[6/8] Encendiendo ......................... ✔
-[7/8] Cargando datos (24 archivos) ........ ✔  1172 regiones, 104115 conexiones
-[8/8] Iconos, comandos y conexión con IAs . ✔
+[1/9] Comprobando el ordenador ............ ✔  Linux, internet, espacio, memoria
+[2/9] Docker .............................. ✔  si falta: pide la contraseña y lo instala
+[3/9] Permiso para usar Docker ............ ✔  sin reiniciar sesión
+[4/9] Comprobando puertos ................. ✔  web 5173 · API 8420 (si están ocupados: el siguiente libre, con aviso)
+[5/9] Preparando NeuroGraph ............... ✔  5-10 min la primera vez
+[6/9] Encendiendo ......................... ✔
+[7/9] Cargando datos (24 archivos) ........ ✔  1172 regiones, 104115 conexiones
+[8/9] Tractografía (unos 500 MB) .......... ✔  41 tractos, 176 nodos y 5176 aristas (se puede repetir si falla)
+[9/9] Iconos, comandos y conexión con IAs . ✔
 ```
 
 - La salida técnica va al registro, no a la pantalla. Si algo falla, se

@@ -5,11 +5,11 @@ fecha: 2026-09-24
 
 # NeuroGraph — Decisiones de instalación y herramientas auxiliares
 
-Documento hijo de `docs/analisis-arquitectura.md`. El principal recoge los criterios funcionales de la app: datos, criterio científico, API y MCP. Aquí se anotan las decisiones sobre cómo se instala, se pone en marcha y se mantiene: instaladores, Docker, reconstrucción de la base de datos, recuperación de datos y scripts auxiliares. Las de interfaz van en `docs/decisiones-diseno.md`.
+Log de las decisiones sobre cómo se instala, se pone en marcha y se mantiene NeuroGraph: instaladores, Docker, reconstrucción de la base de datos, recuperación de datos y scripts auxiliares. Cada entrada cuenta qué se decidió, por qué y cómo se verificó. Las reglas vigentes que salen de aquí están resumidas en `docs/criterios-herramientas.md`.
 
-**Numeración.** H1, H2… Las que vienen del principal llevan su número antiguo entre paréntesis. El principal conserva una línea con ese número que remite aquí, así que las referencias a "decisión 75" siguen llevando al sitio correcto. Un número sin letra (49, 53…) es una decisión del principal.
+**Numeración.** H1, H2… La H1 empezó en el log general (`docs/analisis-arquitectura.md`) como 75 y lleva ese número entre paréntesis: las referencias a «decisión 75» se encuentran buscándolo aquí. Un número sin letra (49, 53…) es una entrada del log general.
 
-**Antecedentes.** Se quedan en el principal: la 52 y la 53 (volcado de la base de datos) y de la 54 a la 70 (ejecutable de Windows con Tauri y Postgres embebido, firma y publicación en GitHub).
+**Antecedentes.** Están en el log general: la 52 y la 53 (volcado de la base de datos) y de la 54 a la 70 (ejecutable de Windows con Tauri y Postgres embebido, firma y publicación en GitHub).
 
 **Diseños en curso.** `docs/instalador-linux-diseno.md`: instalador para Linux basado en Docker (borrador).
 
@@ -35,3 +35,32 @@ Documento hijo de `docs/analisis-arquitectura.md`. El principal recoge los crite
 - `100HCP-population-mean-wmparc.nii.gz` (0,8 MB, md5 `b8bec868a3cc878dcfc62c704ba15e4b`), registro 8082481 (10.5281/zenodo.8082481). El md5 coincide con el anotado en la decisión 63.
 
 Del zip no quedó ningún checksum en el repositorio. Para confirmar que son los mismos datos, al regenerar deben salir los recuentos de la decisión 49: 41 tractos, 523 696 streamlines reales y 12 300 mostradas. Los genes (`genes`, `expressions`) y `evidence` no forman parte de este pendiente: nunca tuvieron filas (migración 0013 y decisiones 20 y 47).
+
+## H2. Documentación para agentes: criterios vigentes aparte de los logs, CLAUDE.md y comprobación de coherencia -- 25/09/2026
+
+**Qué.** Los criterios vigentes pasan a `docs/principios.md` y a `docs/criterios-funcionales.md`, `docs/criterios-diseno.md` y `docs/criterios-herramientas.md`, cada uno con la entrada del log de la que sale. Los logs (general, D y H) quedan como historia. Hay un `CLAUDE.md` en la raíz, que importa los principios y fija dónde se escribe cada cosa, y otro en `frontend/`, `backend/` y `scripts/`. `scripts/check_docs.py` comprueba fuentes, rutas, redirecciones y el mapa de documentos. `.claude/settings.json` permite sin preguntar cinco comandos de verificación de solo lectura, sacados de las sesiones anteriores.
+
+**Por qué.** El log general mezclaba en ~400 KB criterios, historia y conversación: para conocer una regla vigente había que leerlo entero y averiguar qué decisión corregía a cuál. Los criterios suman ~40 KB y cada agente carga solo los de su área.
+
+**Verificación.** Los criterios se extrajeron del log completo, y los valores que cambiaron a lo largo de él se contrastaron con el código. `check_docs.py` da OK y detecta cada tipo de error en una prueba con errores inyectados. Las tres ramas del rediseño se fusionan sin conflictos (`git merge-tree`).
+
+## H3. Los `salida_*.sql` pasan de la raíz a `init/` -- 25/09/2026
+
+**Qué.** Los 15 `salida_*.sql` se mueven a `init/`, la carga inicial de la base, con el mismo nombre. Se corrigen las rutas de `scripts/rebuild_db_from_sql.sh` (variable `INIT`, junto a `SEED`), los ejemplos de uso de `apply_sql.ps1`, `register_rsn_networks.py` y los dos `backfill_*.py`, el README de migraciones, los criterios y `scripts/CLAUDE.md`. La convención de la decisión 69 cambia solo en el lugar: siguen en git si pesan menos de 100 MB.
+
+**Por qué.** La raíz tenía 15 archivos de datos generados mezclados con la configuración del proyecto.
+
+**Verificación.** `scripts/rebuild_db_from_sql.sh` completo contra un Postgres desechable con las rutas nuevas, y `check_docs.py`. Ninguna de las tres ramas del rediseño toca ni cita estos archivos. `init/` no está ignorada por git; `data/`, la primera ubicación probada, sí lo está, porque `.gitignore` la reserva para datos científicos locales.
+
+## H4. Tractografía ORG: paso de instalación aparte, desde Zenodo -- 25/09/2026
+
+**Qué.** `scripts/install_tractography.sh` (solo Linux) instala la tractografía después de la carga inicial:
+- descarga de Zenodo los dos originales a la biblioteca y comprueba su md5;
+- genera el SQL en `derived/tractograms/`, con `vtk` en un entorno temporal;
+- comprueba los recuentos y lo aplica con `docker cp` + `psql -f`.
+
+Cada paso ya hecho se salta. El SQL no va a `init/` ni a git.
+
+**Por qué.** La reconstrucción de la H1 dejaba vacía la tractografía. Su SQL pesa unos 160 MB (el de nodos y aristas, 117 MB, supera el límite de 100 MB de GitHub). Subirlo habría multiplicado por siete el tamaño del repositorio. En el diseño original, el SQL de tractografía también vivía en la biblioteca y no en el repositorio.
+
+**Verificación.** Los originales descargados tienen los md5 publicados. Los generadores dan los recuentos de las decisiones 49 y 66: 41 tractos, 523 696 streamlines reales y 12 300 mostradas; 176 nodos, 5176 aristas y 30 153 bucles descartados. El script completo se probó contra un Postgres desechable tras la carga inicial; una segunda ejecución no hace nada. El sha256 del zip (en la fila `Dataset`) es `8f880d53103b2847b6610d15f94bb47cb14afe178a641dbaa5349d7d7d788a43`.
