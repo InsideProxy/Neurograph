@@ -99,17 +99,30 @@ function compareMatches(a: Match, b: Match): number {
   );
 }
 
+// «y» pasa a «e» ante el sonido /i/ («Visual e Hipocampo»), salvo si esa i
+// forma diptongo con la vocal siguiente («Visual y Hielo»), como pide la
+// ortografía.
+function andBefore(word: string): string {
+  return /^h?[ií](?![aeiouáéíóú])/iu.test(word) ? "e" : "y";
+}
+
 function joinNames(names: readonly string[]): string {
-  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
+  if (names.length === 1) return names[0];
+  const last = names[names.length - 1];
+  return `${names.slice(0, -1).join(", ")} ${andBefore(last)} ${last}`;
 }
 
 // El aviso de las redes ocultas (spec 5.8): nombra la región, si todas las
 // coincidencias ocultas son la misma («TE1m», también las dos de un par), o
-// «Lo escrito», y su red o sus redes; con más de tres, solo cuántas. El
-// botón las muestra todas.
-function hiddenHint(matches: readonly Match[]): HiddenHint {
+// «Lo escrito», y su red o sus redes; con más de tres, solo cuántas. Si solo
+// está oculta una parte de las coincidencias exactas (withSide), la región
+// lleva su lado, «TE1m (izq.)», porque la otra sí sale en la lista. El botón
+// las muestra todas.
+function hiddenHint(matches: readonly Match[], withSide = false): HiddenHint {
   const networks = [...new Set(matches.map(({ node }) => node.network))];
-  const names = new Set(matches.map(({ node }) => bareAbbreviation(node) ?? regionTitleParts(node).main));
+  const names = new Set(
+    matches.map(({ node }) => (withSide ? regionNameWithSide(node) : (bareAbbreviation(node) ?? regionTitleParts(node).main))),
+  );
   const who = names.size === 1 ? [...names][0] : "Lo escrito";
   const where =
     networks.length === 1
@@ -137,15 +150,20 @@ export function searchRegions(
   // ven en las vistas.
   const visible = matches.filter(({ node }) => !hiddenNetworks.has(node.network));
   const inHidden = matches.filter(({ node }) => hiddenNetworks.has(node.network));
-  // El aviso sale si nada visible coincide, o si la abreviatura exacta solo
-  // está en redes ocultas, aunque haya sugerencias visibles: «pf» con la
-  // red de PF oculta lo dice, aunque se vean PFm y PFop.
+  // El aviso sale si nada visible coincide, o si alguna coincidencia exacta
+  // de la abreviatura está en una red oculta, aunque haya sugerencias
+  // visibles: «pf» con la red de PF oculta lo dice, aunque se vean PFm y
+  // PFop. También si solo lo está una parte: en Cole-Anticevic, TE1m
+  // izquierda está en Por defecto y la derecha en Frontoparietal, y con Por
+  // defecto oculta, «te1m» avisa de la izquierda. Nada se queda escondido
+  // sin decirlo.
   const exact = matches.filter(({ level }) => level === 0);
+  const exactHidden = exact.filter(({ node }) => hiddenNetworks.has(node.network));
   const hidden =
     visible.length === 0 && inHidden.length > 0
       ? hiddenHint(inHidden)
-      : exact.length > 0 && exact.every(({ node }) => hiddenNetworks.has(node.network))
-        ? hiddenHint(exact)
+      : exactHidden.length > 0
+        ? hiddenHint(exactHidden, exactHidden.length < exact.length)
         : null;
   return {
     suggestions: visible.slice(0, SEARCH_LIMIT).map(({ node }) => ({

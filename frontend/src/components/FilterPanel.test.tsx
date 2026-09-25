@@ -62,6 +62,17 @@ describe("FilterPanel", () => {
     expect(html).toContain("4 de 9 conexiones pasan los filtros");
   });
 
+  it("para los lectores de pantalla, el recuento va con los dígitos seguidos, sin el espacio de los miles", () => {
+    const large = renderToStaticMarkup(
+      <FilterPanel
+        nodes={NODES}
+        connectionCountsByType={{ structural: 64620, functional: 0, effective: 0 }}
+        connectionTotals={{ visible: 64620, loaded: 64620 }}
+      />,
+    );
+    expect(large).toContain('<span class="visually-hidden">, 64620 conexiones</span>');
+  });
+
   it("el deslizador dice el peso mínimo con palabras", () => {
     expect(html).toContain('aria-valuetext="0 (sin filtro, se muestra todo)"');
   });

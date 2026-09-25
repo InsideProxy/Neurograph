@@ -1,8 +1,9 @@
 // Cola de avisos flotantes (D4 de docs/decisiones-diseno.md;
 // docs/rediseno-interfaz-diseno.md, 5.6). Cada aviso tiene la clave de su
-// origen ("importar", "redes"): uno nuevo sustituye al anterior del mismo
-// origen, como pasaba con las franjas de error. Se quedan hasta que se
-// cierran. Funciones puras: se prueban sin DOM.
+// origen ("importar", "redes" o "deshacer"): uno nuevo sustituye al anterior
+// del mismo origen, como pasaba con las franjas de error. Los de error se
+// quedan hasta que se cierran; el de deshacer (5.7) se va solo
+// (autoDismissMs). Funciones puras: se prueban sin DOM.
 
 export type ToastTone = "error" | "info";
 
@@ -46,4 +47,21 @@ export function showToast(queue: readonly ToastEntry[], key: string, content: To
 // pintar.
 export function dismissToast(queue: ToastEntry[], key: string): ToastEntry[] {
   return queue.some((toast) => toast.key === key) ? queue.filter((toast) => toast.key !== key) : queue;
+}
+
+// Adónde va el foco al cerrar el aviso `index` (ToastRegion, en
+// components/Toast.tsx). Con «Entendido», al aviso siguiente, o al anterior
+// si era el último: "toast", con su clave. Si no queda ninguno, o tras usar
+// la acción del aviso, adonde diga el aviso (returnFocus) o quien pinta la
+// región: "return".
+export type FocusAfterDismiss = { kind: "toast"; key: string } | { kind: "return" };
+
+export function toastAfterDismiss(
+  toasts: readonly Pick<ToastEntry, "key">[],
+  index: number,
+  runAction: boolean,
+): FocusAfterDismiss {
+  if (runAction) return { kind: "return" };
+  const next = toasts[index + 1] ?? toasts[index - 1];
+  return next ? { kind: "toast", key: next.key } : { kind: "return" };
 }

@@ -266,11 +266,21 @@ export function RegionDetail({
           </span>
         </p>
       )}
+      {/* «Conexiones N» cuenta todas las cargadas de la región, y el
+          recuadro de lectura del connectograma, las que pasan los filtros:
+          la pista lo aclara. El título no se parte entre el nombre y el
+          número (App.css). */}
       <div className="detail__section-header">
-        <h3 className="detail__heading">
+        <h3 className="detail__heading detail__heading--count">
           Conexiones <span className="detail__count">{formatCount(sorted.length)}</span>
         </h3>
-        {sorted.length > 1 && <span className="detail__hint">más fuertes primero · barra logarítmica</span>}
+        {sorted.length > 0 && (
+          <span className="detail__hint">
+            {sorted.length === 1
+              ? "la única cargada · barra logarítmica"
+              : "todas las cargadas · más fuertes primero · barra logarítmica"}
+          </span>
+        )}
       </div>
       {sorted.length === 0 ? (
         <p className="detail-panel__empty-note">Esta región no tiene conexiones cargadas.</p>

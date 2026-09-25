@@ -6,8 +6,7 @@
 import type { ConnectionType } from "../state/filters";
 import { CONNECTION_TYPE_LABELS } from "../theme/networks";
 import type { GraphConnection, GraphNode } from "../types/domain";
-import { connectionTitle, formatCount, networkShortLabel, regionNameWithSide } from "./displayText";
-import { formatMinWeight } from "./weightScale";
+import { connectionTitle, formatCount, formatWeightAtMost, networkShortLabel, regionNameWithSide } from "./displayText";
 
 // La selección y los filtros en un momento dado (state/history.ts). Son
 // los mismos Set que tenían los stores: ninguno de los dos los modifica,
@@ -55,10 +54,13 @@ export function changedKinds(before: HistorySnapshot, after: HistorySnapshot): C
 }
 
 // Nombre de una región en una descripción, con su lado: «IFJa (der.)»
-// (logic/displayText.ts). Una región que no está cargada se nombra con su id.
+// (logic/displayText.ts). Una región que no está cargada es de otro atlas:
+// App no vacía la selección al cambiar de atlas, así que sus ids siguen en
+// el store. Se nombra de forma genérica, y no con su id en crudo
+// («region.human.hcp-mmp1.r_v1»).
 function regionName(id: string, context: StepContext): string {
   const node = context.nodeById.get(id);
-  return node ? regionNameWithSide(node) : id;
+  return node ? regionNameWithSide(node) : "una región de otro atlas";
 }
 
 function describeSelection(before: HistorySnapshot, after: HistorySnapshot, context: StepContext): string {
@@ -106,9 +108,9 @@ function describeHidden(
 // Descripción de un paso, en castellano, para la etiqueta emergente de
 // Deshacer y Rehacer: «añadir IFJa (der.) a la selección», «quitar 3
 // regiones», «seleccionar la conexión V1 (izq.) ↔ V1 (der.)», «limpiar la
-// selección», «ocultar la red Visual», «peso mínimo de 1.0e-3 a 4.0e-3» o,
-// si cambian varias cosas, «varios cambios». El peso se escribe como en
-// Filtros (formatMinWeight).
+// selección», «ocultar la red Visual», «peso mínimo de 1.0e-3 a 3.9e-3» o,
+// si cambian varias cosas, «varios cambios». El peso se escribe sin
+// redondearlo hacia arriba (formatWeightAtMost, logic/displayText.ts).
 export function describeStep(before: HistorySnapshot, after: HistorySnapshot, context: StepContext): string {
   const kinds = changedKinds(before, after);
   if (kinds.length !== 1) return "varios cambios";
@@ -132,7 +134,7 @@ export function describeStep(before: HistorySnapshot, after: HistorySnapshot, co
         "cambiar los tipos visibles",
       );
     case "weight":
-      return `peso mínimo de ${formatMinWeight(before.minWeight)} a ${formatMinWeight(after.minWeight)}`;
+      return `peso mínimo de ${formatWeightAtMost(before.minWeight)} a ${formatWeightAtMost(after.minWeight)}`;
   }
 }
 

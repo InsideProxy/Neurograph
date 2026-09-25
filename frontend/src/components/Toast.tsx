@@ -7,7 +7,7 @@
 // llevan rol: su texto lo anuncia una región viva siempre presente. Pueden
 // llevar un botón de acción e irse solos.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ToastEntry } from "../logic/toastQueue";
+import { toastAfterDismiss, type ToastEntry } from "../logic/toastQueue";
 import { Icon } from "./Icon";
 
 export function Toast({
@@ -54,7 +54,10 @@ export function Toast({
         {toast.details && (
           <details className="toast__details">
             <summary>Detalles</summary>
-            <pre>{toast.details}</pre>
+            {/* tabIndex: con el teclado, el texto largo se desplaza con las
+                flechas; WebKitGTK no lleva el foco a un bloque que solo
+                se desplaza. */}
+            <pre tabIndex={0}>{toast.details}</pre>
           </details>
         )}
         <div className="toast__buttons">
@@ -101,13 +104,16 @@ export function ToastRegion({
     toast?.querySelector<HTMLButtonElement>(".toast__close")?.focus();
   });
 
+  // El destino del foco (logic/toastQueue.ts) se guarda antes de la acción y
+  // de onDismiss: si cualquiera de los dos hace pintar la región en el acto,
+  // el efecto de arriba ya lo encuentra.
   const leave = (index: number, runAction: boolean) => {
     const toast = toasts[index];
-    const next = toasts[index + 1] ?? toasts[index - 1];
+    const target = toastAfterDismiss(toasts, index, runAction);
+    if (target.kind === "toast") focusAfterDismiss.current = target.key;
     if (runAction) toast.action?.run();
     onDismiss(toast.key);
-    if (next && !runAction) focusAfterDismiss.current = next.key;
-    else (toast.returnFocus ?? onEmptied)?.();
+    if (target.kind === "return") (toast.returnFocus ?? onEmptied)?.();
   };
 
   return (

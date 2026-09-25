@@ -210,7 +210,9 @@ export function FilterPanel({
       <RegionSearch nodes={nodes} />
 
       <div className="filters__selection">
-        <span>{selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}</span>
+        <span className="filters__selection-text">
+          {selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}
+        </span>
         <span className="filters__selection-actions">
           <button
             type="button"
@@ -340,11 +342,12 @@ export function FilterPanel({
                   <span className="filters__count" aria-hidden="true">
                     {formatCount(connectionCountsByType[type])}
                   </span>
+                  {/* Con los dígitos seguidos: un espacio duro en medio del
+                      número hace que algunas voces lo lean en dos trozos
+                      (como en DataStatus, components/TopBar.tsx). */}
                   <span className="visually-hidden">
                     ,{" "}
-                    {connectionCountsByType[type] === 1
-                      ? "1 conexión"
-                      : `${formatCount(connectionCountsByType[type])} conexiones`}
+                    {connectionCountsByType[type] === 1 ? "1 conexión" : `${connectionCountsByType[type]} conexiones`}
                   </span>
                 </label>
               </li>

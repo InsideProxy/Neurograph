@@ -100,6 +100,17 @@ describe("searchRegions", () => {
     expect(searchRegions(nodes, "pf", NONE_HIDDEN).hidden).toBeNull();
   });
 
+  it("si solo está oculta una parte de las coincidencias exactas, avisa de esa parte y la nombra con su lado", () => {
+    // Como TE1m en Cole-Anticevic: la izquierda en Por defecto y la derecha
+    // en Frontoparietal.
+    const split = [region("l_te1m", "TE1m", "L", "Area TE1 Middle", DEFAULT), region("r_te1m", "TE1m", "R", "Area TE1 Middle", FRONTOPARIETAL)];
+    expect(searchRegions(split, "te1m", new Set([DEFAULT]))).toEqual({
+      suggestions: [{ id: "r_te1m", label: "TE1m (der.)", name: "Area TE1 Middle", network: FRONTOPARIETAL }],
+      hidden: { message: "TE1m (izq.) está en la red Por defecto, que está oculta.", networks: [DEFAULT] },
+      noMatch: false,
+    });
+  });
+
   it("con coincidencias en varias redes ocultas, las nombra; con más de tres, dice cuántas", () => {
     const split = [region("l_te1m", "TE1m", "L", "Area TE1 Middle"), region("r_te1m", "TE1m", "R", "Area TE1 Middle", VISUAL)];
     expect(searchRegions(split, "te1m", new Set([AUDITORY, VISUAL])).hidden).toEqual({
@@ -111,6 +122,19 @@ describe("searchRegions", () => {
       message: "Lo escrito está en 4 redes ocultas.",
       networks: [AUDITORY, VISUAL, FRONTOPARIETAL, DEFAULT],
     });
+  });
+
+  it("al unir las redes, «e» y no «y» ante el sonido /i/, salvo si forma diptongo con la vocal siguiente", () => {
+    const pair = (network: string) => [region("l_x1", "X1", "L", "Area X1", VISUAL), region("r_x1", "X1", "R", "Area X1", network)];
+    expect(searchRegions(pair("power2011.hippocampus"), "x1", new Set([VISUAL, "power2011.hippocampus"])).hidden?.message).toBe(
+      "X1 está en las redes Visual e Hipocampo — Hippocampus, que están ocultas.",
+    );
+    expect(searchRegions(pair("Ínsula"), "x1", new Set([VISUAL, "Ínsula"])).hidden?.message).toBe(
+      "X1 está en las redes Visual e Ínsula, que están ocultas.",
+    );
+    expect(searchRegions(pair("Hielo"), "x1", new Set([VISUAL, "Hielo"])).hidden?.message).toBe(
+      "X1 está en las redes Visual y Hielo, que están ocultas.",
+    );
   });
 
   it("sin nada escrito no busca, y sin ninguna coincidencia lo dice", () => {

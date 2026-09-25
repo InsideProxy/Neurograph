@@ -68,7 +68,7 @@ describe("describeStep", () => {
     expect(describeStep(regions, snapshot(), CONTEXT)).toBe("limpiar la selección");
   });
 
-  it("filtros: redes, tipos y peso mínimo, escrito como en Filtros", () => {
+  it("filtros: redes, tipos y peso mínimo, sin redondearlo hacia arriba", () => {
     expect(describeStep(snapshot(), snapshot({ hiddenNetworks: new Set(["cole-anticevic.visual"]) }), CONTEXT)).toBe(
       "ocultar la red Visual",
     );
@@ -77,7 +77,13 @@ describe("describeStep", () => {
       describeStep(snapshot(), snapshot({ hiddenConnectionTypes: new Set<ConnectionType>(["structural"]) }), CONTEXT),
     ).toBe("ocultar el tipo Estructural");
     expect(describeStep(snapshot({ minWeight: 0.001 }), snapshot({ minWeight: 0.0039810717 }), CONTEXT)).toBe(
-      "peso mínimo de 1.0e-3 a 4.0e-3",
+      "peso mínimo de 1.0e-3 a 3.9e-3",
+    );
+  });
+
+  it("una región que no está cargada, como las de otro atlas que siguen en la selección, se nombra de forma genérica", () => {
+    expect(describeStep(snapshot({ selectedNodeIds: new Set(["region.human.hcp-mmp1.r_v1"]) }), snapshot(), CONTEXT)).toBe(
+      "quitar una región de otro atlas de la selección",
     );
   });
 
@@ -132,7 +138,7 @@ describe("historyButtons", () => {
   it("un cambio de peso sin registrar ya se puede deshacer", () => {
     const weighted = snapshot({ minWeight: 0.02 });
     const buttons = historyButtons({ past: [], present: weighted, future: [], pendingFrom: before }, CONTEXT);
-    expect(buttons.undo.tip).toBe("Deshacer: peso mínimo de 0 (sin filtro, se muestra todo) a 0.02");
+    expect(buttons.undo.tip).toBe("Deshacer: peso mínimo de 0 a 0.02");
   });
 });
 

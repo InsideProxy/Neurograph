@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { initialActiveIndex, listboxKey } from "../logic/listbox";
 import { Icon } from "./Icon";
+import { useMouseMoved } from "./useMouseMoved";
 
 export interface DataContextOption {
   value: string;
@@ -52,6 +53,10 @@ export function DataContextMenu({
   // Marca si la opción activa debe desplazarse a la vista: solo al abrir o
   // con el teclado, nunca al pasar el ratón (revisión de la Task 1).
   const scrollActiveRef = useRef(false);
+  // Si el ratón se ha movido de verdad: al desplazarse la lista con el
+  // teclado, WebKit envía un mousemove sintético que, si no, llevaría la
+  // opción activa a la que ha quedado bajo el ratón (useMouseMoved).
+  const mouseMoved = useMouseMoved();
   const baseId = useId();
   const captionId = `${baseId}-caption`;
   const listId = `${baseId}-list`;
@@ -209,7 +214,8 @@ export function DataContextMenu({
               aria-selected={option.value === value}
               className={index === activeIndex ? "data-menu__option data-menu__option--active" : "data-menu__option"}
               onClick={() => choose(index)}
-              onMouseMove={() => {
+              onMouseMove={(event) => {
+                if (!mouseMoved(event)) return;
                 // Por si un movimiento del teclado dejó la marca a true en
                 // un borde de la lista sin que el efecto la consumiera
                 // (mismo índice, sin re-render): así el próximo hover

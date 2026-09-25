@@ -123,9 +123,22 @@ export default function App() {
   const [activeSynthesisTabId, setActiveSynthesisTabId] = useState<string | null>(null);
   // Avisos flotantes (D4 de docs/decisiones-diseno.md; spec 5.6). Sustituyen
   // a las dos franjas de error de antes: la de importar una síntesis y la
-  // de cambiar la clasificación de redes. Se quedan hasta que se cierran.
+  // de cambiar la clasificación de redes, que se quedan hasta que se
+  // cierran. Hay un tercer origen, el aviso con «Deshacer» (spec 5.7), que
+  // se va solo.
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const showNotice = (key: string, content: ToastContent) => setToasts((queue) => showToast(queue, key, content));
+  // Fuera de la vista Atlas, el aviso con «Deshacer» se retira: tras usarlo,
+  // el foco iría a ↶ o al título de la vista grande, que allí no están, y
+  // caería en la página. Fuera de Atlas no cambian ni la selección ni los
+  // filtros, así que no puede salir otro. Se ajusta al pintar con la vista
+  // nueva, sin un efecto (el patrón de React para ajustar un estado cuando
+  // cambia otro).
+  const [viewOfToasts, setViewOfToasts] = useState(view);
+  if (viewOfToasts !== view) {
+    setViewOfToasts(view);
+    if (view !== "atlas") setToasts((queue) => dismissToast(queue, UNDO_TOAST));
+  }
   // Al cerrar el último aviso, el foco vuelve a «Importar» (ToastRegion).
   const importButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -170,11 +183,13 @@ export default function App() {
           // la original, nunca se cae a datos de demostración por esto.
           const message = err instanceof Error ? err.message : "error desconocido";
           // setToasts y no showNotice: un setter de estado no es dependencia del efecto.
+          // En «Detalles», el error entero, con su tipo (String), y si no es
+          // un Error, el texto de siempre.
           setToasts((queue) =>
             showToast(queue, NETWORK_TOAST, {
               tone: "error",
               message: `No se pudo cargar la clasificación de redes «${networkSourceShortLabel(networkSource)}». Se vuelve a la clasificación por defecto del atlas.`,
-              details: `No se pudo cargar la clasificación '${networkSource}' (${message}).`,
+              details: `No se pudo cargar la clasificación '${networkSource}' (${err instanceof Error ? String(err) : message}).`,
             }),
           );
           setNetworkSource(null);
@@ -241,6 +256,14 @@ export default function App() {
   // docs/decisiones-diseno.md; spec 5.7).
   useHistoryShortcuts(view === "atlas");
 
+  // Regiones cargadas, para el aviso con «Deshacer» (más abajo): las lee de
+  // aquí su suscripción al historial, que es una sola. Va antes del efecto
+  // que vacía el historial, así que este ya las encuentra al día.
+  const loadedIdsRef = useRef<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    loadedIdsRef.current = new Set(source.kind === "loading" ? [] : source.nodes.map((node) => node.id));
+  }, [source]);
+
   // Con otra clasificación de redes, las redes guardadas en el historial
   // dejan de valer (spec 5.7). Se vacía cuando llega, no al elegirla:
   // mientras carga se sigue viendo la anterior, y si falla, se queda.
@@ -253,10 +276,16 @@ export default function App() {
   // regiones de la selección (logic/historyStep.ts, stepNotice). Su texto lo
   // anuncia la región viva de ToastRegion, sin mover el foco. Se va solo a
   // los 8 s, salvo mientras tiene el ratón encima o el foco, y con el
-  // siguiente cambio del historial.
+  // siguiente cambio del historial, también cuando se vacía (resetHistory)
+  // al cambiar de atlas o de clasificación, o al caer de los datos reales a
+  // los de demostración: su «Deshacer» ya no tendría nada que deshacer.
+  // Por eso la suscripción es una sola, desde el montaje, y no una por cada
+  // `source`: en React 19 las bajas de los efectos corren antes que las
+  // altas, así que el efecto de arriba vaciaría el historial entre la baja
+  // de la suscripción anterior y el alta de la nueva, y nadie retiraría el
+  // aviso.
   const undoButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const loadedIds = new Set(source.kind === "loading" ? [] : source.nodes.map((node) => node.id));
     // Tras el «Deshacer» del aviso, el foco va al botón ↶ si se ve (con
     // Filtros plegado no está), y si no, al título de la vista grande.
     // Nunca a «Importar».
@@ -267,6 +296,7 @@ export default function App() {
     };
     return useHistoryStore.subscribe((state, previous) => {
       if (state.version === previous.version) return;
+      const loadedIds = loadedIdsRef.current;
       const notice = state.lastStep && stepNotice(state.lastStep.before, state.lastStep.after, (id) => loadedIds.has(id));
       if (!notice) {
         // Si el foco estaba en el aviso, no se pierde con él.
@@ -286,7 +316,7 @@ export default function App() {
         }),
       );
     });
-  }, [source]);
+  }, []);
 
   // Ctrl+K (⌘K) lleva al buscador de regiones, en la vista Atlas (D4 de
   // docs/decisiones-diseno.md; spec 5.8). Con Filtros plegado, primero lo
@@ -330,7 +360,7 @@ export default function App() {
       showNotice(IMPORT_TOAST, {
         tone: "error",
         message: "No se pudo abrir o leer el archivo.",
-        details: e instanceof Error ? e.message : String(e),
+        details: String(e),
       });
       return;
     }
@@ -345,7 +375,7 @@ export default function App() {
       showNotice(IMPORT_TOAST, {
         tone: "error",
         message: "El archivo elegido no contiene un JSON válido.",
-        details: `Archivo: ${picked.path}\n${e instanceof Error ? e.message : String(e)}`,
+        details: `Archivo: ${picked.path}\n${String(e)}`,
       });
       return;
     }
@@ -690,7 +720,7 @@ const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewId, string> = {
 // de 0,144: la frase no promete diferencias que no se ven.
 const WORKSPACE_VIEW_DESCRIPTIONS: Record<WorkspaceViewId, string> = {
   connectogram:
-    "Cada punto del círculo es una región, con el color de su red, y cada línea, una conexión. El grosor solo cambia con pesos mayores que 0,17: por debajo, todas las líneas miden lo mismo.",
+    "Cada punto del círculo es una región, con el color de su red, y cada línea, una conexión. El grosor solo cambia con pesos mayores que 0.17: por debajo, todas las líneas miden lo mismo.",
   hemispheres:
     "Vista desde arriba: la parte anterior arriba y el hemisferio izquierdo a la izquierda. Verde: conexiones dentro de un hemisferio; rosa: entre los dos.",
   brain3d:

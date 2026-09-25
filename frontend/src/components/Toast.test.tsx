@@ -39,6 +39,6 @@ describe("ToastRegion", () => {
   it("«Detalles» solo aparece si hay texto técnico", () => {
     const html = renderToStaticMarkup(<ToastRegion toasts={TOASTS} onDismiss={noop} />);
     expect(html.match(/<summary>Detalles<\/summary>/g)).toHaveLength(1);
-    expect(html).toContain("<pre>pila</pre>");
+    expect(html).toContain('<pre tabindex="0">pila</pre>');
   });
 });

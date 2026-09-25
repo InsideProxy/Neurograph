@@ -3,37 +3,37 @@
 // sin DOM.
 import { NETWORK_LABELS } from "../theme/networks";
 import type { GraphConnection, GraphNode } from "../types/domain";
-import { formatMinWeight } from "./weightScale";
 
 // Número con los miles separados por un espacio duro, como pide la
 // ortografía del español (64 620). Los de cuatro cifras van sin separar
-// (1047).
+// (1047). En el código, el espacio duro va escrito con su escape a
+// propósito: a la vista no se distinguiría de un espacio normal.
 export function formatCount(value: number): string {
   const digits = String(Math.round(value));
   return digits.length <= 4 ? digits : digits.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
 }
 
-// Nombre de una red sin el par\u00e9ntesis final de su clasificaci\u00f3n: \u00abVisual\u00bb
-// y no \u00abVisual (Cole-Anticevic)\u00bb, porque la clasificaci\u00f3n ya se ve en el
-// bot\u00f3n \u00abRedes\u00bb de la barra. Antes este recorte estaba dentro de
-// FilterPanel (decisi\u00f3n 74).
+// Nombre de una red sin el paréntesis final de su clasificación: «Visual»
+// y no «Visual (Cole-Anticevic)», porque la clasificación ya se ve en el
+// botón «Redes» de la barra. Antes este recorte estaba dentro de
+// FilterPanel (decisión 74).
 export function networkShortLabel(network: string): string {
   const label = Object.hasOwn(NETWORK_LABELS, network) ? NETWORK_LABELS[network] : network;
   return label.replace(/\s*\([^()]*\)\s*$/, "") || label;
 }
 
-// Texto de la selecci\u00f3n en el panel de filtros (spec 5.3).
+// Texto de la selección en el panel de filtros (spec 5.3).
 export function selectionStatusText(regionCount: number, connectionSelected: boolean): string {
   if (regionCount > 0) {
-    return regionCount === 1 ? "1 regi\u00f3n seleccionada" : `${regionCount} regiones seleccionadas`;
+    return regionCount === 1 ? "1 región seleccionada" : `${regionCount} regiones seleccionadas`;
   }
-  return connectionSelected ? "1 conexi\u00f3n seleccionada" : "Ninguna regi\u00f3n seleccionada";
+  return connectionSelected ? "1 conexión seleccionada" : "Ninguna región seleccionada";
 }
 
-// \u00abN de M conexiones pasan los filtros\u00bb, bajo el peso m\u00ednimo (spec 5.3).
-// El spec dec\u00eda \u00abSe ven N de M\u00bb, pero las vistas pueden dibujar menos (D4).
+// «N de M conexiones pasan los filtros», bajo el peso mínimo (spec 5.3).
+// El spec decía «Se ven N de M», pero las vistas pueden dibujar menos (D4).
 export function connectionsPassingText(visible: number, loaded: number): string {
-  const noun = loaded === 1 ? "conexi\u00f3n" : "conexiones";
+  const noun = loaded === 1 ? "conexión" : "conexiones";
   const verb = visible === 1 ? "pasa" : "pasan";
   return `${formatCount(visible)} de ${formatCount(loaded)} ${noun} ${verb} los filtros`;
 }
@@ -45,16 +45,16 @@ export function hemisphereLabel(hemisphere: GraphNode["hemisphere"]): string {
 }
 
 // La ingesta de HCP-MMP1.0 guarda el nombre con el hemisferio al final:
-// \u00abArea IFJa (hemisferio derecho)\u00bb (backend/ingestion/neuroimaging/hcp_mmp1.py).
+// «Area IFJa (hemisferio derecho)» (backend/ingestion/neuroimaging/hcp_mmp1.py).
 // Donde el hemisferio se muestra aparte, no se repite en el nombre.
 const HEMISPHERE_SUFFIX = /\s*\(hemisferio (izquierdo|derecho)\)\s*$/;
 
-// Lo principal de una regi\u00f3n (la abreviatura, o el nombre si no la tiene) y
-// el nombre que la acompa\u00f1a, o null si no a\u00f1ade nada. Mismo criterio que
+// Lo principal de una región (la abreviatura, o el nombre si no la tiene) y
+// el nombre que la acompaña, o null si no añade nada. Mismo criterio que
 // abbreviationAddsInformation (logic/regionLabel.ts): un nombre que empieza
 // por la abreviatura va solo. El sufijo del hemisferio solo se quita si
-// coincide con el de la regi\u00f3n: una regi\u00f3n sin hemisferio (puede ser NULL,
-// migraci\u00f3n 0008) o con otro conserva el nombre entero.
+// coincide con el de la región: una región sin hemisferio (puede ser NULL,
+// migración 0008) o con otro conserva el nombre entero.
 export function regionTitleParts(node: Pick<GraphNode, "abbreviation" | "label" | "hemisphere">): {
   main: string;
   secondary: string | null;
@@ -67,31 +67,53 @@ export function regionTitleParts(node: Pick<GraphNode, "abbreviation" | "label" 
   return { main: node.abbreviation, secondary: name };
 }
 
-// Recuadro de lectura con una regi\u00f3n seleccionada (spec 5.4, como en la
-// maqueta): cu\u00e1ntas de sus conexiones pasan los filtros, con el umbral de
-// peso si lo hay, escrito como en Filtros (formatMinWeight, que nunca
-// redondea hacia arriba).
-export function regionPassingText(count: number, minWeight: number): string {
-  const text = count === 1 ? "1 conexi\u00f3n pasa los filtros" : `${formatCount(count)} conexiones pasan los filtros`;
-  return minWeight > 0 ? `${text} (peso \u2265 ${formatMinWeight(minWeight)})` : text;
+// Un umbral de peso escrito sin exagerarlo: dos cifras significativas,
+// truncadas, nunca redondeadas hacia arriba. Con un umbral de 0.0152, «peso
+// ≥ 0.015», y no «0.02», que daría a entender que una conexión de 0.016 no
+// pasa, cuando sí pasa. Desde 0.01, con decimales («0.015», «0.5»); por
+// debajo, en notación exponencial con una cifra decimal («3.9e-3»,
+// «1.0e-3»), como el valor de «Peso mínimo» en Filtros (formatMinWeight, en
+// logic/weightScale.ts, que sí redondea al más cercano). Se trunca la
+// escritura decimal más corta del número (toExponential sin argumento), no
+// su valor binario: 0.29 se guarda como 0.28999… y debe dar «0.29».
+export function formatWeightAtMost(value: number): string {
+  if (!(value > 0)) return "0";
+  const [mantissa, exponentText] = value.toExponential().split("e");
+  const exponent = Number(exponentText);
+  const digits = mantissa.replace(".", "").padEnd(2, "0");
+  const truncated = `${digits[0]}.${digits[1]}e${exponent}`;
+  return exponent >= -2 ? String(Number(truncated)) : truncated;
 }
 
-// Flecha de una conexi\u00f3n: \u00ab\u2192\u00bb solo para la conectividad efectiva, la \u00fanica
-// con sentido (principio 1 del spec), y \u00ab\u2194\u00bb para las dem\u00e1s. La usan el
-// t\u00edtulo del detalle, los recuadros de lectura y la lista de conectividad
+// Recuadro de lectura con una región seleccionada (spec 5.4, como en la
+// maqueta): cuántas de sus conexiones pasan los filtros, con el umbral de
+// peso si lo hay, sin exagerarlo (formatWeightAtMost). Por encima del tope
+// de dibujo (logic/renderSafety.ts), las vistas no dibujan ninguna
+// conexión, y el recuadro lo dice (notDrawn).
+export function regionPassingText(count: number, minWeight: number, notDrawn = false): string {
+  const text = count === 1 ? "1 conexión pasa los filtros" : `${formatCount(count)} conexiones pasan los filtros`;
+  const notes: string[] = [];
+  if (minWeight > 0) notes.push(`peso ≥ ${formatWeightAtMost(minWeight)}`);
+  if (notDrawn && count > 0) notes.push(count === 1 ? "no se dibuja" : "no se dibujan");
+  return notes.length > 0 ? `${text} (${notes.join("; ")})` : text;
+}
+
+// Flecha de una conexión: «→» solo para la conectividad efectiva, la única
+// con sentido (principio 1 del spec), y «↔» para las demás. La usan el
+// título del detalle, los recuadros de lectura y la lista de conectividad
 // inducida (D4).
 export function connectionArrow(type: GraphConnection["type"]): string {
-  return type === "effective" ? "\u2192" : "\u2194";
+  return type === "effective" ? "→" : "↔";
 }
 
-// Abreviaturas que ya dicen el lado: \u00abL_SFG_7_1\u00bb (Brainnetome),
-// \u00abl_default_12\u00bb (Gordon 333), \u00abl_amygdala\u00bb (subc\u00f3rtex del HCP).
+// Abreviaturas que ya dicen el lado: «L_SFG_7_1» (Brainnetome),
+// «l_default_12» (Gordon 333), «l_amygdala» (subcórtex del HCP).
 export const SIDE_IN_ABBREVIATION = /^[lr]_|_[lr]$/i;
 
-// Nombre corto de una regi\u00f3n con su lado, \u00abIFJa (der.)\u00bb, porque las
-// abreviaturas de HCP-MMP1.0 no lo llevan. Sin lado si la regi\u00f3n no tiene
-// hemisferio o si su abreviatura ya lo dice. El mismo formato en el t\u00edtulo
-// de una conexi\u00f3n y en el historial de deshacer.
+// Nombre corto de una región con su lado, «IFJa (der.)», porque las
+// abreviaturas de HCP-MMP1.0 no lo llevan. Sin lado si la región no tiene
+// hemisferio o si su abreviatura ya lo dice. El mismo formato en el título
+// de una conexión y en el historial de deshacer.
 export function regionNameWithSide(node: Pick<GraphNode, "abbreviation" | "label" | "hemisphere">): string {
   const main = regionTitleParts(node).main;
   if (node.hemisphere === null || (node.abbreviation !== null && SIDE_IN_ABBREVIATION.test(node.abbreviation))) {
@@ -100,10 +122,10 @@ export function regionNameWithSide(node: Pick<GraphNode, "abbreviation" | "label
   return `${main} (${node.hemisphere === "L" ? "izq." : "der."})`;
 }
 
-// T\u00edtulo de una conexi\u00f3n en el panel de detalle (D4; spec 5.5): \u00abIFJa \u2194
-// 8C\u00bb, o \u00abIFJa \u2192 8C\u00bb si es efectiva. Si las dos regiones se llaman igual o
-// est\u00e1n en hemisferios distintos, cada una lleva su lado: \u00abV1 (izq.) \u2194 V1
-// (der.)\u00bb. Una regi\u00f3n que no est\u00e1 entre las cargadas se nombra con su id.
+// Título de una conexión en el panel de detalle (D4; spec 5.5): «IFJa ↔
+// 8C», o «IFJa → 8C» si es efectiva. Si las dos regiones se llaman igual o
+// están en hemisferios distintos, cada una lleva su lado: «V1 (izq.) ↔ V1
+// (der.)». Una región que no está entre las cargadas se nombra con su id.
 export function connectionTitle(
   connection: Pick<GraphConnection, "source" | "target" | "type">,
   nodeById: ReadonlyMap<string, Pick<GraphNode, "abbreviation" | "label" | "hemisphere">>,

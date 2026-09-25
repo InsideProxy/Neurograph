@@ -36,7 +36,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    del botón de exportar, con los mismos valores. */
 .brain3d-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
 .brain3d-surface-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.82rem; }
-.brain3d-surface-controls select:disabled { opacity: 0.5; }
 .brain3d-surface-status { margin: 0 0 4px; flex: 0 0 auto; font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; }
 .brain3d-surface-status--error { color: var(--error); }
 /* display:flex column (30/08/2026): el botón "Exportar JPEG" de Brain3D.tsx vive dentro de este contenedor de altura fija, por encima del lienzo -- sin flex, el <Canvas> (que ocupa 100% de alto) se sale del contenedor en vez de compartir el espacio con el botón. */
@@ -406,7 +405,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .topbar__tab-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
 .topbar__tab--closable .topbar__tab-btn { padding-right: 2px; }
 /* Las síntesis de IA conservan su naranja: tercera categoría visual
-   (decisión de la usuaria, 11/09/2026). Solo el icono del botón
+   (decisión del usuario, 11/09/2026). Solo el icono del botón
    principal: .topbar__tab-close es hermano, fuera de .topbar__tab-btn,
    así que este selector no lo toca a él. */
 .topbar__tab--closable .topbar__tab-btn .icon { color: var(--synthesis); }
@@ -455,10 +454,11 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Mientras TopBar mide (data-measuring, refit en components/TopBar.tsx):
    sin etiquetas emergentes, para que una pestaña de síntesis con el foco
    del teclado no infle scrollWidth con su propio ancho al probar cada
-   nivel. content: none, no display: none -- quita el pseudo-elemento
-   entero (con su relleno y su borde); display: none solo lo ocultaría a
-   la vista sin sacarlo del cálculo. Mismos selectores que las tres reglas
-   de arriba, con [data-measuring] de más para ganarles en especificidad. */
+   nivel. content: none hace que el pseudo-elemento no se genere, así que
+   su caja (con su relleno y su borde) no cuenta en el cálculo; display:
+   none también le quitaría la caja y serviría igual. Mismos selectores
+   que las tres reglas de arriba, con [data-measuring] de más para ganarles
+   en especificidad. */
 .topbar[data-measuring][data-collapse~="tabs"] .topbar__tab:not(.topbar__tab--active):not(.topbar__tab--closable) .topbar__tab-btn:focus-visible::after,
 .topbar[data-measuring][data-collapse~="import"] .topbar__import:focus-visible::after,
 .topbar[data-measuring] .topbar__tab--closable .topbar__tab-btn:focus-visible::after { content: none; }
@@ -481,21 +481,29 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .data-status--real .data-status__dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
 .data-status--demo .data-status__dot { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }
 
-/* Avisos flotantes (spec 5.6), encima de todo: arriba a la derecha, bajo
-   la barra y sobre la columna derecha, con su ancho. Así no tapan la
-   vista grande ni su recuadro de lectura. top usa --topbar-bottom (la
-   publica TopBar tras medirse, ver refit en components/TopBar.tsx) y no
-   un valor fijo, porque la barra puede ocupar dos filas si no cabe en
-   una (data-collapse~="tabs"): con un valor fijo el aviso quedaría
-   encima de la segunda fila. */
-.toast-region { position: fixed; top: calc(var(--topbar-bottom, 56px) + 12px); right: 12px; z-index: 40; display: flex; flex-direction: column; gap: 8px; width: min(300px, calc(100vw - 24px)); }
-.toast { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel-bg); box-shadow: var(--shadow); text-align: left; }
+/* Avisos flotantes (spec 5.6): arriba a la derecha, bajo la barra y sobre
+   la columna derecha, con su ancho. Así no tapan la vista grande ni su
+   recuadro de lectura. Escala de z-index: las vistas, 1 como mucho; los
+   avisos, 10; lo que se abre encima (el panel de Ajustes, 20, y las listas
+   del buscador, 20, y del contexto de datos, 25), por encima de ellos, y
+   las etiquetas emergentes, 30. top usa --topbar-bottom (la publica TopBar
+   tras medirse, ver refit en components/TopBar.tsx) y no un valor fijo,
+   porque la barra puede ocupar dos filas si no cabe en una (data-wrapped):
+   con un valor fijo el aviso quedaría encima de la segunda fila.
+   Si no caben en la ventana, se desplazan por dentro. overflow recorta en
+   el borde del relleno, así que el relleno deja sitio a las sombras (hasta
+   22 px por debajo y 12 a los lados, --shadow), y top, right y width lo
+   compensan: los avisos quedan donde estaban, a 12 px de la barra y del
+   borde. La región no recoge el ratón, solo los avisos: su relleno, que no
+   se ve, no tapa lo que hay debajo. */
+.toast-region { position: fixed; top: calc(var(--topbar-bottom, 56px) + 8px); right: 0; z-index: 10; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; width: min(324px, 100vw); max-height: calc(100svh - var(--topbar-bottom, 56px) - 8px); overflow-y: auto; padding: 4px 12px 22px; pointer-events: none; }
+.toast { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel-bg); box-shadow: var(--shadow); text-align: left; pointer-events: auto; }
 .toast__icon { margin-top: 1px; color: var(--text-h); }
 .toast--error .toast__icon { color: var(--error); }
 .toast__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .toast__message { margin: 0; font-size: 0.72rem; font-weight: 600; line-height: 1.4; color: var(--text-h); }
 .toast__details > summary { cursor: pointer; font-size: 0.7rem; color: var(--text-muted); }
-.toast__details pre { max-height: 10rem; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: 6px; background: var(--code-bg); color: var(--text); font-family: var(--mono); font-size: 0.7rem; white-space: pre-wrap; word-break: break-word; }
+.toast__details pre { max-height: 10rem; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: 6px; background: var(--code-bg); color: var(--text); font-family: var(--mono); font-size: 0.7rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .toast__buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .toast__close { height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--code-bg); color: var(--text); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
 .toast__close:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
@@ -539,8 +547,12 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filters__type { min-height: 26px; }
 .filters input[type="checkbox"] { flex-shrink: 0; width: 14px; height: 14px; margin: 0; }
 /* Anillo neutro alrededor del color (principio 6): así se ven también los
-   colores extremos, como el negro de la saliencia de Gordon 333. */
-.filters__swatch { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+   colores extremos, como el negro de la saliencia de Gordon 333. Es de
+   --text-muted, que llega a 3:1 con los fondos de los paneles en los
+   cuatro temas (WCAG 1.4.11); --text-faint no llegaba en Claro. El mismo
+   anillo llevan los demás puntos de color de red: .legend-swatch,
+   .network-tag__dot, .detail__connection-dot y .region-search__dot. */
+.filters__swatch { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .filters__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filters__count { flex-shrink: 0; font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* ◎ y + se ven al pasar el ratón por la fila o al llegar a ella con el
@@ -554,6 +566,17 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filters__network:has(:focus-visible) .filters__count { display: none; }
 .filters__icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: none; border-radius: 6px; background: var(--hover); color: var(--text); cursor: pointer; }
 .filters__icon-btn:hover { background: var(--border); color: var(--text-h); }
+/* En una pantalla táctil no hay ratón que pase por encima: ◎ y + se ven
+   siempre, y el número de regiones también, junto a ellos (un toque deja
+   la fila «con el ratón encima», y el número no debe desaparecer por eso).
+   Mismos selectores que las reglas de arriba, para ganarles por ir
+   después; cada uno en su regla, porque sin :has() se descarta la regla
+   entera. */
+@media (hover: none) {
+  .filters__network:not(:hover):not(:has(:focus-visible)) .filters__actions { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
+  .filters__network:hover .filters__count { display: inline; }
+  .filters__network:has(:focus-visible) .filters__count { display: inline; }
+}
 /* El valor del peso va en una sola línea: junto al título si cabe y, si
    no, en la suya. Con la letra de ancho fijo, «0 (sin filtro, se
    muestra todo)» mide 252 px y no cabe en los 220 del panel; con la
@@ -572,7 +595,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* El mismo anillo en las muestras de las vistas de tractografía, que
    siguen con .legend-swatch: en Claro, los amarillos casi no se veían
    sobre el blanco (D3, «Limitaciones conocidas»). */
-.legend-swatch { box-shadow: 0 0 0 1px var(--text-faint); }
+.legend-swatch { box-shadow: 0 0 0 1px var(--text-muted); }
 
 /* Herramientas de cada vista (spec 5.4): lupa, exportar y «Ocultar no
    seleccionados» siguen dentro de su vista, con su estado. Si el
@@ -621,18 +644,36 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 /* Recuadro de lectura del connectograma con una región seleccionada (spec
    5.4): la región a la izquierda, su recuento a la derecha y la pista
-   debajo. El recuadro conserva su altura fija (decisión 74b): lo que no
-   cabe se desplaza dentro. */
-.readout-selection { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; }
-.readout-selection__count { font-size: 0.92em; color: var(--text); white-space: nowrap; }
-.readout-selection__hint { flex-basis: 100%; font-size: 0.92em; color: var(--text-muted); }
+   debajo. El recuadro conserva su altura fija (decisión 74b), en la que
+   caben dos líneas. Si la región y el recuento no caben en una, como a
+   1280 px, el recuento baja a la segunda y la pista va con él. Si ni así
+   caben, con la vista grande de menos de 30rem (a 1024 px con los filtros
+   desplegados), la pista no se muestra. Lo que aun así no cabe se
+   desplaza dentro. */
+.readout-selection { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
+.readout-selection__count { margin-left: auto; font-size: 0.92em; color: var(--text); white-space: nowrap; }
+.readout-selection__hint { font-size: 0.92em; color: var(--text-muted); }
+@container (max-width: 30rem) {
+  .readout-selection__hint { display: none; }
+}
 
 /* Etiqueta de red y resumen de una región (spec 5.4 y 5.5). Fondo neutro:
    --accent-bg es morado en Original y parecería «seleccionado».
-   position: relative, para el nombre completo oculto que lleva dentro. */
-.network-tag { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 1.7em; margin-left: 8px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--code-bg); color: var(--text-h); font-size: 0.92em; line-height: 1; white-space: nowrap; vertical-align: middle; }
-.network-tag__dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+   position: relative, para el nombre completo oculto que lleva dentro.
+   Los nombres largos (Yeo, Power) no caben en el panel de detalle ni, a
+   veces, en el recuadro de lectura: la etiqueta se estrecha hasta el ancho
+   de su contenedor, menos su margen, y el nombre acaba en «…». El completo
+   sigue en el title y en el texto oculto. El nombre lleva más interlineado
+   que la etiqueta: con overflow: hidden, a line-height 1 se cortarían los
+   trazos que bajan de la línea (g, j, p). */
+.network-tag { position: relative; display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; max-width: calc(100% - 8px); height: 1.7em; margin-left: 8px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--code-bg); color: var(--text-h); font-size: 0.92em; line-height: 1; white-space: nowrap; vertical-align: middle; }
+.network-tag__dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
+.network-tag__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
 .region-summary strong { color: var(--text-h); }
+/* En el recuadro con una región seleccionada, el resumen es un elemento de
+   la fila flexible: sin min-width: 0 no encogería por debajo del ancho
+   entero de su etiqueta de red. */
+.readout-selection .region-summary { min-width: 0; }
 
 /* Panel de detalle (spec 5.5). position: relative: el texto oculto de
    sus listas (.visually-hidden) se coloca respecto al panel, que se
@@ -646,11 +687,15 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .detail-panel .detail__main { font-size: 1.44rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-h); overflow-wrap: anywhere; }
 .detail-panel .detail__secondary { font-size: 0.78rem; font-weight: 400; color: var(--text); }
 .detail-panel .detail__tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.detail-panel .detail__tags .network-tag { height: 24px; margin-left: 0; padding: 0 10px; font-size: 0.7rem; }
+.detail-panel .detail__tags .network-tag { max-width: 100%; height: 24px; margin-left: 0; padding: 0 10px; font-size: 0.7rem; }
 .detail-panel .detail__tag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.7rem; color: var(--text); }
 .detail-panel .detail__note { display: flex; gap: 8px; margin: 0; font-size: 0.7rem; line-height: 1.45; color: var(--text-muted); }
 .detail-panel .detail__note .icon { margin-top: 2px; }
-.detail-panel .detail__section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+/* La cabecera de una sección pasa a dos líneas si su título y su pista no
+   caben juntos. «Conexiones» y su número no se separan: el título de la
+   lista de conexiones no se parte (los demás títulos, más largos, sí). */
+.detail-panel .detail__section-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+.detail-panel .detail__heading--count { white-space: nowrap; }
 .detail-panel .detail__count { margin-left: 6px; font-weight: 400; letter-spacing: 0; }
 .detail-panel .detail__hint { font-size: 0.7rem; color: var(--text-muted); }
 .detail-panel .detail__connections { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
@@ -661,7 +706,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    todo el sitio. */
 .detail-panel .detail__connection { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: "dot name name" ". bar weight" ". meta meta"; align-items: center; column-gap: 8px; row-gap: 3px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .detail-panel .detail__connection:last-child { border-bottom: none; }
-.detail-panel .detail__connection-dot { grid-area: dot; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.detail-panel .detail__connection-dot { grid-area: dot; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .detail-panel .detail__connection-name { grid-area: name; font-size: 0.7rem; font-weight: 600; color: var(--text-h); overflow-wrap: anywhere; }
 .detail-panel .detail__connection-direction { font-weight: 400; color: var(--text-muted); }
 .detail-panel .detail__connection-weight { grid-area: weight; font-family: var(--mono); font-size: 0.7rem; color: var(--text); }
@@ -690,16 +735,24 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .detail-panel .detail__legend { max-width: 100%; overflow-x: auto; }
 .ws-detail .detail-panel--empty { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.72rem; line-height: 1.5; }
 
-/* Deshacer y rehacer (spec 5.7), en la fila de selección de Filtros. Con
-   el foco del teclado, la etiqueta emergente (data-tip) se ve también:
-   hacia la izquierda y como mucho de 12rem, para no salirse del panel. */
-.filters__selection { flex-wrap: wrap; }
+/* Deshacer y rehacer (spec 5.7), en la fila de selección de Filtros. La
+   fila ocupa siempre dos líneas: el texto de la selección en la primera, y
+   «Limpiar», ↶ y ↷ en la segunda, a la derecha. En sus 200 px no caben
+   juntos, y así la lista de redes no se mueve al cambiar la selección. El
+   texto no se parte: si algún día no cupiera, acabaría en «…».
+   Con el foco del teclado, la etiqueta emergente de ↶ y ↷ (data-tip) se ve
+   también, bajo la fila y con su ancho. Anclada al botón se cortaba por la
+   izquierda: el panel se desplaza por dentro (overflow-y: auto, que obliga
+   también a overflow-x) y la etiqueta, más ancha que el hueco a la
+   izquierda del botón, empezaba fuera. */
+.filters__selection { position: relative; flex-wrap: wrap; row-gap: 4px; }
+.filters__selection-text { flex: 1 0 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filters__selection-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .history { display: inline-flex; gap: 2px; }
-.history__btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-h); cursor: pointer; }
+.history__btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-h); cursor: pointer; }
 .history__btn:hover:not([aria-disabled="true"]) { background: var(--hover); }
 .history__btn[aria-disabled="true"] { color: var(--text-faint); cursor: default; }
-.history__btn:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; width: max-content; max-width: 12rem; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; line-height: 1.35; text-align: left; white-space: normal; pointer-events: none; }
+.history__btn:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; box-sizing: border-box; width: auto; max-width: none; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; line-height: 1.35; text-align: left; white-space: normal; pointer-events: none; }
 /* Botón de acción de un aviso, como «Deshacer». */
 .toast__action { height: 30px; padding: 0 10px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-bg); color: var(--text-h); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
 .toast__action:hover { border-color: var(--accent); }
@@ -722,7 +775,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    y sus textos grises pasan a --text, que sí llega a 4,5:1 sobre él. */
 .region-search__option--active { background: var(--hover); color: var(--text-h); outline: 2px solid var(--accent); outline-offset: -2px; }
 .region-search__option--active .region-search__name, .region-search__option--active .region-search__selected { color: var(--text); }
-.region-search__dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.region-search__dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-muted); }
 .region-search__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .region-search__label { font-weight: 600; color: var(--text-h); }
 .region-search__name { color: var(--text-muted); overflow-wrap: anywhere; }

@@ -7,7 +7,7 @@
 // añadiendo. Si lo buscado está en redes ocultas, lo dice en una línea bajo
 // el campo, con un botón para mostrarlas: una lista (listbox) no puede
 // llevar botones. Ctrl+K lleva aquí (useRegionSearchShortcut, desde App).
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type Ref } from "react";
 import {
   NO_MATCH_TEXT,
   defaultActiveIndex,
@@ -21,6 +21,7 @@ import { useSelectionStore } from "../state/selection";
 import { useDrawColors } from "../theme/useDrawColors";
 import type { GraphNode } from "../types/domain";
 import { Icon } from "./Icon";
+import { useMouseMoved } from "./useMouseMoved";
 
 interface RegionSearchViewProps {
   baseId: string;
@@ -37,8 +38,9 @@ interface RegionSearchViewProps {
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onFocusChange: (focused: boolean) => void;
   onChoose: (index: number) => void;
-  // El ratón pasa por una sugerencia: pasa a ser la activa.
-  onHover: (index: number) => void;
+  // El ratón pasa por una sugerencia: pasa a ser la activa. Con el evento,
+  // para descartar los mousemove sintéticos (useMouseMoved).
+  onHover: (index: number, event: MouseEvent<HTMLLIElement>) => void;
   onShowNetworks: (networks: readonly string[]) => void;
 }
 
@@ -114,7 +116,7 @@ export function RegionSearchView(props: RegionSearchViewProps) {
               role="option"
               aria-selected={index === active}
               onClick={() => onChoose(index)}
-              onMouseMove={() => onHover(index)}
+              onMouseMove={(event) => onHover(index, event)}
             >
               <span className="region-search__dot" style={{ backgroundColor: networkColor(suggestion.network) }} aria-hidden="true" />
               <span className="region-search__text">
@@ -152,6 +154,8 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
   // DataContextMenu).
   const scrollActiveRef = useRef(true);
   const baseId = useId();
+  // Si el ratón se ha movido de verdad (onHover, más abajo).
+  const mouseMoved = useMouseMoved();
 
   const result = useMemo(() => searchRegions(nodes, query, hiddenNetworks), [nodes, query, hiddenNetworks]);
   const { suggestions } = result;
@@ -233,7 +237,11 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
     setFocused(isFocused);
   };
 
-  const onHover = (index: number) => {
+  // Solo con un movimiento de verdad del ratón: al desplazarse la lista con
+  // el teclado, WebKit envía un mousemove sintético que, si no, llevaría la
+  // sugerencia activa a la que ha quedado bajo el ratón.
+  const onHover = (index: number, event: MouseEvent<HTMLLIElement>) => {
+    if (!mouseMoved(event)) return;
     scrollActiveRef.current = false;
     setActive(index);
   };

@@ -33,7 +33,7 @@ interface TopBarProps {
   importRef?: Ref<HTMLButtonElement>;
 }
 
-// Logotipo de la maqueta (decisión de la usuaria, 24/09/2026; principio 4
+// Logotipo de la maqueta (decisión del usuario, 24/09/2026; principio 4
 // del spec): un anillo con cuatro nodos unidos. El anillo y las uniones
 // van en los grises del tema; los nodos llevan colores de red de
 // Cole-Anticevic (Lenguaje, Por defecto, Frontoparietal y Visual), la
@@ -71,47 +71,53 @@ function Logo() {
 // de App, por ejemplo al mover el deslizador de peso.
 const lastFit = new WeakMap<HTMLElement, string>();
 
-// Alto de una fila (.topbar min-height en App.css): si al medir la barra
-// mide más que esto, es que el plegado completo no ha bastado y ha
-// pasado a dos filas (data-collapse~="tabs" con flex-wrap: wrap), no que
-// su contenido sea alto por otro motivo.
-const TOP_BAR_ROW_HEIGHT = 56;
+// Alto de una fila: el min-height de .topbar en App.css, leído del estilo
+// calculado para no repetir aquí el número. Si al medir la barra mide
+// más, es que el plegado completo no ha bastado y ha pasado a dos filas
+// (data-collapse~="tabs" con flex-wrap: wrap), no que su contenido sea alto
+// por otro motivo.
+function rowHeight(bar: HTMLElement): number {
+  return Number.parseFloat(getComputedStyle(bar).minHeight);
+}
 
-// Dónde acaba la barra, sin depender del scroll (revisión de la Task 2):
-// getBoundingClientRect().bottom es relativo a la ventana visible y
-// cambia al hacer scroll, pero el aviso flotante de la Task 3 que lee
-// --topbar-bottom es position: fixed, así que necesita un valor relativo
-// al documento. offsetTop/offsetHeight sí lo son, relativos al
-// offsetParent -- hoy <body> (sin position ni margen: el resultado es el
-// mismo), pero se suma su offsetTop por si algún día deja de estarlo.
-function barBottomOffset(bar: HTMLElement): number {
-  const parent = bar.offsetParent;
-  const parentOffset = parent instanceof HTMLElement ? parent.offsetTop : 0;
-  return bar.offsetTop + bar.offsetHeight + parentOffset;
+// Dónde acaba la barra, relativo al documento (revisión de la Task 2): el
+// aviso flotante que lee --topbar-bottom es position: fixed, y la barra
+// está arriba del todo, así que su sitio es el de la página sin desplazar.
+// getBoundingClientRect() lo da respecto a la ventana visible, que cambia
+// al hacer scroll, y window.scrollY lo pasa al documento. Es la forma
+// general: no depende de qué elemento sea el offsetParent.
+function barBottom(bar: HTMLElement): number {
+  return bar.getBoundingClientRect().bottom + window.scrollY;
 }
 
 // Mide la barra y aplica el menor nivel de compactación que cabe en una
 // fila (el cálculo en sí, sin DOM, vive en logic/topBarFit.ts: aquí solo
-// el envoltorio que toca el elemento real). data-measuring (App.css)
-// oculta las etiquetas emergentes mientras se mide: si una pestaña de
-// síntesis tiene el foco del teclado, su propia etiqueta no debe inflar
-// scrollWidth en ningún nivel que se pruebe. Tras aplicar un nivel
-// nuevo: data-wrapped se activa solo si de verdad ha pasado a dos filas
-// (App.css usa data-collapse~="tabs" para plegar y data-wrapped para el
-// aire vertical entre filas -- no son lo mismo: a veces todo plegado
-// sigue cabiendo en una fila), y se publica dónde acaba la barra en
-// --topbar-bottom: el aviso flotante de la Task 3 se coloca justo
-// debajo en vez de a una distancia fija, porque la altura cambia con el
-// tema, el zoom o una segunda fila plegada.
+// el envoltorio que toca el elemento real). Salvo con force (al cargar una
+// fuente), si ni el ancho ni el contenido han cambiado desde la última
+// medida (fitSignature), no toca nada, ni siquiera los atributos: la barra
+// se vuelve a pintar con cada render de App. Mientras mide, data-measuring
+// (App.css) oculta las etiquetas
+// emergentes: si una pestaña de síntesis tiene el foco del teclado, su
+// propia etiqueta no debe inflar scrollWidth en ningún nivel que se
+// pruebe. Tras aplicar un nivel nuevo: data-wrapped se activa solo si de
+// verdad ha pasado a dos filas (App.css usa data-collapse~="tabs" para
+// plegar y data-wrapped para el aire vertical entre filas -- no son lo
+// mismo: a veces todo plegado sigue cabiendo en una fila), y se quita
+// antes de medir el alto, porque su relleno lo aumenta. Por último se
+// publica dónde acaba la barra en --topbar-bottom: el aviso flotante se
+// coloca justo debajo en vez de a una distancia fija, porque la altura
+// cambia con el tema, el zoom o una segunda fila plegada.
 function refit(bar: HTMLElement | null, force = false) {
   if (!bar) return;
+  if (!force && lastFit.get(bar) === fitSignature(bar)) return;
   bar.dataset.measuring = "";
-  const level = fitTopBar(bar, lastFit.get(bar), force);
+  // Ya se sabe que hay que medir: sin firma anterior y con force.
+  fitTopBar(bar, undefined, true);
   delete bar.dataset.measuring;
-  if (level === null) return;
   lastFit.set(bar, fitSignature(bar));
-  bar.toggleAttribute("data-wrapped", bar.offsetHeight > TOP_BAR_ROW_HEIGHT);
-  document.documentElement.style.setProperty("--topbar-bottom", `${barBottomOffset(bar)}px`);
+  bar.removeAttribute("data-wrapped");
+  bar.toggleAttribute("data-wrapped", bar.offsetHeight > rowHeight(bar));
+  document.documentElement.style.setProperty("--topbar-bottom", `${barBottom(bar)}px`);
 }
 
 export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProps) {
@@ -145,8 +151,10 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
   // fija, 100svh) esto evita el aviso del todo, porque el alto del
   // contenedor no depende del de la barra; en las demás vistas (.app
   // crece con su contenido) el contenedor sí sigue el alto de la barra,
-  // así que el aviso podría saltar alguna vez -- raro, porque fitTopBar
-  // converge de inmediato.
+  // así que el aviso podría saltar alguna vez: solo cuando aplicar un nivel
+  // cambia ese alto, al pasar de una fila a dos o al revés. Raro, porque
+  // fuera de la vista Atlas la barra no lleva el contexto de datos y casi
+  // nunca necesita dos filas.
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;

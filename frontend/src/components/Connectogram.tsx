@@ -262,13 +262,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     const node = selectedNodesList[0];
     // Con una sola región seleccionada, cuántas de sus conexiones pasan
     // los filtros, con el umbral, y una pista (D4 de
-    // docs/decisiones-diseno.md; spec 5.4, como en la maqueta).
+    // docs/decisiones-diseno.md; spec 5.4, como en la maqueta). Por encima
+    // del tope de dibujo, dice también que no se dibujan.
     const single = selectedNodeIds.size === 1;
     const passing = single ? filteredConnections.filter((c) => c.source === node.id || c.target === node.id).length : 0;
     readout = (
       <span className="readout-selection">
         <RegionSummary node={node} />
-        {single && <span className="readout-selection__count">{regionPassingText(passing, filters.minWeight)}</span>}
+        {single && (
+          <span className="readout-selection__count">
+            {regionPassingText(passing, filters.minWeight, tooManyConnections)}
+          </span>
+        )}
         {single && <span className="readout-selection__hint">pasa el ratón por otra región para verla</span>}
       </span>
     );

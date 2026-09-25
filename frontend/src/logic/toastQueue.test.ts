@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dismissToast, showToast, type ToastEntry } from "./toastQueue";
+import { dismissToast, showToast, toastAfterDismiss, type ToastEntry } from "./toastQueue";
 
 const importError: ToastEntry = { key: "importar", tone: "error", message: "No se pudo abrir el selector de archivos." };
 
@@ -33,5 +33,27 @@ describe("dismissToast", () => {
   it("sin aviso de esa clave devuelve la misma cola, así React no vuelve a pintar", () => {
     const queue: ToastEntry[] = [importError];
     expect(dismissToast(queue, "redes")).toBe(queue);
+  });
+});
+
+describe("toastAfterDismiss", () => {
+  const three: ToastEntry[] = [
+    { key: "importar", tone: "error", message: "Uno" },
+    { key: "redes", tone: "error", message: "Dos" },
+    { key: "deshacer", tone: "info", message: "Tres" },
+  ];
+
+  it("con «Entendido», el foco pasa al aviso siguiente, o al anterior si era el último", () => {
+    expect(toastAfterDismiss(three, 1, false)).toEqual({ kind: "toast", key: "deshacer" });
+    expect(toastAfterDismiss(three, 2, false)).toEqual({ kind: "toast", key: "redes" });
+  });
+
+  it("si no queda ningún aviso, vuelve adonde diga el aviso o quien pinta la región", () => {
+    expect(toastAfterDismiss([importError], 0, false)).toEqual({ kind: "return" });
+  });
+
+  it("tras usar la acción de un aviso, vuelve siempre adonde diga el aviso, aunque queden otros", () => {
+    expect(toastAfterDismiss(three, 2, true)).toEqual({ kind: "return" });
+    expect(toastAfterDismiss(three, 0, true)).toEqual({ kind: "return" });
   });
 });

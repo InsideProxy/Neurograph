@@ -4,6 +4,7 @@ import {
   connectionTitle,
   connectionsPassingText,
   formatCount,
+  formatWeightAtMost,
   hemisphereLabel,
   networkShortLabel,
   regionNameWithSide,
@@ -60,11 +61,52 @@ describe("connectionsPassingText", () => {
   });
 });
 
+describe("formatWeightAtMost", () => {
+  it("trunca a dos cifras significativas: nunca exagera el umbral", () => {
+    expect(formatWeightAtMost(0.0152)).toBe("0.015");
+    expect(formatWeightAtMost(3.98e-3)).toBe("3.9e-3");
+    expect(formatWeightAtMost(0.0039810717)).toBe("3.9e-3");
+    expect(formatWeightAtMost(0.144)).toBe("0.14");
+  });
+
+  it("en los bordes de década no salta a la siguiente", () => {
+    expect(formatWeightAtMost(0.00999)).toBe("9.9e-3");
+    expect(formatWeightAtMost(0.01)).toBe("0.01");
+    expect(formatWeightAtMost(0.0999)).toBe("0.099");
+    expect(formatWeightAtMost(0.1)).toBe("0.1");
+    expect(formatWeightAtMost(0.999)).toBe("0.99");
+    expect(formatWeightAtMost(1)).toBe("1");
+    expect(formatWeightAtMost(9.99e-7)).toBe("9.9e-7");
+    expect(formatWeightAtMost(1e-6)).toBe("1.0e-6");
+  });
+
+  it("un valor exacto se escribe tal cual: el redondeo binario no le quita una cifra", () => {
+    // 0.29 y 0.57 se guardan como 0.28999… y 0.56999…
+    expect(formatWeightAtMost(0.29)).toBe("0.29");
+    expect(formatWeightAtMost(0.57)).toBe("0.57");
+    expect(formatWeightAtMost(0.5)).toBe("0.5");
+    expect(formatWeightAtMost(0.07)).toBe("0.07");
+    expect(formatWeightAtMost(0.001)).toBe("1.0e-3");
+    expect(formatWeightAtMost(4e-3)).toBe("4.0e-3");
+  });
+
+  it("sin umbral, 0", () => {
+    expect(formatWeightAtMost(0)).toBe("0");
+  });
+});
+
 describe("regionPassingText", () => {
-  it("cuenta las conexiones de la región que pasan los filtros, con el umbral como en Filtros", () => {
+  it("cuenta las conexiones de la región que pasan los filtros, con el umbral sin exagerarlo", () => {
     expect(regionPassingText(5, 0.02)).toBe("5 conexiones pasan los filtros (peso ≥ 0.02)");
-    expect(regionPassingText(1, 0.0039810717)).toBe("1 conexión pasa los filtros (peso ≥ 4.0e-3)");
+    expect(regionPassingText(1, 0.0039810717)).toBe("1 conexión pasa los filtros (peso ≥ 3.9e-3)");
     expect(regionPassingText(359, 0)).toBe("359 conexiones pasan los filtros");
+  });
+
+  it("por encima del tope de dibujo, dice que no se dibujan", () => {
+    expect(regionPassingText(359, 0, true)).toBe("359 conexiones pasan los filtros (no se dibujan)");
+    expect(regionPassingText(1, 0, true)).toBe("1 conexión pasa los filtros (no se dibuja)");
+    expect(regionPassingText(12, 0.0152, true)).toBe("12 conexiones pasan los filtros (peso ≥ 0.015; no se dibujan)");
+    expect(regionPassingText(0, 0, true)).toBe("0 conexiones pasan los filtros");
   });
 });
 

@@ -11,14 +11,18 @@ import type { GraphNode } from "../types/domain";
 // el botón «Redes» de la barra; para los lectores de pantalla y en la
 // etiqueta emergente, el completo. El color sale de useDrawColors, como en
 // las vistas: cuando llegue la paleta suave (fase 2), la seguirá. El punto
-// lleva un anillo neutro (principio 6 del spec) en App.css.
+// lleva un anillo neutro (principio 6 del spec) en App.css. Si el nombre
+// corto no cabe (los de Yeo y Power llegan a 600 px), se corta con «…»: el
+// completo sigue en el title y en el texto oculto.
 export function NetworkTag({ network }: { network: string }) {
   const colors = useDrawColors();
   const label = Object.hasOwn(NETWORK_LABELS, network) ? NETWORK_LABELS[network] : network;
   return (
     <span className="network-tag" title={label}>
       <span className="network-tag__dot" style={{ backgroundColor: colors.networkColor(network) }} aria-hidden="true" />
-      <span aria-hidden="true">{networkShortLabel(network)}</span>
+      <span className="network-tag__name" aria-hidden="true">
+        {networkShortLabel(network)}
+      </span>
       <span className="visually-hidden">{label}</span>
     </span>
   );
