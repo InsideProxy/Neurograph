@@ -64,6 +64,15 @@ describe("marcas en el 3D: conexión en Brain3D.tsx y PaintedCortex.tsx", () => 
     expect(CORTEX).toContain("if (region !== null) onRegionClick(region, e.nativeEvent);");
   });
 
+  // react-three-fiber entrega el clic a todo lo que atraviesa el rayo, y las
+  // líneas de three.js se alcanzan desde lejos (Line.threshold, 1 unidad de
+  // la escena, 40 mm): el Ctrl+clic en un marcador también llegaría a las
+  // líneas de detrás, y seleccionar una vaciaría la selección de regiones.
+  it("un Ctrl+clic que también alcanza una línea no la selecciona", () => {
+    expect(BRAIN).toContain("if (!isMarkGesture(event.nativeEvent)) onClick();");
+    expect(BRAIN).toContain("{...(overlay ? overlayNoRaycast(true) : { onClick: handleClick })}");
+  });
+
   it("sin selección ni corteza pintada, el lienzo muestra las marcas, salvo mientras carga el mapa de la corteza, y no ofrece exportar", () => {
     expect(BRAIN).toContain("if (!focus && !painted && (markedNodes.length === 0 || waitingForCortex)) {");
     expect(BRAIN).toMatch(/\{\(focus \|\| painted\) && \(\s*<button type="button" className="export-btn" onClick=\{handleExport\}/);

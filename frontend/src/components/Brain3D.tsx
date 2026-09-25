@@ -40,7 +40,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, extend, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
@@ -754,6 +754,14 @@ function ConnectionLine({
   // sobre el fondo oscuro de la escena: una conexión SELECCIONADA, justo
   // la que más importa distinguir, era casi invisible.
   const color = isSelected ? colors.selected : colors.edge;
+  // Marcas (docs/rediseno-interfaz-diseno.md, 5.9): react-three-fiber
+  // entrega el clic a todo lo que atraviesa el rayo, y una línea se alcanza
+  // desde lejos (Line.threshold de three.js, 1 unidad de la escena). Un
+  // Ctrl+clic, que marca el marcador, no selecciona además la línea de
+  // detrás: vaciaría la selección de regiones.
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (!isMarkGesture(event.nativeEvent)) onClick();
+  };
 
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints([from, to]);
@@ -775,7 +783,7 @@ function ConnectionLine({
       <threeLine
         geometry={geometry}
         renderOrder={overlay ? 2 : 0}
-        {...(overlay ? overlayNoRaycast(true) : { onClick })}
+        {...(overlay ? overlayNoRaycast(true) : { onClick: handleClick })}
       >
         {isDashed ? (
           <lineDashedMaterial
