@@ -1,7 +1,8 @@
 // GENERADO por scripts/generate_soft_palettes.py a partir de NETWORK_COLORS
-// (theme/networks.ts). No se edita a mano: si cambian las redes, se vuelve a
-// generar con `python3 scripts/generate_soft_palettes.py` desde la raíz del
-// repositorio; con `--check`, el script dice si está al día.
+// (theme/networks.ts), que se copia al final (SOFT_PALETTE_SOURCE). No se
+// edita a mano: si cambia NETWORK_COLORS (una clave, un color o el orden),
+// se vuelve a generar con `python3 scripts/generate_soft_palettes.py` desde
+// la raíz del repositorio; con `--check`, el script dice si está al día.
 //
 // Paleta «suave» de las redes (docs/rediseno-interfaz-diseno.md, 4.3): el
 // tono de cada red, con la luminosidad (L de OKLCH) en la banda del tema y
@@ -240,3 +241,82 @@ export const SOFT_NETWORK_COLORS: Readonly<Record<SoftPaletteTheme, Readonly<Rec
     "unclassified": "#7d7d7d",
   },
 };
+
+// NETWORK_COLORS del que sale la tabla, en su orden: el de las claves de un
+// grupo es parte del método. softPalettes.test.ts lo compara con el
+// NETWORK_COLORS actual, así que una tabla desfasada no pasa las pruebas.
+export const SOFT_PALETTE_SOURCE: readonly (readonly [string, string])[] = [
+  ["executive", "#e05a47"],
+  ["memory", "#3f7fbf"],
+  ["attention", "#e8a33d"],
+  ["limbic", "#8e5fc7"],
+  ["language", "#7a4fa0"],
+  ["sensory", "#2fb0b0"],
+  ["motor", "#c0574f"],
+  ["cole-anticevic.visual", "#0000ff"],
+  ["cole-anticevic.visual2", "#6400ff"],
+  ["cole-anticevic.somatomotor", "#00ffff"],
+  ["cole-anticevic.cingulo-opercular", "#990099"],
+  ["cole-anticevic.dorsal-attention", "#00ff00"],
+  ["cole-anticevic.language", "#009b9b"],
+  ["cole-anticevic.frontoparietal", "#ffff00"],
+  ["cole-anticevic.auditory", "#fa3efb"],
+  ["cole-anticevic.default", "#ff0000"],
+  ["cole-anticevic.posterior-multimodal", "#b15928"],
+  ["cole-anticevic.ventral-multimodal", "#ff9d00"],
+  ["cole-anticevic.orbito-affective", "#417d00"],
+  ["gordon333.default", "#ff0000"],
+  ["gordon333.visual", "#0000be"],
+  ["gordon333.smhand", "#00ffff"],
+  ["gordon333.cinguloopunerc", "#800080"],
+  ["gordon333.dorsalattn", "#00ff00"],
+  ["gordon333.frontoparietal", "#ffff00"],
+  ["gordon333.auditory", "#ff00ff"],
+  ["gordon333.ventralattn", "#008080"],
+  ["gordon333.parietooccip", "#ffffcc"],
+  ["gordon333.smmouth", "#ff8000"],
+  ["gordon333.medialparietal", "#9b4bff"],
+  ["gordon333.salience", "#000000"],
+  ["yeo2011-7.vis", "#781285"],
+  ["yeo2011-7.sommot", "#4682b4"],
+  ["yeo2011-7.dorsattn", "#00760e"],
+  ["yeo2011-7.salventattn", "#c439f9"],
+  ["yeo2011-7.limbic", "#dcf8a3"],
+  ["yeo2011-7.cont", "#e69321"],
+  ["yeo2011-7.default", "#cd3d4e"],
+  ["yeo2011-17.viscent", "#781285"],
+  ["yeo2011-17.visperi", "#ff0000"],
+  ["yeo2011-17.sommota", "#4682b4"],
+  ["yeo2011-17.sommotb", "#2acca3"],
+  ["yeo2011-17.dorsattna", "#499b3b"],
+  ["yeo2011-17.dorsattnb", "#00760e"],
+  ["yeo2011-17.salventattna", "#c439f9"],
+  ["yeo2011-17.salventattnb", "#ff97d4"],
+  ["yeo2011-17.limbica", "#dcf8a3"],
+  ["yeo2011-17.limbicb", "#798631"],
+  ["yeo2011-17.contc", "#778baf"],
+  ["yeo2011-17.conta", "#e69321"],
+  ["yeo2011-17.contb", "#863149"],
+  ["yeo2011-17.temppar", "#0b2fff"],
+  ["yeo2011-17.defaultc", "#000082"],
+  ["yeo2011-17.defaulta", "#ffff00"],
+  ["yeo2011-17.defaultb", "#cd3d4e"],
+  ["power2011.default-mode", "#ff0000"],
+  ["power2011.hand-somatosensory-motor", "#00ffff"],
+  ["power2011.visual", "#0000ff"],
+  ["power2011.fronto-parietal-task-control", "#f5f50f"],
+  ["power2011.ventral-attention", "#008080"],
+  ["power2011.caudate-putamen", "#004628"],
+  ["power2011.superior-temporal-gyrus", "#ffb8d3"],
+  ["power2011.cingulo-opercular-task-control", "#800080"],
+  ["power2011.dorsal-attention", "#00dc00"],
+  ["power2011.mouth-somatosensory-motor", "#ff8000"],
+  ["power2011.thalamus", "#c3412c"],
+  ["power2011.salience", "#000000"],
+  ["power2011.unknown-medial-temporal-parietal", "#fff8b4"],
+  ["power2011.unknown-with-memory-retrieval-activity", "#006cff"],
+  ["power2011.hippocampus", "#002850"],
+  ["power2011.auditory", "#ff00ff"],
+  ["power2011.unknown-similar-to-nelson-2010", "#ffb45a"],
+  ["unclassified", "#8a8a8a"],
+];

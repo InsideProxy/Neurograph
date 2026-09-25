@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { NETWORK_COLORS } from "./networks";
-import { SOFT_NETWORK_COLORS, SOFT_PALETTE_THEMES, type SoftPaletteTheme } from "./softPalettes";
+import {
+  SOFT_NETWORK_COLORS,
+  SOFT_PALETTE_SOURCE,
+  SOFT_PALETTE_THEMES,
+  type SoftPaletteTheme,
+} from "./softPalettes";
 
 // La tabla generada por scripts/generate_soft_palettes.py cumple el método
 // de docs/rediseno-interfaz-diseno.md, 4.3 (pruebas de la sección 10). Mismo
@@ -40,6 +45,10 @@ const BANDS: Readonly<Record<SoftPaletteTheme, readonly [number, number]>> = {
 };
 const BAND_MARGIN = 0.06;
 const L_TOLERANCE = 0.005; // el redondeo a #rrggbb mueve algo la L
+// Tope del croma de cada tema (paso 3). El redondeo a #rrggbb también lo
+// mueve: hoy, como mucho 0,0012 por encima.
+const CHROMA_CAP: Readonly<Record<SoftPaletteTheme, number>> = { grafito: 0.13, noche: 0.145, claro: 0.14 };
+const C_TOLERANCE = 0.003;
 const ACHROMATIC = 0.02;
 // Acromáticos: los originales grises, que no tienen tono. Casi grises: los
 // suaves por debajo de este croma, donde el redondeo a #rrggbb ya mueve el
@@ -59,6 +68,13 @@ function groups(): Map<string, string[]> {
 }
 
 describe("SOFT_NETWORK_COLORS", () => {
+  // Si falla, NETWORK_COLORS ha cambiado (una clave, un color o el orden) y
+  // la tabla está desfasada: hay que volver a generarla, desde la raíz del
+  // repositorio, con `python3 scripts/generate_soft_palettes.py`.
+  it("se generó a partir del NETWORK_COLORS actual, con las claves en el mismo orden", () => {
+    expect(SOFT_PALETTE_SOURCE).toEqual(Object.entries(NETWORK_COLORS));
+  });
+
   it.each(SOFT_PALETTE_THEMES)("tema %s: un #rrggbb por cada clave de NETWORK_COLORS, y ninguna más", (theme) => {
     const table = SOFT_NETWORK_COLORS[theme];
     expect(Object.keys(table).sort()).toEqual(Object.keys(NETWORK_COLORS).sort());
@@ -74,13 +90,50 @@ describe("SOFT_NETWORK_COLORS", () => {
     }
   });
 
-  it.each(SOFT_PALETTE_THEMES)("tema %s: la luminosidad queda en la banda del tema ±0,06", (theme) => {
-    const [lo, hi] = BANDS[theme];
-    for (const [key, color] of Object.entries(SOFT_NETWORK_COLORS[theme])) {
-      expect(lightness(color), key).toBeGreaterThanOrEqual(lo - BAND_MARGIN - L_TOLERANCE);
-      expect(lightness(color), key).toBeLessThanOrEqual(hi + BAND_MARGIN + L_TOLERANCE);
+  // Las dos correcciones del prototipo de la maqueta (4.3), que la prueba
+  // del tono no ve. Primera: el recorte del croma es una bisección de verdad;
+  // en el primer prototipo, un croma que no cabía en sRGB acababa en 0, y la
+  // red, gris.
+  it.each(SOFT_PALETTE_THEMES)("tema %s: ninguna red con color queda casi gris", (theme) => {
+    for (const [key, original] of Object.entries(NETWORK_COLORS)) {
+      if (chroma(original) < HUE_CHROMA_FLOOR) continue;
+      const soft = SOFT_NETWORK_COLORS[theme][key];
+      expect(chroma(soft), `${key}: ${original} -> ${soft}`).toBeGreaterThanOrEqual(HUE_CHROMA_FLOOR);
     }
   });
+
+  // Segunda (paso 2): la luminosidad se reparte sobre el mínimo y el máximo
+  // reales de las redes con color del grupo, sin los acromáticos. La
+  // separación (paso 4) puede sacarlas de la banda como mucho 0,06.
+  it.each(SOFT_PALETTE_THEMES)(
+    "tema %s: en cada grupo, la red con color más oscura queda al pie de la banda y la más clara, arriba",
+    (theme) => {
+      const [lo, hi] = BANDS[theme];
+      for (const [group, keys] of groups()) {
+        const byLightness = keys
+          .filter((key) => chroma(NETWORK_COLORS[key]) >= ACHROMATIC)
+          .sort((a, b) => lightness(NETWORK_COLORS[a]) - lightness(NETWORK_COLORS[b]));
+        if (byLightness.length < 2) continue;
+        const [darkest, lightest] = [byLightness[0], byLightness[byLightness.length - 1]];
+        const darkestL = lightness(SOFT_NETWORK_COLORS[theme][darkest]);
+        const lightestL = lightness(SOFT_NETWORK_COLORS[theme][lightest]);
+        expect(Math.abs(darkestL - lo), `${group}: ${darkest}`).toBeLessThanOrEqual(BAND_MARGIN + L_TOLERANCE);
+        expect(Math.abs(lightestL - hi), `${group}: ${lightest}`).toBeLessThanOrEqual(BAND_MARGIN + L_TOLERANCE);
+      }
+    },
+  );
+
+  it.each(SOFT_PALETTE_THEMES)(
+    "tema %s: la luminosidad queda en la banda del tema ±0,06 y el croma no pasa del tope",
+    (theme) => {
+      const [lo, hi] = BANDS[theme];
+      for (const [key, color] of Object.entries(SOFT_NETWORK_COLORS[theme])) {
+        expect(lightness(color), key).toBeGreaterThanOrEqual(lo - BAND_MARGIN - L_TOLERANCE);
+        expect(lightness(color), key).toBeLessThanOrEqual(hi + BAND_MARGIN + L_TOLERANCE);
+        expect(chroma(color), key).toBeLessThanOrEqual(CHROMA_CAP[theme] + C_TOLERANCE);
+      }
+    },
+  );
 
   it.each(SOFT_PALETTE_THEMES)("tema %s: dos redes del mismo grupo distan al menos ΔE_OK 0,085", (theme) => {
     const table = SOFT_NETWORK_COLORS[theme];

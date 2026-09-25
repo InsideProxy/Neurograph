@@ -43,6 +43,8 @@ describe("readAppearance", () => {
     expect(readAppearance(storage)).toEqual({ theme: "grafito", paletteMode: "suave" });
     const badMode = memoryStorage({ [APPEARANCE_STORAGE_KEY]: '{"theme":"noche","paletteMode":"vivo"}' });
     expect(readAppearance(badMode)).toEqual({ theme: "noche", paletteMode: null });
+    const noMode = memoryStorage({ [APPEARANCE_STORAGE_KEY]: '{"theme":"noche"}' });
+    expect(readAppearance(noMode)).toEqual({ theme: "noche", paletteMode: null });
   });
 
   it("un JSON roto o un almacenamiento que falla no rompen nada", () => {

@@ -37,9 +37,15 @@ da los mismos colores.
 Antes de escribir, muestra la comprobación de cada tema y grupo: distancia
 mínima entre redes, contraste mínimo con el panel (también el del tema
 Original, que con «Suaves» usa la columna de Grafito), deriva del tono y
-luminosidad. Si un grupo no cumple lo que piden las pruebas
+luminosidad. Comprueba además el tope del croma y que no se deshaga ninguna
+de las dos correcciones: ninguna red con color queda casi gris, y la más
+oscura y la más clara de cada grupo quedan en los extremos de la banda. Si un
+grupo no cumple lo que piden las pruebas
 (frontend/src/theme/softPalettes.test.ts y themeCss.test.ts), no escribe nada y
 sale con código 1.
+
+La tabla lleva al final una copia de NETWORK_COLORS (SOFT_PALETTE_SOURCE): así,
+`npm test` avisa si está desfasada, sin tener que ejecutar --check.
 
 Solo usa la biblioteca estándar (Python 3.10 o posterior).
 
@@ -71,6 +77,7 @@ MAX_HUE_DRIFT = 3.0  # grados
 HUE_CHROMA_FLOOR = 0.04  # por debajo, el redondeo a 8 bits ya mueve el tono
 MIN_CONTRAST_DARK = 3.0  # con el panel, en Grafito y Noche
 L_TOLERANCE = 0.005  # el redondeo a #rrggbb mueve algo la L
+C_TOLERANCE = 0.003  # y también el croma (hoy, como mucho 0,0012 sobre el tope)
 
 # Banda de luminosidad (L de OKLCH) y croma máximo de cada tema. El panel es
 # el --panel-bg de index.css (spec 4.1); solo sirve para la comprobación.
@@ -201,7 +208,9 @@ def read_network_colors(source: str) -> dict[str, str]:
         entry = ENTRY.match(line)
         if not entry:
             sys.exit(f"Línea de NETWORK_COLORS que no entiendo: {line.strip()!r}")
-        key, value = entry.group(1), entry.group(2).lower()
+        # El valor, tal cual: la tabla lo copia en SOFT_PALETTE_SOURCE, que
+        # la prueba compara con NETWORK_COLORS.
+        key, value = entry.group(1), entry.group(2)
         if key in colors:
             sys.exit(f"Clave repetida en NETWORK_COLORS: {key}")
         colors[key] = value
@@ -292,9 +301,10 @@ def header() -> str:
     caps = ", ".join(f"{name} {t['cmax']}" for name, t in THEMES.items())
     return (
         "// GENERADO por scripts/generate_soft_palettes.py a partir de NETWORK_COLORS\n"
-        "// (theme/networks.ts). No se edita a mano: si cambian las redes, se vuelve a\n"
-        "// generar con `python3 scripts/generate_soft_palettes.py` desde la raíz del\n"
-        "// repositorio; con `--check`, el script dice si está al día.\n"
+        "// (theme/networks.ts), que se copia al final (SOFT_PALETTE_SOURCE). No se\n"
+        "// edita a mano: si cambia NETWORK_COLORS (una clave, un color o el orden),\n"
+        "// se vuelve a generar con `python3 scripts/generate_soft_palettes.py` desde\n"
+        "// la raíz del repositorio; con `--check`, el script dice si está al día.\n"
         "//\n"
         "// Paleta «suave» de las redes (docs/rediseno-interfaz-diseno.md, 4.3): el\n"
         "// tono de cada red, con la luminosidad (L de OKLCH) en la banda del tema y\n"
@@ -305,7 +315,7 @@ def header() -> str:
     )
 
 
-def render_ts(palettes: dict[str, dict[str, str]]) -> str:
+def render_ts(colors: dict[str, str], palettes: dict[str, dict[str, str]]) -> str:
     names = ", ".join(f'"{name}"' for name in THEMES)
     table_type = "Readonly<Record<SoftPaletteTheme, Readonly<Record<string, string>>>>"
     lines = [
@@ -320,6 +330,17 @@ def render_ts(palettes: dict[str, dict[str, str]]) -> str:
         lines.extend(f'    "{key}": "{value}",' for key, value in palette.items())
         lines.append("  },")
     lines.append("};")
+    # El origen de la tabla. --check ve si está al día, pero nada lo ejecuta;
+    # con esta copia, lo ve también `npm test` (softPalettes.test.ts).
+    lines += [
+        "",
+        "// NETWORK_COLORS del que sale la tabla, en su orden: el de las claves de un",
+        "// grupo es parte del método. softPalettes.test.ts lo compara con el",
+        "// NETWORK_COLORS actual, así que una tabla desfasada no pasa las pruebas.",
+        "export const SOFT_PALETTE_SOURCE: readonly (readonly [string, string])[] = [",
+    ]
+    lines.extend(f'  ["{key}", "{value}"],' for key, value in colors.items())
+    lines.append("];")
     return "\n".join(lines) + "\n"
 
 
@@ -347,13 +368,32 @@ def check(colors: dict[str, str], palettes: dict[str, dict[str, str]]) -> list[s
             de_soft, pa, pb = min((delta_e(soft[a], soft[b]), a, b) for a, b in pairs)
             cr_orig = min(contrast(colors[k], panel) for k in keys)
             cr_soft = min(contrast(soft[k], panel) for k in keys)
-            chromatic = [
+            chromatic = [k for k in keys if to_oklch(colors[k])[1] >= ACHROMATIC]
+            # Las dos correcciones del prototipo. Primera: una red con color
+            # no puede quedar casi gris, como con el primer recorte del croma,
+            # que dejaba en 0 el que no cabía en sRGB. Por debajo de ese
+            # croma no se mira el tono.
+            grayed = [
                 k
-                for k in keys
-                if to_oklch(colors[k])[1] >= ACHROMATIC and to_oklch(soft[k])[1] >= HUE_CHROMA_FLOOR
+                for k in chromatic
+                if to_oklch(colors[k])[1] >= HUE_CHROMA_FLOOR and to_oklch(soft[k])[1] < HUE_CHROMA_FLOOR
             ]
-            drift = max((abs(hue_drift(colors[k], soft[k])) for k in chromatic), default=0.0)
+            drift = max(
+                (abs(hue_drift(colors[k], soft[k])) for k in chromatic if to_oklch(soft[k])[1] >= HUE_CHROMA_FLOOR),
+                default=0.0,
+            )
+            # Segunda (paso 2): la luminosidad se reparte sobre el mínimo y el
+            # máximo de las redes con color, así que la más oscura queda al pie
+            # de la banda y la más clara, arriba. La separación (paso 4) puede
+            # sacarlas de la banda como mucho BAND_MARGIN.
+            by_l = sorted(chromatic, key=lambda k: to_oklch(colors[k])[0])
+            ends_off = (
+                max(abs(to_oklch(soft[by_l[0]])[0] - lo), abs(to_oklch(soft[by_l[-1]])[0] - hi))
+                if len(by_l) >= 2
+                else 0.0
+            )
             ls = [to_oklch(soft[k])[0] for k in keys]
+            over = max(to_oklch(soft[k])[1] for k in keys) - theme["cmax"]
             print(
                 f"  {group:<16}{len(keys):>3}  {de_orig:.3f} -> {de_soft:.3f}"
                 f"{cr_orig:>18.2f} -> {cr_soft:.2f}{drift:>13.1f}°  {min(ls):.2f}-{max(ls):.2f}"
@@ -361,10 +401,18 @@ def check(colors: dict[str, str], palettes: dict[str, dict[str, str]]) -> list[s
             where = f"{name}/{group}"
             if de_soft < MIN_DELTA_E:
                 failures.append(f"{where}: ΔE_OK {de_soft:.4f} < {MIN_DELTA_E} ({pa} y {pb})")
+            if grayed:
+                failures.append(f"{where}: quedan casi grises (C < {HUE_CHROMA_FLOOR}): {', '.join(grayed)}")
+            if ends_off > BAND_MARGIN + L_TOLERANCE:
+                failures.append(
+                    f"{where}: {by_l[0]} y {by_l[-1]} no quedan en los extremos de la banda (se apartan {ends_off:.3f})"
+                )
             if drift > MAX_HUE_DRIFT:
                 failures.append(f"{where}: el tono se mueve {drift:.1f}° (máximo 3°)")
             if min(ls) < low or max(ls) > high:
                 failures.append(f"{where}: L {min(ls):.3f}-{max(ls):.3f} fuera de la banda")
+            if over > C_TOLERANCE:
+                failures.append(f"{where}: el croma pasa {over:.4f} del tope ({theme['cmax']})")
             if name in DARK_THEMES and cr_soft < MIN_CONTRAST_DARK:
                 failures.append(f"{where}: contraste {cr_soft:.2f} con el panel (mínimo 3)")
         print(f"  {UNCLASSIFIED}: {soft[UNCLASSIFIED]}")
@@ -389,7 +437,7 @@ def main() -> None:
 
     colors = read_network_colors(NETWORKS_TS.read_text(encoding="utf-8"))
     palettes = build_palettes(colors)
-    text = render_ts(palettes)
+    text = render_ts(colors, palettes)
     output = OUTPUT_TS.relative_to(REPO_ROOT)
     if args.check:
         current = OUTPUT_TS.read_text(encoding="utf-8") if OUTPUT_TS.exists() else ""
