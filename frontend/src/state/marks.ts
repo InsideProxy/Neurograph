@@ -1,6 +1,6 @@
 // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9). Son una capa
 // aparte de la selección: seleccionar activa la red de la región, con sus
-// conexiones y el foco del 3D; marcar solo la resalta, para encontrarla de
+// conexiones y el foco del 3D; marcar solo la señala, para encontrarla de
 // un vistazo en todas las vistas, sin cambiar lo que se dibuja.
 // - Ctrl+clic (⌘+clic en macOS) en un nodo marca o desmarca la región, y
 //   Ctrl+Intro en el buscador de regiones, la sugerencia activa.

@@ -456,7 +456,7 @@ Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy dif�
 
 ### 5.9 Marcar regiones
 
-Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el navegador seleccionaba las etiquetas como texto y las pintaba de azul, y él propuso convertirlo en función: «una cosa es activar red y otra seleccionar». Las marcas son una capa aparte de la selección. Seleccionar sigue activando la red de la región, con sus conexiones y el foco del 3D. Marcar solo resalta, para localizar regiones de un vistazo en todas las vistas, sin cambiar lo que se dibuja. Diseño aprobado por el usuario el mismo día.
+Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el navegador seleccionaba las etiquetas como texto y las pintaba de azul, y él propuso convertirlo en función: «una cosa es activar red y otra seleccionar». Las marcas son una capa aparte de la selección. Seleccionar sigue activando la red de la región, con sus conexiones y el foco del 3D. Marcar solo señala, para localizar regiones de un vistazo en todas las vistas, sin cambiar lo que se dibuja. Diseño aprobado por el usuario el mismo día.
 
 - **Gesto:**
   - Ctrl+clic en un nodo marca o desmarca la región, en el connectograma (también en la lupa), en los hemisferios y en el 3D. En el 3D vale sobre el marcador, sobre su etiqueta (6.3; D10) y, con la corteza pintada, sobre la región.

@@ -84,7 +84,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 
 ## Marcas
 
-- **Marcar no es seleccionar:** una marca solo resalta la región en las tres vistas, sin cambiar lo que se dibuja. El clic normal sigue seleccionando. (D9)
+- **Marcar no es seleccionar:** una marca solo señala la región en las tres vistas, sin cambiar lo que se dibuja. El clic normal sigue seleccionando. (D9)
 - **Gesto:** Ctrl+clic (Cmd+clic en macOS) en un nodo, un marcador o una etiqueta del 3D, o en una región de la corteza pintada, marca o desmarca la región. En el buscador, Ctrl+Intro marca la sugerencia activa. (D9, D10)
 - **Cómo se ven:** con el color de marca, reservado para ellas. La etiqueta va sobre una pastilla con texto de contraste, que la sigue también girada, y el nodo lleva un anillo exterior separado por un hueco del color del fondo, para distinguirse aunque la red sea azul. (D9, D10)
 - **No se guardan ni se exportan.** Se pierden al recargar y se vacían al cambiar de atlas, sin que eso sea un paso del historial; con otra clasificación se conservan. (D9)
