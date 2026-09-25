@@ -38,6 +38,7 @@ function snapshot(changes: Partial<HistorySnapshot> = {}): HistorySnapshot {
     hiddenNetworks: new Set(),
     hiddenConnectionTypes: new Set<ConnectionType>(),
     minWeight: 0,
+    markedIds: new Set(),
     ...changes,
   };
 }
@@ -93,9 +94,41 @@ describe("describeStep", () => {
   });
 });
 
+// Marcas (spec 5.9): marcar, desmarcar y «Quitar marcas» son pasos.
+describe("describeStep: marcas", () => {
+  it("marcar y desmarcar una región, con su lado", () => {
+    const one = snapshot({ markedIds: new Set(["l_v1"]) });
+    const two = snapshot({ markedIds: new Set(["l_v1", "r_ifja"]) });
+    expect(describeStep(one, two, CONTEXT)).toBe("marcar IFJa (der.)");
+    expect(describeStep(two, one, CONTEXT)).toBe("desmarcar IFJa (der.)");
+    expect(describeStep(one, snapshot(), CONTEXT)).toBe("desmarcar V1 (izq.)");
+  });
+
+  it("«Quitar marcas» de varias regiones dice cuántas", () => {
+    const five = snapshot({ markedIds: new Set(["l_v1", "r_v1", "r_ifja", "r_fef", "otro_atlas"]) });
+    expect(describeStep(five, snapshot(), CONTEXT)).toBe("quitar las marcas (5)");
+  });
+
+  it("una región que no está cargada se nombra de forma genérica", () => {
+    expect(describeStep(snapshot(), snapshot({ markedIds: new Set(["otro_atlas"]) }), CONTEXT)).toBe(
+      "marcar una región de otro atlas",
+    );
+  });
+
+  it("marcar a la vez que otro cambio son «varios cambios»", () => {
+    const after = snapshot({ markedIds: new Set(["r_ifja"]), selectedNodeIds: new Set(["r_ifja"]) });
+    expect(describeStep(snapshot(), after, CONTEXT)).toBe("varios cambios");
+  });
+});
+
 describe("changedKinds", () => {
   it("compara el contenido de los Set, no solo su referencia", () => {
     expect(changedKinds(snapshot({ hiddenNetworks: new Set(["a"]) }), snapshot({ hiddenNetworks: new Set(["a"]) }))).toEqual([]);
+    expect(changedKinds(snapshot({ markedIds: new Set(["a"]) }), snapshot({ markedIds: new Set(["a"]) }))).toEqual([]);
+  });
+
+  it("las marcas son un cambio aparte de la selección", () => {
+    expect(changedKinds(snapshot(), snapshot({ markedIds: new Set(["r_ifja"]) }))).toEqual(["marks"]);
   });
 });
 
@@ -120,6 +153,19 @@ describe("stepNotice", () => {
     expect(stepNotice(withOld, snapshot(), LOADED)).toBeNull();
     const twoLoaded = snapshot({ selectedNodeIds: new Set(["r_ifja", "r_fef", "otro_atlas_1"]) });
     expect(stepNotice(twoLoaded, snapshot(), LOADED)).toBe("Se vació la selección de 2 regiones");
+  });
+
+  // Como al vaciar la selección: con un clic de más se pierde el montaje.
+  it("avisa si «Quitar marcas» quita dos o más marcas, contando solo las del atlas que se está viendo", () => {
+    expect(stepNotice(snapshot({ markedIds: new Set(["l_v1", "r_v1", "r_ifja"]) }), snapshot(), LOADED)).toBe(
+      "Se quitaron las marcas de 3 regiones",
+    );
+    expect(stepNotice(snapshot({ markedIds: new Set(["r_ifja", "otro_atlas"]) }), snapshot(), LOADED)).toBeNull();
+  });
+
+  it("no avisa al desmarcar una sola región", () => {
+    const two = snapshot({ markedIds: new Set(["l_v1", "r_ifja"]) });
+    expect(stepNotice(two, snapshot({ markedIds: new Set(["l_v1"]) }), LOADED)).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SOFT_NETWORK_COLORS } from "./softPalettes";
-import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
+import { DEFAULT_THEME, DRAW_TOKENS, THEME_IDS, type ThemeId } from "./themes";
 
 // Bloques de tema de index.css (D3 de docs/decisiones-diseno.md;
 // docs/rediseno-interfaz-diseno.md, 4.1 y 8). El archivo se lee del disco:
@@ -156,5 +156,39 @@ describe("contraste de los temas", () => {
     for (const [key, color] of Object.entries(SOFT_NETWORK_COLORS[column])) {
       expect(contrast(parseColor(color).rgb, panel), key).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+// Color de marca (spec 5.9): un azul como el de la selección de texto. La
+// pastilla de la etiqueta y el anillo del nodo superan 3:1 sobre el fondo
+// de los cuatro temas, y el texto de la pastilla 4,5:1 sobre ella. Los
+// dibujos (SVG y 3D) toman los mismos colores de DRAW_TOKENS.
+describe("color de marca", () => {
+  it.each(THEME_IDS)("tema %s: la pastilla y el anillo superan 3:1 sobre el fondo y el panel, y su texto 4,5:1", (id) => {
+    const vars = variables(THEME_BLOCKS.get(id)!.body);
+    const mark = parseColor(vars.get("--mark")!).rgb;
+    for (const name of ["--bg", "--panel-bg"]) {
+      expect(contrast(mark, parseColor(vars.get(name)!).rgb), name).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(parseColor(vars.get("--mark-text")!).rgb, mark)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(THEME_IDS)("tema %s: los dibujos usan los mismos colores, y superan 3:1 sobre el fondo de cada dibujo", (id) => {
+    const vars = variables(THEME_BLOCKS.get(id)!.body);
+    const { mark, markText, sceneBg, hemiFill } = DRAW_TOKENS[id];
+    expect(mark).toBe(vars.get("--mark"));
+    expect(markText).toBe(vars.get("--mark-text"));
+    // El connectograma y el 3D se dibujan sobre el panel (sceneBg), y los
+    // nodos de los hemisferios, dentro de sus elipses (hemiFill, o el panel
+    // si no tienen relleno).
+    for (const background of [sceneBg, hemiFill].filter((color) => color !== "none")) {
+      expect(contrast(parseColor(mark).rgb, parseColor(background).rgb), background).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  // El hueco entre el nodo y su anillo es del color del fondo del dibujo: en
+  // el connectograma, sceneBg, que tiene que ser el --panel-bg del <svg>.
+  it.each(THEME_IDS)("tema %s: el fondo de la escena es el del panel", (id) => {
+    expect(DRAW_TOKENS[id].sceneBg).toBe(variables(THEME_BLOCKS.get(id)!.body).get("--panel-bg"));
   });
 });

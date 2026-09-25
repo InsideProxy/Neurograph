@@ -66,7 +66,10 @@
      --accent-border = accentBorder.
    Cada color de estado (--success, --warning, --error, --synthesis) tiene
    su fondo translúcido --*-bg. Los colores que se dibujan dentro de los
-   SVG y del 3D no están aquí: están en theme/themes.ts (DRAW_TOKENS). Los
+   SVG y del 3D no están aquí: están en theme/themes.ts (DRAW_TOKENS). La
+   excepción es el color de marca (spec 5.9), --mark y --mark-text, que
+   usan también Filtros y el buscador: son los mark y markText de
+   DRAW_TOKENS, y theme/themeCss.test.ts comprueba que coinciden. Los
    mismos bloques se aplican a cualquier elemento con
    data-theme-preview="<id>": así la vista previa de Ajustes muestra los
    colores reales de cada tema sin repetirlos en TypeScript. */
@@ -93,6 +96,8 @@
   --error-bg: rgba(255, 90, 90, 0.12);
   --synthesis: #ff7b3d;
   --synthesis-bg: rgba(255, 123, 61, 0.18);
+  --mark: #2563eb;
+  --mark-text: #ffffff;
   --shadow:
     rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
   color-scheme: dark;
@@ -122,6 +127,8 @@
   --error-bg: rgba(240, 154, 154, 0.12);
   --synthesis: #ff7b3d;
   --synthesis-bg: rgba(255, 123, 61, 0.16);
+  --mark: #2563eb;
+  --mark-text: #ffffff;
   --shadow:
     rgba(0, 0, 0, 0.55) 0 10px 15px -3px, rgba(0, 0, 0, 0.35) 0 4px 6px -2px;
   color-scheme: dark;
@@ -150,6 +157,8 @@
   --error-bg: rgba(245, 156, 156, 0.12);
   --synthesis: #ff7b3d;
   --synthesis-bg: rgba(255, 123, 61, 0.16);
+  --mark: #2563eb;
+  --mark-text: #ffffff;
   --shadow:
     rgba(0, 0, 0, 0.6) 0 10px 15px -3px, rgba(0, 0, 0, 0.4) 0 4px 6px -2px;
   color-scheme: dark;
@@ -178,6 +187,8 @@
   --error-bg: rgba(180, 35, 24, 0.08);
   --synthesis: #b93d0a;
   --synthesis-bg: rgba(185, 61, 10, 0.06);
+  --mark: #1d4ed8;
+  --mark-text: #ffffff;
   --shadow:
     rgba(40, 36, 20, 0.12) 0 10px 15px -3px, rgba(40, 36, 20, 0.08) 0 4px 6px -2px;
   color-scheme: light;

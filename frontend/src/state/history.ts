@@ -11,9 +11,14 @@
 //   estaba, no hay paso.
 // - Guarda los 50 últimos pasos.
 // - App lo vacía al cambiar de atlas o de clasificación (resetHistory).
+// - Guarda también las marcas de regiones (spec 5.9; state/marks.ts), que
+//   son un store nuestro: marcar, desmarcar y «Quitar marcas» son pasos. Al
+//   cambiar de atlas, App llama a resetForAtlasChange, que las vacía sin
+//   que eso sea un paso.
 import { create } from "zustand";
 import { changedKinds, type HistorySnapshot } from "../logic/historyStep";
 import { useFiltersStore } from "./filters";
+import { useMarksStore } from "./marks";
 import { useSelectionStore } from "./selection";
 
 export const HISTORY_LIMIT = 50;
@@ -38,7 +43,8 @@ interface HistoryState {
 function currentSnapshot(): HistorySnapshot {
   const { selectedNodeIds, selectedConnectionId } = useSelectionStore.getState();
   const { hiddenNetworks, hiddenConnectionTypes, minWeight } = useFiltersStore.getState();
-  return { selectedNodeIds, selectedConnectionId, hiddenNetworks, hiddenConnectionTypes, minWeight };
+  const { markedIds } = useMarksStore.getState();
+  return { selectedNodeIds, selectedConnectionId, hiddenNetworks, hiddenConnectionTypes, minWeight, markedIds };
 }
 
 export const useHistoryStore = create<HistoryState>(() => ({
@@ -110,7 +116,11 @@ function scheduleRecord() {
   queueMicrotask(flushBatch);
 }
 
-const unsubscribers = [useSelectionStore.subscribe(scheduleRecord), useFiltersStore.subscribe(scheduleRecord)];
+const unsubscribers = [
+  useSelectionStore.subscribe(scheduleRecord),
+  useFiltersStore.subscribe(scheduleRecord),
+  useMarksStore.subscribe(scheduleRecord),
+];
 
 // En desarrollo, al recargar este módulo en caliente, el módulo anterior
 // deja de escuchar a los stores.
@@ -131,6 +141,7 @@ function apply(snapshot: HistorySnapshot) {
       hiddenConnectionTypes: snapshot.hiddenConnectionTypes,
       minWeight: snapshot.minWeight,
     });
+    useMarksStore.setState({ markedIds: snapshot.markedIds });
   } finally {
     restoring = false;
   }
@@ -163,6 +174,17 @@ export function resetHistory() {
   batchScheduled = false;
   clearTimeout(settleTimer);
   bump({ past: [], present: currentSnapshot(), future: [], pendingFrom: null, lastStep: null });
+}
+
+// Al cambiar de atlas (spec 5.9): las marcas son de regiones del atlas
+// anterior, que ya no valen, y se vacían; después, el historial. El
+// vaciado no es un paso: resetHistory, en la misma tarea, anula el registro
+// pendiente y parte de las marcas ya vacías. Con otra clasificación de
+// redes, App llama solo a resetHistory: las regiones son las mismas y las
+// marcas se conservan.
+export function resetForAtlasChange() {
+  useMarksStore.getState().clearMarks();
+  resetHistory();
 }
 
 // Puntero pulsado o suelto sobre el deslizador de peso

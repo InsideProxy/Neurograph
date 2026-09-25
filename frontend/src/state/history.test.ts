@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFiltersStore } from "./filters";
-import { HISTORY_LIMIT, redo, resetHistory, setPointerHeld, undo, useHistoryStore } from "./history";
+import { HISTORY_LIMIT, redo, resetForAtlasChange, resetHistory, setPointerHeld, undo, useHistoryStore } from "./history";
+import { useMarksStore } from "./marks";
 import { useSelectionStore } from "./selection";
 
 // El historial registra cada cambio en una microtarea: así, los cambios
@@ -8,11 +9,13 @@ import { useSelectionStore } from "./selection";
 const flush = () => Promise.resolve();
 const selection = () => useSelectionStore.getState();
 const filters = () => useFiltersStore.getState();
+const marks = () => useMarksStore.getState();
 const history = () => useHistoryStore.getState();
 
 beforeEach(() => {
   useSelectionStore.setState({ selectedNodeIds: new Set(), selectedConnectionId: null });
   useFiltersStore.setState({ hiddenNetworks: new Set(), hiddenConnectionTypes: new Set(), minWeight: 0 });
+  useMarksStore.setState({ markedIds: new Set() });
   resetHistory();
 });
 
@@ -163,6 +166,58 @@ describe("historial", () => {
       await flush();
     }
     expect(history().past).toHaveLength(HISTORY_LIMIT);
+  });
+
+  // Marcas (spec 5.9).
+  it("marcar y desmarcar son pasos, y deshacerlos restaura los mismos Set", async () => {
+    const none = marks().markedIds;
+    marks().toggleMark("a");
+    await flush();
+    const withA = marks().markedIds;
+    marks().toggleMark("a");
+    await flush();
+    expect(history().past).toHaveLength(2);
+    undo();
+    expect(marks().markedIds).toBe(withA);
+    undo();
+    expect(marks().markedIds).toBe(none);
+    redo();
+    expect(marks().markedIds).toBe(withA);
+  });
+
+  it("«Quitar marcas» es un paso, con su aviso, y deshacerlo las recupera", async () => {
+    marks().toggleMark("a");
+    await flush();
+    marks().toggleMark("b");
+    await flush();
+    marks().clearMarks();
+    await flush();
+    expect(history().lastStep?.before.markedIds.size).toBe(2);
+    expect(history().lastStep?.after.markedIds.size).toBe(0);
+    undo();
+    expect([...marks().markedIds]).toEqual(["a", "b"]);
+  });
+
+  it("al cambiar de atlas, las marcas se vacían y ese vaciado no es un paso", async () => {
+    marks().toggleMark("a");
+    selection().toggleNode("b");
+    await flush();
+    resetForAtlasChange();
+    await flush();
+    expect(marks().markedIds.size).toBe(0);
+    expect(history().past).toHaveLength(0);
+    expect(history().present.markedIds.size).toBe(0);
+    expect([...selection().selectedNodeIds]).toEqual(["b"]);
+    undo();
+    expect(marks().markedIds.size).toBe(0);
+  });
+
+  it("con otra clasificación de redes (resetHistory), las marcas se conservan", async () => {
+    marks().toggleMark("a");
+    await flush();
+    resetHistory();
+    expect([...marks().markedIds]).toEqual(["a"]);
+    expect([...history().present.markedIds]).toEqual(["a"]);
   });
 
   it("guarda el último paso para el aviso, y deshacer lo retira", async () => {

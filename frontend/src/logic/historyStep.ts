@@ -17,6 +17,9 @@ export interface HistorySnapshot {
   hiddenNetworks: Set<string>;
   hiddenConnectionTypes: Set<ConnectionType>;
   minWeight: number;
+  // Las regiones marcadas (spec 5.9; state/marks.ts), que tampoco modifica
+  // su Set.
+  markedIds: Set<string>;
 }
 
 // Con qué se nombra lo que cambia: las regiones cargadas y, cuando hace
@@ -26,7 +29,7 @@ export interface StepContext {
   findConnection: (id: string) => GraphConnection | undefined;
 }
 
-export type ChangeKind = "selection" | "networks" | "types" | "weight";
+export type ChangeKind = "selection" | "networks" | "types" | "weight" | "marks";
 
 function missing<T>(from: ReadonlySet<T>, other: ReadonlySet<T>): T[] {
   return [...from].filter((item) => !other.has(item));
@@ -50,6 +53,7 @@ export function changedKinds(before: HistorySnapshot, after: HistorySnapshot): C
   if (!sameSet(before.hiddenNetworks, after.hiddenNetworks)) kinds.push("networks");
   if (!sameSet(before.hiddenConnectionTypes, after.hiddenConnectionTypes)) kinds.push("types");
   if (before.minWeight !== after.minWeight) kinds.push("weight");
+  if (!sameSet(before.markedIds, after.markedIds)) kinds.push("marks");
   return kinds;
 }
 
@@ -91,6 +95,22 @@ function describeSelection(before: HistorySnapshot, after: HistorySnapshot, cont
     : `quitar ${formatCount(removed.length)} regiones`;
 }
 
+// Marcas (spec 5.9): «marcar IFJa (der.)», «desmarcar IFJa (der.)» o, con
+// «Quitar marcas» de varias, «quitar las marcas (5)». Quitar la única marca
+// es «desmarcar», como quitar la única región seleccionada.
+function describeMarks(before: HistorySnapshot, after: HistorySnapshot, context: StepContext): string {
+  const added = missing(after.markedIds, before.markedIds);
+  const removed = missing(before.markedIds, after.markedIds);
+  if (added.length > 0 && removed.length > 0) return "cambiar las marcas";
+  if (added.length > 0) {
+    return added.length === 1 ? `marcar ${regionName(added[0], context)}` : `marcar ${formatCount(added.length)} regiones`;
+  }
+  if (removed.length === 1) return `desmarcar ${regionName(removed[0], context)}`;
+  return after.markedIds.size === 0
+    ? `quitar las marcas (${formatCount(removed.length)})`
+    : `desmarcar ${formatCount(removed.length)} regiones`;
+}
+
 function describeHidden(
   before: ReadonlySet<string>,
   after: ReadonlySet<string>,
@@ -108,9 +128,10 @@ function describeHidden(
 // Descripción de un paso, en castellano, para la etiqueta emergente de
 // Deshacer y Rehacer: «añadir IFJa (der.) a la selección», «quitar 3
 // regiones», «seleccionar la conexión V1 (izq.) ↔ V1 (der.)», «limpiar la
-// selección», «ocultar la red Visual», «peso mínimo de 1.0e-3 a 3.9e-3» o,
-// si cambian varias cosas, «varios cambios». El peso se escribe sin
-// redondearlo hacia arriba (formatWeightAtMost, logic/displayText.ts).
+// selección», «ocultar la red Visual», «peso mínimo de 1.0e-3 a 3.9e-3»,
+// «marcar IFJa (der.)», «quitar las marcas (5)» o, si cambian varias cosas,
+// «varios cambios». El peso se escribe sin redondearlo hacia arriba
+// (formatWeightAtMost, logic/displayText.ts).
 export function describeStep(before: HistorySnapshot, after: HistorySnapshot, context: StepContext): string {
   const kinds = changedKinds(before, after);
   if (kinds.length !== 1) return "varios cambios";
@@ -135,6 +156,8 @@ export function describeStep(before: HistorySnapshot, after: HistorySnapshot, co
       );
     case "weight":
       return `peso mínimo de ${formatWeightAtMost(before.minWeight)} a ${formatWeightAtMost(after.minWeight)}`;
+    case "marks":
+      return describeMarks(before, after, context);
   }
 }
 
@@ -143,13 +166,18 @@ export function describeStep(before: HistorySnapshot, after: HistorySnapshot, co
 // cuentan las regiones del atlas que se está viendo (isLoaded): los ids de
 // un atlas anterior se quedan en el store, y no se ven. null si el paso no
 // lo merece.
+// Marcas (spec 5.9): sale también cuando «Quitar marcas» quita dos o más,
+// porque un clic de más perdería igual lo que se había montado.
 export function stepNotice(
   before: HistorySnapshot,
   after: HistorySnapshot,
   isLoaded: (id: string) => boolean,
 ): string | null {
   const removed = missing(before.selectedNodeIds, after.selectedNodeIds).filter(isLoaded);
-  if (removed.length < 2) return null;
+  if (removed.length < 2) {
+    const unmarked = missing(before.markedIds, after.markedIds).filter(isLoaded);
+    return unmarked.length < 2 ? null : `Se quitaron las marcas de ${formatCount(unmarked.length)} regiones`;
+  }
   const replaced = [...before.selectedNodeIds].filter(isLoaded).length;
   const emptied = after.selectedNodeIds.size === 0 && after.selectedConnectionId === null;
   return `${emptied ? "Se vació" : "Se sustituyó"} la selección de ${formatCount(replaced)} regiones`;

@@ -78,6 +78,14 @@ export interface DrawTokens {
   cortexGyrus: Srgb;
   cortexMedialWall: Srgb;
   cortexNoData: Srgb;
+  // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): un azul como
+  // el de la selección de texto, para el anillo del nodo y la pastilla de su
+  // etiqueta, y el texto sobre la pastilla. Son los --mark y --mark-text de
+  // index.css (theme/themeCss.test.ts comprueba que coinciden y su
+  // contraste). Las marcas no se exportan, así que no tienen color de
+  // exportación propio.
+  mark: string;
+  markText: string;
 }
 
 type KeysOfType<T, V> = { [K in keyof T]-?: T[K] extends V ? K : never }[keyof T];
@@ -123,6 +131,8 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     cortexGyrus: gray(0.72),
     cortexMedialWall: gray(0.25),
     cortexNoData: gray(0.55),
+    mark: "#2563eb",
+    markText: "#ffffff",
   },
   grafito: {
     edge: "#8b93a0",
@@ -147,6 +157,8 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     cortexGyrus: hexToSrgb("#e3e5e9"),
     cortexMedialWall: hexToSrgb("#2a2e35"),
     cortexNoData: hexToSrgb("#7d838c"),
+    mark: "#2563eb",
+    markText: "#ffffff",
   },
   noche: {
     edge: "#8a98b6",
@@ -171,6 +183,8 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     cortexGyrus: hexToSrgb("#dfe4ee"),
     cortexMedialWall: hexToSrgb("#262d3b"),
     cortexNoData: hexToSrgb("#7a8396"),
+    mark: "#2563eb",
+    markText: "#ffffff",
   },
   claro: {
     edge: "#6f737c",
@@ -195,6 +209,8 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     cortexGyrus: hexToSrgb("#dcdfe4"),
     cortexMedialWall: hexToSrgb("#a3a8b0"),
     cortexNoData: hexToSrgb("#b9bdc4"),
+    mark: "#1d4ed8",
+    markText: "#ffffff",
   },
 };
 

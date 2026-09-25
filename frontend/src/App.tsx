@@ -26,7 +26,7 @@ import { dismissToast, showToast, type ToastContent, type ToastEntry } from "./l
 import { countConnections, type ConnectionCounts } from "./logic/filterCounts";
 import { stepNotice } from "./logic/historyStep";
 import { useFiltersStore } from "./state/filters";
-import { resetHistory, undo, useHistoryStore } from "./state/history";
+import { resetForAtlasChange, resetHistory, undo, useHistoryStore } from "./state/history";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -210,8 +210,9 @@ export default function App() {
     // D4 (spec 5.7): el atlas nuevo empieza con el historial de deshacer
     // vacío. App no vacía la selección al cambiar de atlas (los ids del
     // anterior se quedan en el store y las vistas los ignoran), así que la
-    // instantánea de partida es la selección tal como queda.
-    resetHistory();
+    // instantánea de partida es la selección tal como queda. Las marcas de
+    // regiones sí se vacían (spec 5.9), y eso no es un paso.
+    resetForAtlasChange();
   }
 
   const sourcesForAtlas = networkSources?.atlasId === selectedAtlasId ? networkSources.items : [];
