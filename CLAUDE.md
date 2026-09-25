@@ -20,7 +20,7 @@ Sesgo: cautela antes que velocidad en el trabajo no trivial.
 
 ## Seguridad y datos
 
-- **SQL:** los scripts generan SQL; aplicarlo a una base de datos real lo decide el usuario después de revisarlo. Cargar siempre con `docker cp` + `psql -f` (`scripts/apply_sql.ps1`, `scripts/rebuild_db_from_sql.sh`), nunca por tubería: la de PowerShell corrompe los acentos.
+- **SQL:** los scripts generan SQL; aplicarlo a una base de datos real lo decide el usuario después de revisarlo. Cargar siempre con `docker cp` + `psql -f` (`scripts/apply_sql.ps1` en Windows, `scripts/rebuild_db_from_sql.sh` en Linux), nunca por tubería: la de PowerShell corrompe los acentos.
 - **Cambios en la arquitectura, el diseño o el código existente** se acuerdan antes con el desarrollador principal.
 - **Nada de basura en el repositorio.** Pruebas, volcados, capturas y scripts de un solo uso van al scratchpad de la sesión. Al terminar, `git status` solo muestra el trabajo pedido.
 - **Sin credenciales** en archivos del repositorio (contraseñas, tokens, URLs con usuario y clave).
@@ -67,12 +67,12 @@ Se cargan siempre, con este archivo:
     **Verificación.** Cómo se comprobó: pruebas, recuentos, navegador.
 ```
 
-- **Tras tocar la documentación**, `python3 scripts/check_docs.py` debe dar OK. Comprueba que las fuentes citadas y las rutas existen, que no hay redirecciones ni «la usuaria» y que el mapa está completo.
+- **Tras tocar la documentación**, `python scripts/check_docs.py` (`python3` en Linux) debe dar OK. Comprueba que las fuentes citadas y las rutas existen, que no hay redirecciones ni «la usuaria» y que el mapa está completo.
 - **El trabajo en curso** (lo pendiente, las decisiones abiertas) va en el plan o en la memoria de la sesión, no en los criterios ni en el log.
 - **Los comentarios del código** citan la entrada del log: «decisión N», «D4», «H1».
 
 ## Entorno
 
 - `docker compose up -d`: Postgres con pgvector (`neurograph-postgres`) y la API (`neurograph-api`, `http://127.0.0.1:8420`). El frontend se arranca con `npm run dev` en `frontend/` (`http://localhost:5173`).
-- Base de datos vacía: cargar un volcado o ejecutar `scripts/rebuild_db_from_sql.sh`. La tractografía no está en esa carga inicial: la instala `scripts/install_tractography.sh` (solo Linux).
+- Base de datos vacía: cargar un volcado o la carga inicial de `init/`. En Windows, archivo a archivo con `scripts/apply_sql.ps1`, en el orden de `backend/database/migrations/README.md`; en Linux, todo de una vez con `scripts/rebuild_db_from_sql.sh`. La tractografía no está en esa carga inicial: la instala `scripts/install_tractography.sh` (solo Linux).
 - Entorno virtual de Python en la raíz: `pip install -e ".[dev]"`. Los comandos de verificación de cada parte están en su CLAUDE.md.

@@ -75,7 +75,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 
 ## Reconstruir la base y volcados
 
-- **Con volcado,** se carga el volcado. **Sin volcado,** `scripts/rebuild_db_from_sql.sh` aplica las migraciones y los `.sql` del repositorio en orden de dependencias (ver `backend/database/migrations/README.md`). (53, H1)
+- **Con volcado,** se carga el volcado. **Sin volcado,** se aplican las migraciones y los `.sql` de `init/` en orden de dependencias: en Linux, `scripts/rebuild_db_from_sql.sh` de una vez; en Windows, uno a uno con `scripts/apply_sql.ps1` (ver `backend/database/migrations/README.md`). (53, H1)
 - **Tractografía ORG:** no está en la carga inicial ni en git. La instala `scripts/install_tractography.sh` (solo Linux), después de la carga inicial:
   - descarga de Zenodo los originales a la biblioteca y comprueba su md5: `ORG-800FiberClusters.zip` (registro 2648292, md5 `ee5f73e15d28f177e65ba38dbb6c8a7a`) y `100HCP-population-mean-wmparc.nii.gz` (registro 8082481, md5 `b8bec868a3cc878dcfc62c704ba15e4b`);
   - genera el SQL en `derived/tractograms/` de la biblioteca, con `vtk` en un entorno temporal;
@@ -165,5 +165,5 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   - `frontend/public/meshes/` no se edita a mano.
 
   (22, 63, 72)
-- **Documentación:** tras tocar criterios, logs o un CLAUDE.md, `python3 scripts/check_docs.py` debe dar OK. (H2)
+- **Documentación:** tras tocar criterios, logs o un CLAUDE.md, `python scripts/check_docs.py` (`python3` en Linux) debe dar OK. (H2)
 - **Permisos de los agentes** (`.claude/settings.json`): solo comandos de verificación de solo lectura, en forma exacta. Nunca intérpretes, `docker exec` ni comodines como `npm run *` o `npx *`, que equivalen a ejecutar cualquier código. (H2)
