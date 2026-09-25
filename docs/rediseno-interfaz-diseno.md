@@ -415,6 +415,25 @@ Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy dif�
   - `logic/regionSearch.ts`: función pura que normaliza, busca, ordena y detecta coincidencias en redes ocultas.
   - `RegionSearch`: componente que reutiliza la lógica de teclado de `logic/listbox.ts`.
 
+### 5.9 Marcar regiones
+
+Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el navegador seleccionaba las etiquetas como texto y las pintaba de azul, y él propuso convertirlo en función: «una cosa es activar red y otra seleccionar». Las marcas son una capa aparte de la selección. Seleccionar sigue activando la red de la región, con sus conexiones y el foco del 3D. Marcar solo resalta, para localizar regiones de un vistazo en todas las vistas, sin cambiar lo que se dibuja. Diseño aprobado por el usuario el mismo día.
+
+- **Gesto:**
+  - Ctrl+clic en un nodo marca o desmarca la región, en el connectograma (también en la lupa), en los hemisferios y en el 3D. En el 3D vale sobre el marcador y, con la corteza pintada, sobre la región.
+  - En macOS, Cmd+clic, porque allí Ctrl+clic abre el menú contextual.
+  - El clic normal sigue seleccionando, como hasta ahora.
+- **Teclado:** en el buscador de regiones (5.8), Ctrl+Intro marca o desmarca la sugerencia activa, en lugar de seleccionarla. La línea de avisos del buscador lo recuerda.
+- **Cómo se ven,** con un color de marca nuevo por tema, un azul como el de la selección de texto que vio el usuario:
+  - En el connectograma y los hemisferios, la etiqueta de la región va sobre una pastilla del color de marca, con texto de contraste, y el nodo lleva un anillo exterior del mismo color, separado del nodo por un hueco del color del fondo. Así se distingue aunque la red sea azul.
+  - En el 3D, marcador y etiqueta con ese anillo y esa pastilla, también fuera de la selección y también con el mapa entero pintado. Con la oclusión (6.3), una marca que queda detrás de la corteza se ve tenue, como lo demás.
+  - La pastilla y el anillo pasan 3:1 sobre el fondo de los cuatro temas, y el texto de la pastilla 4,5:1.
+- **Filtros:** una línea bajo la selección (5.3): «Marcadas: N» con sus nombres (los primeros, y «y N más») y un botón «Quitar marcas». Si una región marcada queda oculta por los filtros, no se dibuja, y la línea lo dice («1 oculta por los filtros»).
+- **Deshacer y rehacer** (5.7): marcar, desmarcar y «Quitar marcas» son pasos del historial, con su descripción («marcar IFJa (der.)», «quitar las marcas (5)»).
+- **Duración:** no se guardan. Se pierden al recargar la página, y al cambiar de atlas se vacían (los identificadores de región ya no valen); ese vaciado no es un paso del historial. Al cambiar de clasificación de redes se conservan: las regiones son las mismas.
+- **Exportación:** las marcas solo existen en pantalla; los JPEG salen como sin ellas (decisión del usuario). Los elementos de las marcas llevan un atributo que la exportación de SVG quita del clon, y el 3D no las dibuja mientras captura.
+- **Además:** los dibujos (connectograma, hemisferios y leyenda) dejan de seleccionar texto al arrastrar (`user-select: none`). Las barras azules que vio el usuario eran esa selección.
+
 ## 6. Gráficos, sin cambiar lo que representan
 
 ### 6.1 Connectograma
@@ -596,7 +615,7 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo).
 
-Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`). Después, la oclusión por la corteza sustituyó a la atenuación (6.3), a petición del usuario.
+Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`). Después, la oclusión por la corteza sustituyó a la atenuación (6.3), a petición del usuario. Y, también a petición suya, las marcas de regiones (5.9).
 
 ## 12. Riesgos y puntos abiertos
 
