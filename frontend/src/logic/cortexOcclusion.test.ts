@@ -108,11 +108,9 @@ describe("valores de la oclusión", () => {
     expect(OCCLUSION_MIN).toBeLessThan(1);
   });
 
-  it("el inicio cubre la etiqueta: vista desde detrás, la de un marcador visible queda detrás de él y se ve entera", () => {
-    expect(OCCLUSION_START).toBeGreaterThan(markerSize(false).labelOffset);
-    expect(OCCLUSION_START).toBeGreaterThan(markerSize(true).labelOffset);
-  });
-
+  // La etiqueta va a la profundidad del centro de su marcador, a su lado en
+  // pantalla (fase 4 del rediseño; Brain3D.labelsWiring.test.ts): ya no queda
+  // detrás de él vista desde detrás, como cuando iba más arriba en +Y.
   it("el inicio cubre el marcador con su contorno: la mitad que queda bajo la superficie no se atenúa", () => {
     const selected = markerSize(true);
     expect(OCCLUSION_START).toBeGreaterThan(selected.radius * selected.outlineScale);

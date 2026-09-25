@@ -192,3 +192,40 @@ describe("color de marca", () => {
     expect(DRAW_TOKENS[id].sceneBg).toBe(variables(THEME_BLOCKS.get(id)!.body).get("--panel-bg"));
   });
 });
+
+// Etiquetas del cerebro 3D (spec 6.3; fase 4 del rediseño): el texto del
+// tema sobre el fondo de la escena, translúcido. Detrás puede quedar
+// cualquier cosa (la corteza, una red, el fondo): el texto se lee con al
+// menos 4,5:1 con el fondo compuesto sobre negro y sobre blanco, los dos
+// extremos.
+describe("etiquetas del cerebro 3D", () => {
+  it.each(THEME_IDS)("tema %s: el texto del tema sobre el fondo de la escena translúcido, legible con cualquier cosa detrás", (id) => {
+    const vars = variables(THEME_BLOCKS.get(id)!.body);
+    const { label3dText, label3dBackground, sceneBg } = DRAW_TOKENS[id];
+    expect(label3dText).toBe(vars.get("--text"));
+    const background = parseColor(label3dBackground);
+    expect(background.rgb).toEqual(parseColor(sceneBg).rgb);
+    expect(background.alpha).toBeGreaterThanOrEqual(0.8);
+    expect(background.alpha).toBeLessThan(1);
+    for (const behind of [
+      [0, 0, 0],
+      [255, 255, 255],
+    ] as const) {
+      expect(contrast(parseColor(label3dText).rgb, over(label3dBackground, behind)), `detrás ${behind}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // La de la región seleccionada destaca, como en la maqueta: el texto
+  // fuerte del tema (--text-h, strong en el spec), sobre el mismo fondo.
+  it.each(THEME_IDS)("tema %s: la de la región seleccionada, con el texto fuerte del tema, legible con cualquier cosa detrás", (id) => {
+    const vars = variables(THEME_BLOCKS.get(id)!.body);
+    const { label3dStrong, label3dBackground } = DRAW_TOKENS[id];
+    expect(label3dStrong).toBe(vars.get("--text-h"));
+    for (const behind of [
+      [0, 0, 0],
+      [255, 255, 255],
+    ] as const) {
+      expect(contrast(parseColor(label3dStrong).rgb, over(label3dBackground, behind)), `detrás ${behind}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});

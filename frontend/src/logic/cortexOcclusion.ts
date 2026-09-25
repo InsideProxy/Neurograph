@@ -36,10 +36,12 @@ import * as THREE from "three";
 // verificación con capturas.
 //
 // Hasta OCCLUSION_START por detrás de la corteza (10 mm), entero. Tiene que
-// quedar por encima de la separación de la etiqueta (logic/markerSize.ts:
-// 0,21 del centro del marcador en +Y de los datos, 0,222 en la región
-// seleccionada): vista desde detrás, la etiqueta de un marcador visible queda
-// detrás de él, sobre la misma corteza, y tiene que verse entera.
+// quedar por encima de la mitad del marcador, con su contorno, que queda bajo
+// la superficie (0,057 en la región seleccionada). La etiqueta va a la
+// profundidad del centro de su marcador, a su lado en pantalla (fase 4 del
+// rediseño; logic/markerSize.ts). Antes iba 0,21 más arriba en +Y de los
+// datos: vista desde detrás, quedaba detrás de su marcador, sobre la misma
+// corteza, y este valor la dejaba entera. Se deja como estaba.
 export const OCCLUSION_START = 0.25;
 // Desde OCCLUSION_END (30 mm), OCCLUSION_MIN de opacidad.
 export const OCCLUSION_END = 0.75;

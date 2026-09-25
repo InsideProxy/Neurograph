@@ -68,13 +68,19 @@ describe("marcas en el 3D: conexión en Brain3D.tsx y PaintedCortex.tsx", () => 
       /<spriteMaterial\s+map=\{mark\.ringTexture\}[^>]*\{\.\.\.occlusionMaterialProps\(occlusion, \{ opaque: false, overlay \}\)\}/,
     );
     expect(BRAIN).toContain("pill={mark?.pill ?? null}");
-    expect(BRAIN).toMatch(/const label = useMemo\(\(\) => getLabelTexture\(node\.abbreviation \?\? "", pill\), \[node\.abbreviation, pill\]\);/);
+    // Desde la fase 4 (spec 6.3), la etiqueta de siempre también va sobre una
+    // pastilla, con los colores del tema: los de marca, si los hay, ganan,
+    // también al texto fuerte de la región seleccionada.
+    expect(BRAIN).toContain("const background = pill?.background ?? colors.label3dBackground;");
+    expect(BRAIN).toContain("const color = pill?.color ?? (selected ? colors.label3dStrong : colors.label3dText);");
   });
 
-  // Con la curva de tono del lienzo, el azul de marca salía apagado.
-  it("el anillo y la pastilla, sin la curva de tono; las etiquetas de siempre, con ella", () => {
+  // Con la curva de tono del lienzo, el azul de marca salía apagado. Desde la
+  // fase 4 (spec 6.3), las etiquetas de siempre tampoco la llevan: salen con
+  // los colores del tema.
+  it("el anillo y todas las etiquetas, también la pastilla, sin la curva de tono", () => {
     expect(BRAIN_CODE).toContain(
-      "<spriteMaterial map={label.texture} transparent depthWrite={false} depthTest={!overlay} sizeAttenuation toneMapped={pill === null} ",
+      "<spriteMaterial map={label.texture} transparent depthWrite={false} depthTest={!overlay} sizeAttenuation toneMapped={false} ",
     );
     expect(BRAIN_CODE).toContain(
       "<spriteMaterial map={mark.ringTexture} transparent depthWrite={false} depthTest={!overlay} toneMapped={false} ",

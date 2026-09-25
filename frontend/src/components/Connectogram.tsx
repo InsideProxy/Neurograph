@@ -26,11 +26,26 @@ import { connectionArrow, regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
-import { MARK_ELEMENT, isMarkGesture, markRing, outwardLabel, type ClickKeys } from "../logic/marks";
+import { MARK_ELEMENT, isMarkGesture, markRing, type ClickKeys } from "../logic/marks";
+import {
+  HEMISPHERE_ARC_WIDTH,
+  HEMISPHERE_NAMES,
+  SELECTION_HALO_OPACITY,
+  arcLabelSides,
+  arcPath,
+  hemisphereArcs,
+  hemisphereBlocks,
+  labelTransform,
+  radialLabel,
+  ringLayout,
+  selectionHalo,
+  thumbnailArcsFit,
+} from "../logic/connectogramLayout";
 import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { currentExportResolver, useDrawColors, type DrawColors } from "../theme/useDrawColors";
+import { ConnectogramLegend } from "./ConnectogramLegend";
 import { Icon } from "./Icon";
 import { MarkedLabel } from "./MarkedLabel";
 import { RegionSummary } from "./NetworkTag";
@@ -155,13 +170,50 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     }
   };
 
-  const radius = size / 2 - 40;
   const center = size / 2;
 
   // Con muchos nodos, puntos más pequeños evitan que se toquen entre sí
   // alrededor del círculo.
   const nodeRadius = nodes.length > 150 ? 3 : nodes.length > 40 ? 4.5 : 6;
   const labelFontSize = nodes.length > 150 ? 5.5 : nodes.length > 40 ? 7 : 9;
+
+  // Las etiquetas para las que el anillo reserva sitio: las de todas las
+  // regiones del atlas, también las que ocultan los filtros (decisión del
+  // usuario del 25/09/2026), para que el círculo no cambie al mostrar u
+  // ocultar redes. El tamaño de la letra sigue contando los nodos que se ven,
+  // y el sitio se reserva con la letra con que se dibujan: si al ocultar redes
+  // el número de nodos cruza 40 o 150, la letra cambia, y el radio con ella.
+  const ringLabels = allNodes.map((node) => node.abbreviation);
+
+  // Arcos de hemisferio (fase 4 del rediseño; spec 6.1): dos arcos finos por
+  // fuera de las etiquetas, rotulados IZQUIERDO y DERECHO. Solo si, en el
+  // orden actual, cada hemisferio forma un único bloque seguido y ningún nodo
+  // tiene el hemisferio sin asignar; si no, no se dibujan. El orden de los
+  // nodos no se toca. En la vista grande, el anillo aparta los arcos de las
+  // etiquetas; en la miniatura no, y si las etiquetas en reposo los alcanzan
+  // (abreviaturas largas con letra grande, como en el IPL), no se dibujan
+  // (logic/connectogramLayout.ts).
+  const blocks =
+    compact && !thumbnailArcsFit(ringLabels, nodeRadius, labelFontSize)
+      ? null
+      : hemisphereBlocks(nodes.map((node) => node.hemisphere));
+
+  // Radio del anillo (fase 4 del rediseño; spec 6.1; decisión del usuario
+  // del 25/09/2026). Antes era siempre `size / 2 - 40`. Ahora esos 40 px de
+  // margen son el mínimo, y crecen lo justo para que la etiqueta más larga
+  // quepa entera, también ampliada: al ir giradas en dirección radial, las
+  // etiquetas llegan también al borde de arriba y al de abajo. Los arcos de
+  // hemisferio, si se dibujan, van por fuera de las etiquetas en reposo y
+  // dentro de ese margen. En la miniatura, el de siempre
+  // (logic/connectogramLayout.ts).
+  const { radius, arcOffset } = ringLayout({
+    size,
+    labels: ringLabels,
+    nodeRadius,
+    fontSize: labelFontSize,
+    fitLabels: !compact,
+    withArcs: blocks !== null,
+  });
 
   const angleScale = useMemo(
     () =>
@@ -186,6 +238,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   }, [nodes, angleScale, center, radius]);
 
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+
+  // Los arcos de hemisferio (ver `blocks`, arriba), con los mismos ángulos
+  // que `positions`.
+  const arcs = blocks
+    ? hemisphereArcs(blocks, nodes.length, (index) => (angleScale(nodes[index].id) ?? 0) - Math.PI / 2, angleScale.step())
+    : [];
+  const arcSides = arcs.length === 2 ? arcLabelSides(arcs) : null;
 
   // Lupa (decisión 76, 24/09/2026, propuesta de la usuaria): en las zonas
   // densas del círculo los nodos y sus abreviaturas quedan diminutos. Con
@@ -323,11 +382,21 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         node,
         pos,
         ring: markRing(currentNodeRadius, isSelected ? 2.5 : 1),
-        label: outwardLabel(pos, (pos.x - center) / radius, (pos.y - center) / radius, currentNodeRadius + 7),
+        label: radialLabel(pos, (pos.x - center) / radius, (pos.y - center) / radius, currentNodeRadius + 7),
         fontSize: isEnlarged ? labelFontSize + 1.5 : labelFontSize,
         fontWeight: isEnlarged ? 700 : 600,
       },
     ];
+  });
+
+  // Halo de las regiones seleccionadas (fase 4 del rediseño; spec 6.1): un
+  // anillo del color de selección al 35 % por fuera de su contorno. Una
+  // región seleccionada siempre se dibuja ampliada (radio + 3) y con el
+  // contorno de 2,5 px, como en el dibujo de los nodos, más abajo.
+  const halo = selectionHalo(nodeRadius + 3, 2.5);
+  const haloCenters = [...selectedNodeIds].flatMap((id) => {
+    const pos = positions.get(id);
+    return pos ? [{ id, pos }] : [];
   });
 
   return (
@@ -421,6 +490,45 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.hoverHighlight} {...ngFill("hoverHighlight")} />
         </marker>
       </defs>
+      {/* Arcos de hemisferio (fase 4 del rediseño; spec 6.1), debajo de todo.
+          Sus rótulos van en las esquinas de arriba, cada uno del lado de su
+          arco, y no se ven en la miniatura, como en la maqueta. Se
+          exportan: son parte del dibujo. */}
+      {arcs.length > 0 && (
+        <g style={{ pointerEvents: "none" }}>
+          {arcs.map((arc) => (
+            <path
+              key={arc.hemisphere}
+              d={arcPath(center, center, radius + arcOffset, arc.start, arc.end)}
+              fill="none"
+              stroke={colors.edge}
+              {...ngStroke("edge")}
+              strokeWidth={HEMISPHERE_ARC_WIDTH}
+              strokeLinecap="round"
+            />
+          ))}
+          {!compact &&
+            arcSides &&
+            arcs.map((arc) => {
+              const right = arcSides.get(arc.hemisphere) === "right";
+              return (
+                <text
+                  key={`${arc.hemisphere}-rotulo`}
+                  x={right ? size - 10 : 10}
+                  y={18}
+                  textAnchor={right ? "end" : "start"}
+                  fontSize={10}
+                  fontWeight={600}
+                  letterSpacing={1}
+                  fill={colors.label}
+                  {...ngFill("label")}
+                >
+                  {HEMISPHERE_NAMES[arc.hemisphere]}
+                </text>
+              );
+            })}
+        </g>
+      )}
       <g>
         {visibleConnections.map((conn) => {
           const a = positions.get(conn.source);
@@ -541,12 +649,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           const ux = (pos.x - center) / radius;
           const uy = (pos.y - center) / radius;
           const labelOffset = currentNodeRadius + 7;
-          const labelX = pos.x + ux * labelOffset;
-          const labelY = pos.y + uy * labelOffset;
-          // Cerca de arriba/abajo (ux pequeño) centrado; a los lados,
-          // alineado para que el texto crezca hacia fuera del círculo, no
-          // hacia dentro.
-          const textAnchor = ux > 0.3 ? "start" : ux < -0.3 ? "end" : "middle";
+          // Fase 4 del rediseño (docs/rediseno-interfaz-diseno.md, 6.1): la
+          // etiqueta va además girada en dirección radial. En la mitad
+          // derecha se alinea al principio; en la izquierda se gira 180° más
+          // y se alinea al final, para leerse de izquierda a derecha. Las
+          // dos crecen hacia fuera del círculo. La pastilla de una región
+          // marcada (markedLayout, arriba) usa la misma cuenta.
+          const label = radialLabel(pos, ux, uy, labelOffset);
 
           return (
             <g key={node.id}>
@@ -581,9 +690,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               </g>
               {node.abbreviation && (
                 <text
-                  x={labelX}
-                  y={labelY}
-                  textAnchor={textAnchor}
+                  x={label.x}
+                  y={label.y}
+                  transform={labelTransform(label)}
+                  textAnchor={label.anchor}
                   dominantBaseline="central"
                   fontSize={isSelected || isHovered ? labelFontSize + 1.5 : labelFontSize}
                   fontWeight={isSelected || isHovered ? 700 : 600}
@@ -598,6 +708,27 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           );
         })}
       </g>
+      {/* Halo de las regiones seleccionadas (fase 4 del rediseño; spec 6.1),
+          encima de los nodos vecinos, como en la maqueta, y debajo del anillo
+          de una marca, que no se mueve. Es parte del dibujo: se exporta, con
+          el color de selección de la exportación. */}
+      {haloCenters.length > 0 && (
+        <g style={{ pointerEvents: "none" }}>
+          {haloCenters.map(({ id, pos }) => (
+            <circle
+              key={id}
+              cx={pos.x}
+              cy={pos.y}
+              r={halo.radius}
+              fill="none"
+              stroke={colors.selected}
+              {...ngStroke("selected")}
+              strokeOpacity={SELECTION_HALO_OPACITY}
+              strokeWidth={halo.strokeWidth}
+            />
+          ))}
+        </g>
+      )}
       {/* Marcas (spec 5.9), encima de los nodos y de las etiquetas, para que
           ninguna vecina las tape: el anillo del color de marca y la etiqueta
           sobre su pastilla (MarkedLabel). */}
@@ -621,6 +752,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   anchor={label.anchor}
                   fontSize={fontSize}
                   fontWeight={fontWeight}
+                  transform={labelTransform(label)}
                   colors={colors}
                 />
               )}
@@ -649,6 +781,11 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       )}
     </svg>
     </div>
+    {/* Leyenda (fase 4 del rediseño; spec 5.4): bajo el dibujo y fuera del
+        <svg>, así que no se exporta ni tapa nodos. Solo en la vista grande.
+        El hueco del dibujo, encima, se queda con el alto que sobra, y el
+        círculo se ajusta a él (ResizeObserver, arriba). */}
+    {!compact && <ConnectogramLegend dash={colors.dash} />}
     {!compact && <div className="connectogram-readout">{readout}</div>}
     </div>
   );
@@ -838,6 +975,9 @@ function ConnectogramLens({
           const leftHalf = ux < 0;
           const rotation = leftHalf ? angle + 180 : angle;
           const textAnchor = leftHalf ? "start" : "end";
+          // Halo de una región seleccionada (fase 4 del rediseño; spec 6.1),
+          // como en el dibujo principal: debajo del anillo de una marca.
+          const lensHalo = selectionHalo(r, 2.5);
           // Región marcada (spec 5.9): el anillo, con el hueco del color del
           // fondo, detrás del nodo, y la etiqueta sobre su pastilla, girada
           // con ella.
@@ -845,6 +985,17 @@ function ConnectogramLens({
           const markedRing = markRing(r, isSelected || isHovered ? 2.5 : 1);
           return (
             <g key={node.id}>
+              {isSelected && (
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={lensHalo.radius}
+                  fill="none"
+                  stroke={colors.selected}
+                  strokeOpacity={SELECTION_HALO_OPACITY}
+                  strokeWidth={lensHalo.strokeWidth}
+                />
+              )}
               {isMarked && (
                 <circle
                   {...MARK_ELEMENT}

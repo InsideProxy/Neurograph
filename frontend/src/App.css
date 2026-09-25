@@ -298,6 +298,21 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .connectogram-lens__border { fill: none; stroke: var(--accent); stroke-width: 2; }
 .connectogram-lens__label { paint-order: stroke; stroke: var(--panel-bg); stroke-width: 3px; stroke-linejoin: round; }
 
+/* Leyenda del connectograma (spec 5.4; fase 4 del rediseño): abajo a la
+   izquierda, bajo el dibujo y fuera del <svg>, así que no se exporta
+   (decisión del usuario del 25/09/2026: encima del dibujo tapaba nodos, y
+   también la lupa). Ocupa su propia fila de .viz-panel, y el hueco del
+   dibujo se queda con el alto que sobra: el círculo se ajusta a él. Las
+   entradas van en una fila; si no caben, en dos o en tres. Con 8 px entre
+   entradas y 6 entre la muestra y su texto, a 1400 × 900 caben en una (unos
+   771 px de 776). Sin selección de texto al arrastrar, como los dibujos
+   (5.9). Va sobre el panel, con su mismo fondo. Muestras del color del
+   texto. */
+.connectogram-legend { flex: 0 0 auto; align-self: flex-start; display: flex; flex-wrap: wrap; gap: 2px 8px; box-sizing: border-box; max-width: 100%; margin: 6px 0 0; padding: 4px 10px; list-style: none; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-bg); color: var(--text-muted); font-size: 0.7rem; line-height: 1.3; text-align: left; -webkit-user-select: none; user-select: none; }
+.connectogram-legend li { display: flex; align-items: center; gap: 6px; }
+.connectogram-legend__sample { flex: 0 0 auto; color: var(--text); fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.connectogram-legend__sample path { fill: none; }
+
 /* Ajustes (D3 de docs/decisiones-diseno.md): engranaje a la derecha de la barra y panel
    emergente con los cuatro temas. */
 .topbar .settings { position: relative; }
