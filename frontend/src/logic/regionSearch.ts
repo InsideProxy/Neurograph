@@ -229,7 +229,9 @@ export function searchShortcutLabel(userAgent: string): string {
 }
 
 // Lo que recuerda la línea de avisos mientras la lista está abierta (spec
-// 5.9): qué hace Intro y qué hace Ctrl+Intro (⌘Intro en macOS).
+// 5.9): qué hace Ctrl+Intro (⌘Intro en macOS). En una línea, para que lo de
+// debajo no baje más al abrirse la lista: unos 200 px a la raíz de 18 px, en
+// los 220 del panel.
 export function markKeyHint(userAgent: string): string {
-  return `Intro añade la región a la selección · ${shortcutLabel("Intro", userAgent)} la marca o la desmarca`;
+  return `${shortcutLabel("Intro", userAgent)} la marca o la desmarca`;
 }

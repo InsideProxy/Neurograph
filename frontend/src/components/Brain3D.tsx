@@ -51,7 +51,7 @@ import { exportPixelsAsJpeg } from "../logic/exportImage";
 import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
 import { MARK_RING_SPRITE_SCALE, getLabelTexture, getMarkRingTexture, type LabelPill } from "../logic/textSprite";
 import { markRing3d, markerSize } from "../logic/markerSize";
-import { isMarkGesture, type ClickKeys } from "../logic/marks";
+import { isDragRelease, isMarkGesture, type ClickKeys } from "../logic/marks";
 import { useMarksStore } from "../state/marks";
 import {
   OCCLUSION_PASS_PRIORITY,
@@ -657,12 +657,23 @@ function NodeMesh({
           clic sigue costando lo mismo que antes. Con la corteza pintada no
           hay, como antes: se selecciona pulsando la propia región. */}
       {/* Ctrl+clic (⌘+clic en macOS) marca o desmarca la región (spec
-          5.9); el clic normal sigue seleccionándola. */}
+          5.9); el clic normal sigue seleccionándola, como antes. */}
       {!overlay && (
         <mesh
           position={node.position3d}
           visible={false}
-          onClick={(event) => (isMarkGesture(event.nativeEvent) ? toggleMark(node.id) : toggleNode(node.id))}
+          onClick={(event) => {
+            if (!isMarkGesture(event.nativeEvent)) {
+              toggleNode(node.id);
+              return;
+            }
+            // Solo la región de delante: react-three-fiber entrega el clic a
+            // todas las zonas de clic que cruza el rayo, de la más cercana a
+            // la más lejana, y en la vista lateral de partida las de los dos
+            // hemisferios se solapan. Al soltar un Ctrl+arrastre, no marca.
+            event.stopPropagation();
+            if (!isDragRelease(event.delta)) toggleMark(node.id);
+          }}
         >
           <sphereGeometry args={[size.hitRadius, 14, 14]} />
           <meshBasicMaterial />
@@ -1331,13 +1342,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // Clic sobre la corteza = mismo efecto que un clic sobre el nodo en el
   // connectograma. Una región oculta por los filtros no se selecciona.
   // Marcas (spec 5.9): con Ctrl+clic (⌘+clic en macOS), se marca o se
-  // desmarca, como el nodo; una región oculta tampoco se marca.
+  // desmarca, como el nodo; una región oculta tampoco se marca. El clic
+  // que llega al soltar un Ctrl+arrastre no marca (isDragRelease).
   const handleRegionClick = useCallback(
-    (region: number, keys: ClickKeys) => {
+    (region: number, keys: ClickKeys, delta: number) => {
       const id = painted?.map.regionIds[region];
       if (!id || !filteredNodeIds.has(id)) return;
-      if (isMarkGesture(keys)) toggleMark(id);
-      else toggleNode(id);
+      if (!isMarkGesture(keys)) toggleNode(id);
+      else if (!isDragRelease(delta)) toggleMark(id);
     },
     [painted, filteredNodeIds, toggleNode, toggleMark]
   );

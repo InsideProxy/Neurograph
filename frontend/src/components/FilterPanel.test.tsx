@@ -87,8 +87,10 @@ describe("FilterPanel", () => {
     expect(selection).toBeGreaterThan(-1);
     expect(marks).toBeGreaterThan(selection);
     expect(marks).toBeLessThan(html.indexOf('class="filters__section"'));
-    expect(html).toContain(">Ninguna región marcada</span>");
-    expect(html).toContain("<p>Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro en el buscador, la marca o la desmarca:");
+    expect(html).toContain('<span class="filters__marks-swatch" aria-hidden="true"></span><span>Sin marcas</span>');
+    expect(html).toContain(
+      "<p>Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro (⌘+Intro) en el buscador, la marca o la desmarca:",
+    );
   });
 });
 

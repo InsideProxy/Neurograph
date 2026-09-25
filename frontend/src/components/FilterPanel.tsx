@@ -402,9 +402,9 @@ export function FilterPanel({
         </summary>
         <p>◎ resalta solo esa red · + la añade a lo ya resaltado.</p>
         <p>
-          Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro en el buscador, la marca o la desmarca: se
-          resalta en las tres vistas para encontrarla de un vistazo, sin cambiar la selección. Las marcas no salen
-          en las imágenes exportadas.
+          Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro (⌘+Intro) en el buscador, la marca o la
+          desmarca: se resalta en las tres vistas para encontrarla de un vistazo, sin cambiar la selección. Las
+          marcas no salen en las imágenes exportadas.
         </p>
         <p>
           El número junto a cada tipo de conectividad cuenta sus conexiones que pasan los filtros de redes y de

@@ -138,14 +138,20 @@ export function RegionSearchView(props: RegionSearchViewProps) {
                 <span className="region-search__label">{suggestion.label}</span>
                 {suggestion.name && <span className="region-search__name"> {suggestion.name}</span>}
               </span>
-              {selectedIds.has(suggestion.id) && (
-                <span className="region-search__selected">
-                  <span className="visually-hidden">, </span>seleccionada
-                </span>
-              )}
-              {markedIds.has(suggestion.id) && (
-                <span className="region-search__marked">
-                  <span className="visually-hidden">, </span>marcada
+              {/* «seleccionada» y «marcada» (spec 5.9) van juntas, una sobre
+                  otra, para dejarle sitio al nombre (App.css). */}
+              {(selectedIds.has(suggestion.id) || markedIds.has(suggestion.id)) && (
+                <span className="region-search__tags">
+                  {selectedIds.has(suggestion.id) && (
+                    <span className="region-search__selected">
+                      <span className="visually-hidden">, </span>seleccionada
+                    </span>
+                  )}
+                  {markedIds.has(suggestion.id) && (
+                    <span className="region-search__marked">
+                      <span className="visually-hidden">, </span>marcada
+                    </span>
+                  )}
                 </span>
               )}
             </li>

@@ -1,15 +1,18 @@
 // Línea de las marcas en Filtros (docs/rediseno-interfaz-diseno.md, 5.9),
 // bajo la selección: «Marcadas: N» con los nombres de las primeras y «y N
 // más», cuántas ocultan los filtros (esas no se dibujan) y «Quitar marcas».
-// Sin marcas, explica el gesto. Está siempre, para que la lista de redes no
-// salte al marcar la primera región ni al quitarlas.
+// Sin marcas, explica el gesto. Está siempre, y siempre con el mismo alto,
+// para que la lista de redes no salte al marcar la primera región, al
+// marcar más ni al quitarlas: una fila con «Marcadas: N» y «Quitar marcas»,
+// y debajo dos líneas justas (App.css).
 // - «Quitar marcas» es un paso del historial (state/history.ts): con dos o
 //   más, sale el aviso con «Deshacer». Sin marcas lleva aria-disabled y no
 //   disabled, para no perder el foco del teclado al pulsarlo, como los
 //   botones de deshacer y rehacer.
 // - Las marcas cambian con un clic en las vistas o con Ctrl+Intro en el
-//   buscador: una región viva oculta anuncia la línea, como la del aviso con
-//   «Deshacer» (spec 5.7).
+//   buscador: una región viva oculta anuncia cuántas y cuáles, como la del
+//   aviso con «Deshacer» (spec 5.7). No anuncia las que ocultan los filtros,
+//   para no repetirse cada vez que se muestra o se oculta una red.
 import { useMemo } from "react";
 import {
   markGestureHint,
@@ -37,9 +40,7 @@ export function MarksLineView({
   onClear: () => void;
 }) {
   const empty = summary.count === 0;
-  const detail = empty
-    ? gestureHint
-    : [marksNamesText(summary), marksHiddenText(summary.hidden)].filter((text) => text !== null).join(" · ");
+  const hidden = marksHiddenText(summary.hidden);
   return (
     <div className="filters__marks">
       <div className="filters__marks-row">
@@ -59,8 +60,13 @@ export function MarksLineView({
           Quitar marcas
         </button>
       </div>
+      {/* Dos líneas justas: los nombres, o cómo marcar, se cortan con «…» si
+          no caben. Si los filtros ocultan alguna, cuántas va en una línea
+          propia, que no se corta, y los nombres ocupan una. Los nombres de
+          todas están en la etiqueta emergente. */}
       <p className="filters__marks-detail" title={empty ? undefined : joinNames(summary.allNames)}>
-        {detail}
+        <span className="filters__marks-text">{empty ? gestureHint : marksNamesText(summary)}</span>
+        {hidden !== null && <span className="filters__marks-hidden">{hidden}</span>}
       </p>
       <span className="visually-hidden" role="status">
         {marksAnnouncement(summary)}

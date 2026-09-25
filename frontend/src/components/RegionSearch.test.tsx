@@ -68,19 +68,32 @@ describe("RegionSearch", () => {
   // Marcar regiones (spec 5.9): Ctrl+Intro marca o desmarca la sugerencia
   // activa, y la línea de avisos lo recuerda mientras la lista está abierta.
   describe("marcas", () => {
-    const MARK_HINT = "Intro añade la región a la selección · Ctrl+Intro la marca o la desmarca";
-    const marked = (result: RegionSearchResult, open: boolean) => {
-      const state = { baseId: "busca", query: "te1m", result, open, active: 0, selectedIds: new Set<string>(), shortcutLabel: "Ctrl+K" };
+    const MARK_HINT = "Ctrl+Intro la marca o la desmarca";
+    const marked = (result: RegionSearchResult, open: boolean, selected: string[] = []) => {
+      const state = { baseId: "busca", query: "te1m", result, open, active: 0, selectedIds: new Set(selected), shortcutLabel: "Ctrl+K" };
       return renderToStaticMarkup(
         <RegionSearchView {...state} markedIds={new Set(["r_te1m"])} markHint={MARK_HINT} {...HANDLERS} />,
       );
     };
+    const SELECTED_TAG = '<span class="region-search__selected"><span class="visually-hidden">, </span>seleccionada</span>';
+    const MARKED_TAG = '<span class="region-search__marked"><span class="visually-hidden">, </span>marcada</span>';
 
     it("cada sugerencia marcada lo dice, y con la lista abierta la línea de avisos recuerda Ctrl+Intro", () => {
       const html = marked({ suggestions: TE1M, hidden: null, noMatch: false }, true);
       expect(html.match(/<span class="region-search__marked"><span class="visually-hidden">, <\/span>marcada<\/span>/g)).toHaveLength(1);
       expect(html.indexOf("marcada")).toBeGreaterThan(html.indexOf('id="busca-option-1"'));
       expect(html).toContain(`<div class="region-search__status" role="status"><span>${MARK_HINT}</span></div>`);
+    });
+
+    // Una junto a otra, las dos etiquetas dejaban unos 20 px para el nombre.
+    it("«seleccionada» y «marcada» van juntas, en un grupo aparte del texto, al final de la sugerencia", () => {
+      const html = marked({ suggestions: TE1M, hidden: null, noMatch: false }, true, ["l_te1m", "r_te1m"]);
+      expect(html).toContain(`<span class="region-search__tags">${SELECTED_TAG}</span></li>`);
+      expect(html).toContain(`<span class="region-search__tags">${SELECTED_TAG}${MARKED_TAG}</span></li>`);
+      expect(html.match(/region-search__tags/g)).toHaveLength(2);
+      const onlyMarked = marked({ suggestions: TE1M, hidden: null, noMatch: false }, true);
+      expect(onlyMarked).toContain(`<span class="region-search__tags">${MARKED_TAG}</span></li>`);
+      expect(onlyMarked.match(/region-search__tags/g)).toHaveLength(1);
     });
 
     it("con la lista cerrada, o con el aviso de las redes ocultas, no lo recuerda", () => {

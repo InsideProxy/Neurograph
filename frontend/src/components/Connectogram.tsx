@@ -842,7 +842,7 @@ function ConnectogramLens({
           // fondo, detrás del nodo, y la etiqueta sobre su pastilla, girada
           // con ella.
           const isMarked = markedIds.has(node.id);
-          const ring = markRing(r, isSelected || isHovered ? 2.5 : 1);
+          const markedRing = markRing(r, isSelected || isHovered ? 2.5 : 1);
           return (
             <g key={node.id}>
               {isMarked && (
@@ -850,10 +850,10 @@ function ConnectogramLens({
                   {...MARK_ELEMENT}
                   cx={p.x}
                   cy={p.y}
-                  r={ring.radius}
+                  r={markedRing.radius}
                   fill={colors.sceneBg}
                   stroke={colors.mark}
-                  strokeWidth={ring.strokeWidth}
+                  strokeWidth={markedRing.strokeWidth}
                 />
               )}
               <circle
