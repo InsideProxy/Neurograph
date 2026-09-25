@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md` (sección 11).
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí, así que 5.6 describe todavía los avisos abajo a la derecha (sección 11).
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -74,7 +74,7 @@ Fuera:
 Notas:
 
 - **Original** reproduce los colores actuales de `index.css` y `App.css`; `accentSoft` y `accentBorder` son los `--accent-bg` y `--accent-border` de hoy.
-- **Acento:** no hay texto sobre fondo de acento sólido. Los estados activos usan `accentSoft` como fondo, y su borde es `accentBorder`, o `accent` cuando el estado tiene que distinguirse con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema elegido en Ajustes.
+- **Acento:** no hay texto sobre fondo de acento sólido. Los estados activos usan `accentSoft` como fondo, y su borde es `accentBorder`, o `accent` cuando el estado tiene que distinguirse con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema elegido y la opción marcada de «Colores de las redes», en Ajustes.
 - **Síntesis de IA:** conserva su naranja, que fue decisión del usuario como tercera categoría visual. En Claro es más oscuro para leerse sobre blanco.
 - **Fondos de estado:** cada color de estado tiene su fondo translúcido (`--success-bg`, `--warning-bg`, `--error-bg`, `--synthesis-bg`) en `index.css`. Las etiquetas de estado van sobre `--bg` con ese fondo tintado, y así superan 4,5:1 en los cuatro temas. Para lograrlo en Claro, `success` pasa de `#227a4d` (4,2:1) a `#1f6e45` (4,9:1), y el fondo de síntesis queda en `rgba(185, 61, 10, 0.06)` (4,6:1).
 - **Contraste sobre el panel** (medido):
@@ -116,46 +116,66 @@ Otros detalles del dibujo:
 
 ### 4.3 Paleta de redes: suave y original
 
-Hay dos modos, que se eligen en Ajustes:
+Hay dos modos. En Ajustes se eligen junto con «Automática», que no es un tercer modo sino la elección `null` de 4.5 (5.2):
 
 - **Originales del atlas:** `NETWORK_COLORS` tal cual.
 - **Suaves:** la tabla generada `SOFT_NETWORK_COLORS[tema][clave]`, para Grafito, Noche y Claro. El tema Original no tiene columna propia: con «Suaves» usa la de Grafito.
 
-La tabla la genera `scripts/generate_soft_palettes.py`. Lo que sigue describe su método; el script, que parte del prototipo usado para el lienzo, es la definición exacta. Cada grupo de claves se trata por separado: una clasificación por prefijo (`cole-anticevic.`, `gordon333.`, `yeo2011-7.`, `yeo2011-17.`, `power2011.`), más un grupo con las claves de demostración sin prefijo. En OKLCH:
+**La paleta elegida.** La maqueta se hizo con una primera paleta, la A: bandas de luminosidad estrechas (0,60–0,90, y 0,46–0,76 en Claro), el croma recortado a un tope de 0,13 a 0,145 y una separación de ΔE_OK 0,085. Vista en la app, al usuario le pareció poco distinguible y con poco contraste: en Cole-Anticevic se confundían el rojo de Por defecto, el marrón de Multimodal posterior y el naranja de Multimodal ventral. La comparó con otras dos candidatas y con los originales, y eligió la B, intermedia (D7). Lo que sigue es el método de la B.
+
+La tabla la genera `scripts/generate_soft_palettes.py`, solo con la biblioteca estándar de Python. Lo que sigue describe su método; el script, que parte del prototipo usado para la maqueta, es la definición exacta. Cada grupo de claves se trata por separado: una clasificación por prefijo (`cole-anticevic.`, `gordon333.`, `yeo2011-7.`, `yeo2011-17.`, `power2011.`), más un grupo con las claves de demostración sin prefijo. En OKLCH:
 
 1. **Tono:** se conserva el de cada red. Visual sigue en azul y Por defecto sigue en rojo.
-2. **Luminosidad:** se reparte linealmente del mínimo al máximo del grupo sobre la banda del tema: 0,60–0,90 en Grafito y Noche, 0,46–0,76 en Claro.
+2. **Luminosidad:** se reparte linealmente del mínimo al máximo del grupo sobre la banda del tema: 0,56–0,92 en Grafito y Noche, 0,40–0,72 en Claro.
    - Los acromáticos (C < 0,02) no cuentan para el mínimo y el máximo.
    - El resultado se recorta a la banda. Hace falta para los acromáticos: sin recorte, `#000000` (salience de Gordon y de Power) quedaría fuera de ella.
-3. **Croma:** se limita a 0,13 en Grafito, 0,145 en Noche y 0,14 en Claro. Si el color no cabe en sRGB, se recorta el croma sin mover L ni el tono.
+3. **Croma:** el original por 0,85, como mucho el tope del tema: 0,18 en Grafito y Claro, y 0,19 en Noche. Al ser proporcional, conserva las diferencias de croma del atlas: un rojo saturado y un marrón apagado siguen siéndolo. Si el color no cabe en sRGB, se recorta el croma, por bisección, sin mover L ni el tono.
 4. **Separación:**
-   - Mientras dos redes del grupo queden a menos de ΔE_OK 0,085, se sube 0,01 la L de la más clara y se baja 0,01 la de la más oscura, hasta 200 pasadas.
-   - La L puede salir de la banda como máximo 0,06 por cada lado.
-   - Este paso puede alterar el orden de luminosidad que dejó el paso 2. Por ejemplo, Visual queda en L = 0,57 en Grafito.
-5. **Sin clasificar:** `unclassified` es un gris acromático con L = (mínimo + máximo de la banda) / 2 − 0,02. Queda en `#a8a8a8` en Grafito y Noche, y en `#7d7d7d` en Claro.
+   - Mientras dos redes del grupo queden a menos del objetivo, ΔE_OK 0,11, se sube 0,01 la L de la más clara y se baja 0,01 la de la más oscura, hasta 400 pasadas.
+   - La L puede salir de la banda como máximo un margen por cada lado. En Grafito y Noche, 0,02 por abajo, para que ninguna red baje de 3:1 con el panel, y 0,06 por arriba. En Claro, 0,06 por cada lado.
+   - El objetivo no es una garantía. Dentro de esos márgenes, Yeo 17 se queda en 0,097 en Grafito y Noche, y sus propios colores del atlas distan solo 0,065. Lo garantizado es un suelo de 0,095, que exigen la comprobación del script y las pruebas.
+   - Este paso puede alterar el orden de luminosidad que dejó el paso 2, y meter hacia dentro de la banda a la red más oscura o a la más clara de un grupo: la comprobación lo admite hasta 0,09. En Power, Hipocampo sube 0,070, porque empieza al pie de la banda junto al negro de Saliencia, que no puede bajar más de 0,02.
+5. **Sin clasificar:** `unclassified` es un gris acromático con L = (mínimo + máximo de la banda) / 2 − 0,02. Queda en `#a4a4a4` en Grafito y Noche, y en `#6f6f6f` en Claro.
+
+Además:
+
+- Antes de escribir, el script comprueba cada tema y grupo: la distancia mínima, el contraste con el panel (también el de Original con «Suaves»), el tono, la banda con sus márgenes, el tope del croma y las dos correcciones del prototipo. Es decir, que ninguna red con color quede casi gris, y que la más oscura y la más clara de cada grupo queden en los extremos de la banda. Si un grupo no cumple, no escribe nada.
+- Con `--check`, dice si la tabla está al día, sin escribirla.
+- La tabla lleva al final la copia de `NETWORK_COLORS` de la que sale (`SOFT_PALETTE_SOURCE`): si cambia una clave, un color o el orden y no se regenera, `npm test` falla.
+- El orden de las claves dentro de un grupo es parte del método: el paso 4 recorre los pares en el orden de `NETWORK_COLORS`.
 
 Resultado para Cole-Anticevic, que es la clasificación por defecto:
 
 | Red | Original (dato del atlas) | Grafito | Noche | Claro |
 |---|---|---|---|---|
-| Visual | `#0000ff` | `#4f74c4` | `#4d76cf` | `#294c9f` |
-| Visual 2 | `#6400ff` | `#8a85de` | `#8780e3` | `#5f56b2` |
-| Somatomotora | `#00ffff` | `#4cedec` | `#19efef` | `#00bdbd` |
-| Cíngulo-opercular | `#990099` | `#ae66ac` | `#b362b0` | `#853a83` |
-| Atención dorsal | `#00ff00` | `#98e191` | `#91e38a` | `#67b461` |
-| Lenguaje | `#009b9b` | `#35b3b3` | `#35b3b3` | `#008686` |
-| Frontoparietal | `#ffff00` | `#e3e67b` | `#e4e66c` | `#b7b840` |
-| Auditiva | `#fa3efb` | `#db90d8` | `#df8cdd` | `#b062ae` |
-| Por defecto | `#ff0000` | `#eb8475` | `#f27f6f` | `#c05548` |
-| Multimodal posterior | `#b15928` | `#cc7242` | `#cc7242` | `#9e4812` |
-| Multimodal ventral | `#ff9d00` | `#f2a958` | `#f8a647` | `#c77b11` |
-| Orbito-afectiva | `#417d00` | `#6a9e49` | `#66a03d` | `#3f750d` |
+| Visual | `#0000ff` | `#3666d5` | `#3364db` | `#09309c` |
+| Visual 2 | `#6400ff` | `#8275f1` | `#8273f7` | `#533eb6` |
+| Somatomotora | `#00ffff` | `#4ff1f1` | `#4ff1f1` | `#00aeae` |
+| Cíngulo-opercular | `#990099` | `#b04aae` | `#b247b0` | `#7c0f7b` |
+| Atención dorsal | `#00ff00` | `#81ea7a` | `#7bec74` | `#40ab3b` |
+| Lenguaje | `#009b9b` | `#48aaa9` | `#48aaa9` | `#007474` |
+| Frontoparietal | `#ffff00` | `#edee46` | `#edee46` | `#acac00` |
+| Auditiva | `#fa3efb` | `#e67ee4` | `#e97ae7` | `#aa45a9` |
+| Por defecto | `#ff0000` | `#fb6b5a` | `#fc6352` | `#bd3024` |
+| Multimodal posterior | `#b15928` | `#bb6f48` | `#be724b` | `#853e14` |
+| Multimodal ventral | `#ff9d00` | `#f8a544` | `#f8a544` | `#b56e00` |
+| Orbito-afectiva | `#417d00` | `#61953f` | `#61953f` | `#326300` |
 
-Comprobación sobre las cinco clasificaciones:
+Comprobación, con el ΔE_OK mínimo entre dos redes del grupo y el contraste mínimo con el panel:
 
-- **Contraste mínimo de un color de red con el panel:** sube de 1,11–2,05 con los originales a 3,88–4,40 en Grafito y a 3,94–4,45 en Noche.
-- **En Claro:** queda en 1,78–2,11 contra blanco, mejor que los originales contra blanco (1,03–1,17). El anillo neutro (principio 6) mantiene visibles los nodos.
-- **Distinción entre redes:** el ΔE_OK mínimo entre dos redes de una clasificación queda en ≥ 0,085 en todas. En Yeo 17 mejora (de 0,065 a 0,086).
+| Grupo | Grafito | Noche | Claro | Original con «Suaves» (columna de Grafito sobre `#1d1e26`) |
+|---|---|---|---|---|
+| Demostración | 0,110 / 3,47 | 0,110 / 3,52 | 0,111 / 2,52 | 0,110 / 3,27 |
+| Cole-Anticevic | 0,115 / 3,37 | 0,113 / 3,39 | 0,111 / 2,43 | 0,115 / 3,17 |
+| Gordon 333 | 0,117 / 3,67 | 0,113 / 3,72 | 0,111 / 2,13 | 0,117 / 3,45 |
+| Yeo 7 | 0,154 / 3,48 | 0,156 / 3,53 | 0,137 / 2,42 | 0,154 / 3,27 |
+| Yeo 17 | 0,097 / 3,20 | 0,097 / 3,25 | 0,108 / 1,97 | 0,097 / 3,02 |
+| Power 2011 | 0,111 / 3,51 | 0,112 / 3,56 | 0,111 / 1,98 | 0,111 / 3,30 |
+
+- **Contraste con el panel:** con los originales, el mínimo de cada clasificación queda entre 1,11 y 2,05 sobre el panel de Grafito. Con la paleta suave, entre 3,20 y 3,67 en Grafito y entre 3,25 y 3,72 en Noche. Original con «Suaves» queda en 3,02 como mínimo, justo por encima de 3:1 (12).
+- **En Claro:** entre 1,97 y 2,52 contra blanco, mejor que los originales contra blanco (1,03–1,17). El anillo neutro (principio 6) mantiene visibles los nodos.
+- **Distinción entre redes:** el ΔE_OK mínimo queda en 0,108 o más en todos los grupos, salvo Yeo 17 en Grafito y Noche (0,097), que aun así mejora al de sus colores originales (0,065).
+- **Tono:** se desvía como mucho 1,19° en Grafito y Noche, y 1,46° en Claro.
 
 ### 4.4 Exportación a JPEG
 
@@ -183,6 +203,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 ### 4.5 Elección y persistencia
 
 - **Estado:** `{ tema, modoPaleta }`. `modoPaleta` vale `"suave"`, `"original"` o `null`, que es automático: `"original"` en el tema Original y `"suave"` en los demás.
+- **«Automática»:** `null` se elige en Ajustes como «Automática», la opción de por defecto (5.2). Elegirla después de otra vuelve al automático.
 - **Independencia:** cambiar de tema no borra un `modoPaleta` elegido a mano.
 - **Almacenamiento:** se guarda en `localStorage` con la clave `neurograph.apariencia`. Cada lectura y escritura va en `try/catch`: si el almacenamiento falla o no existe, se usan los valores por defecto sin error.
 - **Tema por defecto: Grafito.** Lo elegimos con la delegación del usuario («lo que sea mejor, tu criterio»), y se le confirma al pedirle permiso para fusionar. Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
@@ -237,9 +258,14 @@ De izquierda a derecha:
 
 Un panel emergente que sale del engranaje:
 
-- **Tema:** cuatro tarjetas con vista previa (fondo, panel y cinco colores de red del tema) y una descripción de una línea.
-- **Colores de las redes:** un control de dos opciones, «Suaves» y «Originales del atlas», con una muestra de la paleta y una nota: «Los originales son los del archivo de cada atlas: úsalos si una figura tiene que coincidir con la del artículo».
-- Se cierra con Escape, con un clic fuera, al salir de él con Tab o con su botón. Con Escape o con su botón, el foco vuelve al engranaje. Con un clic fuera, el foco se queda donde se hizo clic.
+- **Tema:** cuatro tarjetas con vista previa (fondo, panel y cinco colores de red) y una descripción de una línea. Cada tarjeta enseña la paleta que tendría su tema: la elegida o, con «Automática», la automática de ese tema.
+- **Colores de las redes:** un control de tres opciones, «Automática», «Suaves» y «Originales del atlas» (D7). Eran dos, pero así no se podía volver al automático: los radios nativos marcan al moverse con las flechas, y con solo recorrer el grupo quedaba fijada una elección.
+  - «Automática» es la elección `null` (4.5) y la de por defecto. Lleva la línea «Automática: suaves en los temas nuevos; originales en Original.».
+  - Son radios nativos en un `role="radiogroup"`, con la nota como descripción. El radio queda oculto (`.visually-hidden`) y su etiqueta hace de botón. La opción marcada lleva el borde, el fondo y el anillo del acento, como la tarjeta del tema elegido (4.1).
+  - Tab entra en la opción marcada, y las flechas cambian de opción y dan la vuelta en los extremos. Van a mano (`logic/radioGroup.ts`): WebKit, el motor de Tauri en Linux, no da la vuelta y deja sin anillo de foco el radio al que llega.
+  - Debajo, una muestra con las doce redes de Cole-Anticevic en la paleta que se aplica, y la nota: «Los originales son los del archivo de cada atlas: úsalos si una figura tiene que coincidir con la del artículo». La muestra es decorativa y no lleva etiquetas emergentes, que solo alcanzaría el ratón (8).
+- Se cierra con Escape, con un clic fuera, cuando el foco sale del engranaje y el panel (con Tab, también tras un clic en un texto del panel) o con su botón. Con Escape o con su botón, el foco vuelve al engranaje. Con un clic fuera, el foco se queda donde se hizo clic.
+- **Tamaño:** la sección de colores lo alarga entre 160 y 185 px, calculado y sin medir en un navegador. Si no cabe en la ventana, se desplaza por dentro (`max-height`); a 900 × 600, previsiblemente (D7).
 
 ### 5.3 Filtros
 
@@ -428,7 +454,7 @@ Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el nave
   - En el connectograma y los hemisferios, la etiqueta de la región va sobre una pastilla del color de marca, con texto de contraste, y el nodo lleva un anillo exterior del mismo color, separado del nodo por un hueco del color del fondo. Así se distingue aunque la red sea azul.
   - En el 3D, marcador y etiqueta con ese anillo y esa pastilla, también fuera de la selección y también con el mapa entero pintado. Con la oclusión (6.3), una marca que queda detrás de la corteza se ve tenue, como lo demás.
   - La pastilla y el anillo pasan 3:1 sobre el fondo de los cuatro temas, y el texto de la pastilla 4,5:1.
-- **Filtros:** una línea bajo la selección (5.3): «Marcadas: N» con sus nombres (los primeros, y «y N más») y un botón «Quitar marcas». Si una región marcada queda oculta por los filtros, no se dibuja, y la línea lo dice («1 oculta por los filtros»).
+- **Filtros:** una línea bajo la selección (5.3), solo cuando hay alguna marca (decisión del usuario, 25/09/2026; D9). Sin marcas no hay línea; queda solo una región viva oculta, que anuncia «Ninguna región marcada» al quitar la última (`dec7cad`, fusión `7b9e161`). Lleva «Marcadas: N» con sus nombres (los primeros, y «y N más») y un botón «Quitar marcas». Si una región marcada queda oculta por los filtros, no se dibuja, y la línea lo dice («1 oculta por los filtros»).
 - **Deshacer y rehacer** (5.7): marcar, desmarcar y «Quitar marcas» son pasos del historial, con su descripción («marcar IFJa (der.)», «quitar las marcas (5)»). «Quitar marcas» con dos o más marcas da además el aviso con «Deshacer» (5.6): es el mismo caso que quitar dos o más regiones de la selección de un golpe, que es lo que llevó al usuario a pedir el deshacer.
 - **Duración:** no se guardan. Se pierden al recargar la página, y al cambiar de atlas se vacían (los identificadores de región ya no valen); ese vaciado no es un paso del historial. Al cambiar de clasificación de redes se conservan: las regiones son las mismas.
 - **Exportación:** las marcas solo existen en pantalla; los JPEG salen como sin ellas (decisión del usuario). Los elementos de las marcas llevan un atributo que la exportación de SVG quita del clon, y el 3D no las dibuja mientras captura.
@@ -464,9 +490,12 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
 - **Oclusión por la corteza** (petición del usuario, 25/09/2026). Sustituye a «Atenuar lo que queda detrás» (D5), que el usuario descartó: dependía de la distancia a la cámara y no de lo que tapa la corteza, así que en un primer plano no cambiaba nada.
-  - **Qué se ve.** Con la corteza pintada, lo que ella tapa se ve tenue, y más cuanto más hondo queda. Lo que está delante, o en la misma superficie, se ve entero. Vale para las líneas, los marcadores con su contorno, los conos de dirección y las etiquetas. En la vista lateral, las regiones de la cara interna y las del otro hemisferio quedan tenues, también los pares de la línea media, como 5m, 24dd o 6mp. No hay interruptor: es como se dibuja.
+  - **Qué se ve.** Con la corteza pintada, lo que ella tapa se ve tenue, y más cuanto más hondo queda. Lo que está delante, o en la misma superficie, se ve entero. Vale para las líneas, los marcadores con su contorno, los conos de dirección y las etiquetas. En la vista lateral, lo que queda detrás de la corteza que se ve, como las regiones del otro hemisferio, se ve tenue. En la prueba de humo (D8), con la vista lateral de partida, 5m, OP4 y V1 izquierdas se ven tenues, y 4, 3b y 6mp derechas, enteras. No hay interruptor: es como se dibuja.
   - **Cómo.** En cada fotograma, antes de dibujar la escena, la corteza sola se dibuja en un destino fuera de pantalla con textura de profundidad. Lo hace con la misma cámara y el mismo hemisferio visible, y se separa del resto con una capa de three.js. Cada fragmento de la capa de foco lee esa profundidad en su posición de pantalla y calcula cuánto queda detrás de la corteza, en el eje de la cámara. Su opacidad se multiplica por 1 − (1 − mínimo) · smoothstep(inicio, fin, detrás).
-  - **Valores de partida:** inicio 0,25 (10 mm), fin 0,75 (30 mm) y mínimo 0,2. La verificación ajusta los tres. El inicio cubre la etiqueta: queda a 0,21 del centro de su marcador en +Y de los datos (0,222 en la seleccionada), así que, vista desde detrás, queda detrás de él.
+    - La pasada es un `useFrame` de prioridad 0,5, entre los controles (0) y `ExportBridge` (1), que dibuja el lienzo.
+    - La corteza va en la capa 1, y las luces también, aunque en la pasada no alumbran nada: si el número de luces cambiara entre la pasada y el lienzo, three.js revisaría en cada fotograma el programa de cada material con luces (D8).
+    - Solo con la corteza pintada llevan los materiales el parche, y solo entonces pasan los marcadores y los conos a `transparent`.
+  - **Valores:** inicio 0,25 (10 mm), fin 0,75 (30 mm) y mínimo 0,2. La verificación con capturas que debía ajustarlos se interrumpió; el usuario los vio en la app y los aprobó tal cual (D8). El inicio cubre la etiqueta: queda a 0,21 del centro de su marcador en +Y de los datos (0,222 en la seleccionada), así que, vista desde detrás, queda detrás de él.
   - **Sin prueba de profundidad contra la corteza,** como hasta ahora. La opacidad hace la oclusión, y lo que queda un poco por debajo de la superficie, como la mitad de un marcador en su vértice ancla, no se corta de golpe.
   - **Líneas.** Van en recta entre dos puntos de la corteza y pasan por dentro de ella.
     - Una línea entre regiones cercanas apenas se hunde y se ve entera.
@@ -520,7 +549,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 **Fase 1.** Lo construido difiere de lo anterior en estos puntos (D3 de `docs/decisiones-diseno.md`):
 
 - **Sin `UI_TOKENS`:** los tokens de interfaz viven solo en `index.css`. La vista previa de cada tema en Ajustes toma de ahí sus colores: cada bloque de tema se aplica también a `[data-theme-preview="<id>"]`, así que no se repiten en TypeScript.
-- **Sin modo de paleta todavía:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` no lo reciben (`kind` es el tipo de atributo: color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2. El store ya guarda `paletteMode`, para no tener que migrar lo guardado.
+- **Sin modo de paleta todavía:** `resolveNetworkColor(key)` y `exportColorFor(ref, kind, theme)` no lo reciben (`kind` es el tipo de atributo: color u opacidad), y `effectivePaletteMode` no existe. Llegan con la paleta suave, en la fase 2. El store ya guarda `paletteMode`, para no tener que migrar lo guardado. Ya llegaron: ver «Fase 2», abajo (D7).
 - **Nombres en inglés,** como el resto del código: `theme`, `paletteMode` y `forExport`. El hook es `useDrawColors(forExport)` y el panel de Ajustes, `SettingsMenu`.
 - **Token nuevo:** `nodeGap` (4.2), para que el diagrama de síntesis no conserve ningún color fijo.
 - **Añadido:** `exportResolverFor(theme)` y los ayudantes tipados `ngFill`, `ngStroke` y `ngStrokeOpacity` (`theme/colors.ts`). Con ellos, una referencia `data-ng-*` mal escrita es un error de compilación.
@@ -538,12 +567,31 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - `SettingsPopover` es el `SettingsMenu` de la fase 1.
 - `ATLASES` sigue en `App.tsx`.
 
-**Parte 3D de la fase 4.** Lo construido añade estas unidades (D5 de `docs/decisiones-diseno.md`):
+**Parte 3D de la fase 4.** Lo construido añade estas unidades (D5 de `docs/decisiones-diseno.md`, y la D8 para la oclusión):
 
 - `logic/markerSize.ts`: el radio del marcador y, en un solo sitio, lo que depende de él: el contorno, la zona de clic y la separación de la etiqueta (6.3).
 - `logic/cortexOcclusion.ts`: la oclusión por la corteza (6.3). Contiene el factor, el paso de la profundidad de la textura a la de la vista, el parche de los shaders, los uniforms y las props que comparten los materiales, y la pasada que dibuja la profundidad de la corteza. Sustituye a `logic/depthFade.ts`, `logic/depthFadePreference.ts` y `components/DepthFadeToggle.tsx` de la D5, que se quitan.
 - `logic/capture3d.ts`: las fases de la exportación y la captura fuera de pantalla.
 - `exportPixelsAsJpeg`, en `logic/exportImage.ts`: el JPEG a partir de los píxeles de la captura, sin leer el lienzo.
+
+**Fase 2.** Lo construido difiere de lo anterior, o lo concreta, en estos puntos (D7 de `docs/decisiones-diseno.md`):
+
+- **El modo de paleta vive en `theme/colors.ts`:** `PaletteMode`, `PALETTE_MODES`, `isPaletteMode` y `effectivePaletteMode`. El tipo estaba en el store, que ahora lo importa de ahí.
+- **Las funciones puras reciben el modo que se aplica,** `"suave"` u `"original"`: `resolveNetworkColor(clave, tema, modo)`, `exportColorFor(ref, tipo, tema, modo)`, `exportResolverFor(tema, modo)` y `drawColorsFor(tema, modo, forExport)`. Solo `effectivePaletteMode(tema, elección)` recibe la elección, que puede ser `null`.
+- **Nuevas:** `exportNetworkColor(clave, modo)`, el color de red de la exportación, que usan las dos vías, los SVG y el 3D; y `currentExportResolver()`, en `theme/useDrawColors.ts`, el único resolvedor de exportación, que lee tema y modo al exportar.
+- `useDrawColors(forExport)` conserva su firma y lee también el modo, así que `Brain3D.tsx` no cambia.
+- **Store:** `setPaletteMode`, que acepta `null` («Automática»).
+- **Ajustes:** `SettingsChoices`, el contenido del panel sin el store, para probar su marcado; y `logic/radioGroup.ts`, las flechas del grupo «Colores de las redes» (5.2).
+- **Tabla:** `theme/softPalettes.ts` lleva también `SOFT_PALETTE_THEMES` y `SOFT_PALETTE_SOURCE`, la copia de `NETWORK_COLORS` de la que sale (4.3).
+
+**Marcas de regiones.** Lo construido añade estas unidades (D9 de `docs/decisiones-diseno.md`, 5.9):
+
+- `state/marks.ts`: el store de las marcas. `state/history.ts` las guarda en sus instantáneas, y su `resetForAtlasChange()` vacía las marcas y el historial al cambiar de atlas.
+- `logic/marks.ts`: funciones puras del gesto (con el umbral del arrastre), del anillo, de la pastilla, de lo que quita la exportación (`data-ng-mark`) y de la línea de Filtros.
+- `components/MarkedLabel.tsx`: la pastilla de la etiqueta en el connectograma y los hemisferios.
+- `components/MarksLine.tsx`: la línea de las marcas en Filtros.
+- Los tokens `mark` y `markText`, en `DRAW_TOKENS`, y `--mark` y `--mark-text`, en `index.css`.
+- En módulos que ya existían: `markRing3d`, en `logic/markerSize.ts`; la pastilla y el anillo del 3D, en `logic/textSprite.ts`; `searchKey`, en `logic/regionSearch.ts`, para Ctrl+Intro; y `joinNames`, que pasa a `logic/displayText.ts`.
 
 ### Archivos que cambian
 
@@ -567,15 +615,18 @@ Los valores de `NETWORK_COLORS` y de las constantes de la decisión 18 en `theme
 vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras y no se añaden dependencias:
 
 - **`softPalettes`:**
-  - Cada clave de `NETWORK_COLORS`, incluidas las de demostración y `unclassified`, tiene color en Grafito, Noche y Claro.
-  - El tono se conserva en ±3°, salvo los acromáticos.
-  - La L queda dentro de la banda ± 0,06.
-  - El ΔE_OK mínimo dentro de cada grupo es ≥ 0,085.
-  - El contraste con el panel es ≥ 3:1 en Grafito y Noche.
+  - Cada clave de `NETWORK_COLORS`, incluidas las de demostración y `unclassified`, tiene color en Grafito, Noche y Claro, y la tabla sale del `NETWORK_COLORS` actual (`SOFT_PALETTE_SOURCE`).
+  - El tono se conserva en ±3°, salvo los acromáticos. Se mira en los colores suaves con un croma de 0,04 o más: por debajo, el redondeo a `#rrggbb` ya lo mueve más de 3°.
+  - Ninguna red con color queda casi gris, y la más oscura y la más clara de cada grupo quedan en los extremos de la banda: las dos correcciones del prototipo.
+  - La L queda dentro de la banda con los márgenes del tema, y el croma no pasa del tope (4.3).
+  - El ΔE_OK mínimo dentro de cada grupo es ≥ 0,095, el suelo garantizado.
+  - El contraste con el panel es ≥ 3:1 en Grafito, en Noche y en Original con «Suaves». Se prueba en `themeCss.test.ts`, que lee el panel de `index.css`.
+  - El gris de «sin clasificar» y la tabla de Cole-Anticevic de 4.3.
 - **`colors.ts`:**
   - `resolveNetworkColor` en todas las combinaciones de tema y modo; una clave desconocida da `unclassified`.
   - `effectivePaletteMode`.
   - `exportColorFor`, comprobando que con el tema Original y la paleta original devuelve exactamente los colores de hoy.
+  - Una prueba invariante liga la exportación 3D con la de los SVG, en los cuatro temas y con los dos modos.
 - **`appearance`:** valores por defecto y lectura y escritura con un almacenamiento simulado que falla.
 - **`sulcRange`:** percentiles y suavizado sobre un vector conocido.
 - **`history`:**
@@ -600,22 +651,41 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 - **Lógica pura:** los nueve módulos de la sección 9 (`topBarFit`, `listbox`, `dataContext`, `displayText`, `toastQueue`, `desktopOnly`, `filterCounts`, `regionConnections` y `clipboard`), `historyStep`, `regionSearch` y el store `history`.
 - **Marcado,** con `renderToStaticMarkup` de `react-dom/server`, que funciona en node sin dependencias nuevas: `TopBar`, `DataContextMenu`, `Toast`, `FilterPanel`, `Connectogram`, `DetailPanel`, `HistoryButtons` y `RegionSearch`. Solo donde hay un requisito de marcado: roles, `aria-*` y botones sin anidar.
 
+**Fase 2.** 68 pruebas nuevas, de 343 a 411 (D7):
+
+- **Nuevas:** `softPalettes.test.ts` (la tabla), `SettingsMenu.test.tsx` (el marcado de `SettingsChoices`: las tres opciones, una sola marcada, la ayuda de «Automática», la muestra y las tarjetas) y `radioGroup.test.ts` (las flechas).
+- **Ampliadas:** `colors.test.ts` (el modo, y la prueba invariante con los dos modos), `themeCss.test.ts` (el contraste de la paleta suave), `appearance.test.ts` (`setPaletteMode` y un valor guardado sin `paletteMode`) y `FilterPanel.test.tsx` (las muestras, con la paleta automática y con una elección guardada, en otro store creado con `vi.resetModules`).
+- Deshacer cualquiera de las dos correcciones del prototipo, o quitar el tope del croma, hace fallar estas pruebas y la comprobación del generador (comprobado, D7).
+
+**Oclusión por la corteza.** En su rama, de 343 a 357: 66 nuevas y 52 quitadas con la atenuación de la D5 (D8).
+
+- `cortexOcclusion.test.ts`: el factor, el paso de la profundidad de la textura a la de la vista, el parche de los shaders (con sus dos funciones fijadas enteras), los uniforms, las props de los materiales, la pasada con un renderer falso y las guardas que leen el código de three.js y de react-three-fiber.
+- `Brain3D.occlusionWiring.test.ts`: la conexión en `Brain3D.tsx` y `PaintedCortex.tsx`.
+- Se quitan `depthFade.test.ts`, `depthFadePreference.test.ts`, `DepthFadeToggle.test.tsx` y `Brain3D.fadeKeyRule.test.ts`.
+
+**Marcas de regiones.** 91 pruebas nuevas, de 425, tras fusionar la oclusión, a 516 (D9):
+
+- **Nuevas:** `state/marks.test.ts`, `logic/marks.test.ts`, `MarkedLabel.test.tsx`, `marksViews.test.tsx`, `MarksLine.test.tsx`, `marksWiring.test.ts` y `Brain3D.marksWiring.test.ts`.
+- **Ampliadas:** `historyStep`, `history`, `themeCss` (el contraste del color de marca), `markerSize`, `textSprite`, `regionSearch`, `RegionSearch` y `FilterPanel`.
+
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4 y la parte 3D de la fase 4, la D5), con su propio commit. Todas dejan la aplicación correcta.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5 y la fase 2 la D7), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí.
 
-1. **Base de temas.**
+1. **Base de temas.** Hecha (D3).
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
    - Store, persistencia y tema antes del primer render.
    - Engranaje y Ajustes con los cuatro temas.
    - Exportación correcta: atributos `data-ng-*`, `applyExportColors` y modo «exportando» del 3D.
    - Tipografía local y `accent-color`.
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
-2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
-3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
-4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo).
+2. **Paleta suave.** Hecha (D7), con la verificación en la app real pendiente (12). Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Colores de las redes» (Automática, Suaves y Originales del atlas) en Ajustes. La exportación ya la sigue.
+3. **Estructura.** Hecha (D4). Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
+4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo). Hechos: los marcadores y la captura sin parpadeo del 3D (D5), y la oclusión por la corteza (D8). El resto, pendiente; se trabaja en la rama `rediseno-fase4`.
 
-Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`). Después, la oclusión por la corteza sustituyó a la atenuación (6.3), a petición del usuario. Y, también a petición suya, las marcas de regiones (5.9).
+Orden de implementación: 1, 3, 3D, 2 y el resto de la 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`).
+
+Después vino la fase 2 (D7), en `rediseno-interfaz`. A la vez, en la rama `rediseno-oclusion`, la oclusión por la corteza sustituyó a la atenuación de la D5, a petición del usuario (D8, 6.3; fusión `0e2ff8b`). Luego, también a petición suya, llegaron las marcas de regiones (D9, 5.9), con las correcciones de su revisión y la línea contextual de Filtros en la rama `rediseno-marcas` (fusiones `c23aa91` y `7b9e161`).
 
 ## 12. Riesgos y puntos abiertos
 
@@ -628,9 +698,12 @@ Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la palet
 - **Formato del peso en el detalle** (pregunta abierta para el usuario, D4): la lista de conexiones conserva el formato de siempre, con todas sus cifras («0.07035581528181838»). ¿Redondearlo, con el valor exacto en la etiqueta emergente?
 - **Umbral en Filtros** (pregunta abierta para el usuario, D4): el recuadro de lectura y el historial truncan el umbral para no exagerarlo («3.9e-3»), y Filtros lo redondea al más cercano («4.0e-3», con `formatMinWeight`, que es del desarrollador principal). ¿Debe Filtros truncarlo también, para que los dos digan lo mismo?
 - **Captura del 3D y three.js** (D5): la captura depende de un detalle interno de three.js 0.185. Su destino se marca como de WebXR (`isXRRenderTarget`) para recibir la curva de tono y la codificación sRGB, como el lienzo, con el formato interno `RGBA8` fijado. Una prueba fija esa configuración, y otra lee `WebGLPrograms.js` de three.js y falla si deja de mirar esa marca. Si three.js cambiara ese detalle, el JPEG perdería la curva de tono.
-- **Para decidir el usuario tras ver las capturas** (D5):
-  - **La línea media:** la oclusión por la corteza (6.3) sustituye a la atenuación. La verificación mide si las copias de detrás de 5m, 24dd y 6mp quedan tenues.
-  - **Los valores de la oclusión** (inicio, fin y mínimo): los ajusta la verificación con capturas.
-  - **El cono de dirección,** con datos que tengan conectividad efectiva: hoy tiene radio 0,035, algo mayor que un marcador normal.
+- **Oclusión y three.js** (D8): la oclusión depende también de detalles de three.js y de react-three-fiber: la cuenta de `perspectiveDepthToViewZ`, `scene.overrideMaterial`, las capas de la cámara y el orden de los `useFrame` por prioridad. Unas pruebas leen su código y fallan si cambian.
+- **El cono de dirección** (para decidir el usuario, D5): con datos que tengan conectividad efectiva, hoy tiene radio 0,035, algo mayor que un marcador normal.
+- **Dos colores suaves casi blancos** en Grafito y Noche (D7): «Por defecto A» de Yeo 17 (`#fcffb0`) y «Sin identificar (temporal medial / parietal)» de Power (`#fffbcf`) quedan cerca del color del texto.
+- **Original con «Suaves», justo por encima de 3:1** (D7): su mínimo es 3,02:1, con «Visual central» de Yeo 17 (`#9849a3`) sobre `#1d1e26`. Con una red nueva podría bajar de 3:1, y el generador se negaría a escribir la tabla hasta que se ajuste el método.
+- **«Color real» en el código del desarrollador principal** (D7): la línea de estado del 3D dice «Cada región con el color real de su red» (`Brain3D.tsx`), y varios comentarios suyos hablan del «color real». Con «Suaves» no es literal. No se ha cambiado, porque es su código: queda anotado para él.
+- **Verificación de la fase 2 en la app real, pendiente** (D7): la del plan se paró porque sus navegadores sobrecargaban la máquina del usuario. Queda por pasar una versión ligera con la máquina libre: un solo navegador, con `nice 19`, y como versión anterior la de `4977d05`, para comparar solo la paleta. Con ella, medir también el panel de Ajustes (5.2).
+- **Las marcas de la lupa repiten la geometría de sus etiquetas** (D9): las etiquetas radiales de la fase 4 (6.1) tendrán que ponerla al día también ahí.
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.

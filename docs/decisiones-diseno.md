@@ -488,3 +488,246 @@ El spec queda al día con estas diferencias y con lo que queda abierto:
 - 12: la dependencia de `isXRRenderTarget`, con las pruebas que la vigilan, y lo que tiene que decidir el usuario.
 
 Spec: `docs/rediseno-interfaz-diseno.md`, sección 6.3. Plan: `docs/rediseno-interfaz-plan-3d.md`.
+
+## D7. Paleta suave de las redes (fase 2 del rediseño) -- 25/09/2026
+
+**Numeración.** La D6, «Avisos arriba a la derecha, bajo la barra» (commit `08dbc8e`), está en la rama `rediseno-avisos` y no se ha fusionado en esta.
+
+**Motivación.** Los colores de red eran primarios puros (`#0000ff`, `#00ff00`, `#ffff00`…), y al usuario le parecían un «RGB burdo» (D3). `NETWORK_COLORS` es un dato de cada atlas, y el desarrollador principal dejó escrito que no se toca (`theme/networks.ts:225`). La paleta suave es una capa de presentación calculada a partir de él (spec, principio 2), y siempre se puede volver a los originales.
+
+**Decidido por el usuario (24/09/2026).** «La semántica de colores la mantenemos, pero otros tonos más amables». Aprobó la maqueta con la primera paleta suave («justamente lo que buscábamos, validado por main»), con la opción de volver a los originales cuando una figura tenga que coincidir con la del artículo.
+
+**La paleta B, elegida por el usuario (25/09/2026).** La primera paleta, la A, salía del método de la maqueta. Al verla en la app, el usuario dijo «por defecto y multimodales muy poco distinguibles... en general todos poco distinguibles», y «no sé si demasiado suaves, poco contraste». El método apretaba la luminosidad en una banda estrecha, recortaba el croma a un tope bajo y separaba poco. Así, las redes que el atlas distingue sobre todo por el croma o por la luminosidad quedaban juntas: en Cole-Anticevic, el rojo de Por defecto, el marrón de Multimodal posterior y el naranja de Multimodal ventral. Se le enseñaron, lado a lado, tres candidatas y los originales, en Grafito y en Claro, con la lista de redes de Filtros y franjas de corteza pintada:
+- **A, la de entonces:** bandas de luminosidad de 0,60–0,90 (0,46–0,76 en Claro), el croma recortado a 0,13–0,145 y una separación de ΔE_OK 0,085.
+- **B, intermedia.**
+- **C, viva:** bandas de 0,52–0,92 (0,36–0,70 en Claro), el croma por 0,95 con tope de 0,22–0,23 y una separación de 0,13.
+
+Eligió la **B · intermedia** (`14e9fcc`). Frente a la A, cambia en `scripts/generate_soft_palettes.py`:
+- **Croma proporcional:** el original por 0,85, con tope de 0,18 en Grafito y Claro y de 0,19 en Noche, en lugar del recorte a 0,13, 0,145 y 0,14. Conserva las diferencias de croma del atlas.
+- **Bandas más anchas:** 0,56–0,92 en Grafito y Noche, y 0,40–0,72 en Claro.
+- **Separación:** apunta a ΔE_OK 0,11, con hasta 400 pasadas. Yeo 17 no llega dentro de los márgenes: se queda en 0,097, y sus propios colores del atlas distan solo 0,065. La comprobación y las pruebas exigen un suelo de 0,095.
+- **Márgenes asimétricos:** la separación puede sacar la L de la banda 0,02 por abajo y 0,06 por arriba en los temas oscuros, para que ninguna red baje de 3:1 con el panel; en Claro, 0,06 por cada lado.
+- **Extremos de la banda:** la comprobación admite que la separación meta hacia dentro hasta 0,09 (`MAX_INWARD_SHIFT`) a la red más oscura o a la más clara de un grupo. En Power, Hipocampo sube 0,070: empieza al pie de la banda junto al negro de Saliencia, que no puede bajar más de 0,02.
+- **«Sin clasificar»** sigue a la banda: `#a4a4a4` en los temas oscuros y `#6f6f6f` en Claro.
+
+**«Automática».** El control de Ajustes tiene tres opciones y no las dos del spec (desviación 8). «Automática» da «Suaves» en los temas nuevos y «Originales del atlas» en Original. El usuario preguntó por ella y la entendió («ok ya entiendo... selección automática»).
+
+**Qué cambia.**
+- **Generador y tabla.** `scripts/generate_soft_palettes.py`, solo con la biblioteca estándar de Python, lee `NETWORK_COLORS`, aplica el método de 4.3 y escribe `theme/softPalettes.ts`: `SOFT_NETWORK_COLORS`, con una columna por tema (Grafito, Noche y Claro) y las 73 claves, en seis grupos: las cinco clasificaciones y las claves de demostración. Con `--check` dice si la tabla está al día.
+- **El modo en las funciones de color** (`theme/colors.ts`): `effectivePaletteMode`, y `resolveNetworkColor`, `exportNetworkColor` y `exportColorFor` con el modo.
+- **Todo lo que pinta un color de red sigue la paleta sin tocar su código,** porque lo toma de `useDrawColors`, que ahora lee también el modo: el connectograma, los hemisferios, el cerebro 3D (también al exportar), las etiquetas de red, el buscador, el logotipo, el detalle y el diagrama de síntesis.
+- **Las muestras de Filtros** toman el color de `useDrawColors().networkColor`.
+- **Exportación:** con «Suaves», la columna de Claro. Un solo resolvedor, `currentExportResolver()`, lee el tema y el modo al exportar. Los SVG y el 3D toman el color de red de `exportNetworkColor`, así que coinciden por construcción.
+- **Ajustes:** «Colores de las redes», con las tres opciones, una muestra y la nota del spec. Cada tarjeta de tema enseña la paleta que tendría su tema.
+- **Lo que la revisión final de la fase 1 pidió para esta fase, cumplido:** un solo resolvedor de exportación que lee tema y modo; la exportación 3D sigue la paleta, y la prueba que la liga con la de los SVG cubre los dos modos; y las muestras de Filtros y los puntos de Ajustes siguen la paleta, cada tarjeta la de su tema.
+
+**Qué no cambia.**
+- `NETWORK_COLORS`, las constantes de la decisión 18 y la lógica de representación.
+- `Brain3D.tsx`, `PaintedCortex.tsx` e `index.css`: esta fase no toca ni una línea.
+- Los stores, salvo el de apariencia, que gana `setPaletteMode`.
+- De `FilterPanel`, que es del desarrollador principal, solo cambia de dónde sale el color de sus muestras.
+- Con «Automática», el tema Original conserva los colores de siempre.
+- Con «Originales del atlas», la pantalla y las exportaciones tienen que ser las de antes, en los cuatro temas. Lo sostienen las pruebas unitarias: `resolveNetworkColor` con «Originales del atlas» en los cuatro temas, `exportColorFor` con los colores de hoy en el tema Original, y la prueba que liga la exportación 3D con la de los SVG. En la app no se ha comprobado (verificación, abajo).
+
+**La tabla frente a la maqueta.** La maqueta se hizo con la paleta A y el prototipo `palette.py`, que está fuera del repositorio. El generador parte de él, con sus dos correcciones: el recorte del croma por bisección y la luminosidad repartida sobre el mínimo y el máximo reales de cada grupo, sin los acromáticos. Con el método A, la tabla era la de la maqueta salvo en tres a cinco redes de Power por tema, porque a la entrada de la maqueta le faltaban dos de sus diecisiete redes, y salvo las claves nuevas: esas dos y las siete de demostración. Con la B, los colores ya no son los de la maqueta, sino los que eligió el usuario al compararlos en la app.
+
+**Cifras de la B.** ΔE_OK mínimo entre dos redes del grupo / contraste mínimo con el panel:
+
+| Grupo | Grafito | Noche | Claro | Original con «Suaves» (columna de Grafito sobre `#1d1e26`) |
+|---|---|---|---|---|
+| Demostración | 0,110 / 3,47 | 0,110 / 3,52 | 0,111 / 2,52 | 0,110 / 3,27 |
+| Cole-Anticevic | 0,115 / 3,37 | 0,113 / 3,39 | 0,111 / 2,43 | 0,115 / 3,17 |
+| Gordon 333 | 0,117 / 3,67 | 0,113 / 3,72 | 0,111 / 2,13 | 0,117 / 3,45 |
+| Yeo 7 | 0,154 / 3,48 | 0,156 / 3,53 | 0,137 / 2,42 | 0,154 / 3,27 |
+| Yeo 17 | 0,097 / 3,20 | 0,097 / 3,25 | 0,108 / 1,97 | 0,097 / 3,02 |
+| Power 2011 | 0,111 / 3,51 | 0,112 / 3,56 | 0,111 / 1,98 | 0,111 / 3,30 |
+
+El tono se desvía como mucho 1,19° en los temas oscuros y 1,46° en Claro. La tabla de Cole-Anticevic está en el spec (4.3).
+
+**Desviaciones del spec.** El spec queda al día con todas (4.1, 4.3, 4.5, 5.2, 9 y 10). Son las del plan, con lo que pasó después:
+1. **El modo de paleta vive en `theme/colors.ts`:** `PaletteMode`, `PALETTE_MODES`, `isPaletteMode` y `effectivePaletteMode`. Así la lógica de la paleta está en un solo módulo puro, y `theme/` no depende de `state/`. El tipo estaba en el store, que ahora lo importa de ahí.
+2. **Las funciones puras reciben el modo que se aplica,** `"suave"` u `"original"`, no la elección guardada. Solo `effectivePaletteMode(tema, elección)` recibe la elección, que puede ser `null`. La convierten quienes la tienen: `useDrawColors` y `currentExportResolver`, que la leen del store, y `SettingsChoices`, para cada tarjeta y para la muestra.
+3. **`exportNetworkColor(clave, modo)`, nueva:** el color de red de la exportación, que usan las dos vías. La prueba invariante lo comprueba en los cuatro temas y con los dos modos.
+4. **`currentExportResolver()`,** en `theme/useDrawColors.ts`, sustituye las tres llamadas `exportResolverFor(useAppearanceStore.getState().theme)`, y esos tres componentes dejan de importar el store.
+5. **`useDrawColors(forExport)` conserva su firma,** para no tocar `Brain3D.tsx`.
+6. **Las muestras de Filtros pasan a `useDrawColors().networkColor`,** como las vistas. Las de Ajustes siguen con `resolveNetworkColor`, porque cada tarjeta necesita su propio tema.
+7. **Cada tarjeta enseña la paleta que tendría su tema.** Con «Automática», la de Original enseña la original y las otras tres, la suave de su tema. Con una elección, la siguen todas, porque cambiar de tema la conserva (4.5). La maqueta pintaba siempre la automática.
+8. **Tres opciones: «Automática», «Suaves» y «Originales del atlas».** El spec decía dos. Con dos no se podía volver al automático: los radios nativos marcan al moverse con las flechas, así que con solo recorrer el grupo quedaba fijada una elección, y la tarjeta de Original, «Los colores de siempre», pasaba a enseñar puntos suaves. Lo decidió la revisión del plan.
+   - «Automática» es la elección `null` y la de por defecto. Lleva la línea «Automática: suaves en los temas nuevos; originales en Original.».
+   - Son radios nativos en un `role="radiogroup"`, en lugar de los botones con `role="radio"` de la maqueta. El radio queda oculto (`.visually-hidden`) y su etiqueta hace de botón.
+   - La opción marcada lleva el borde, el fondo y el anillo del acento, como la tarjeta del tema elegido, para distinguirse con al menos 3:1. La maqueta usaba `borderStrong`, por debajo de 3:1.
+   - Las flechas van a mano desde la revisión de la tanda 2 (abajo).
+9. **La muestra** son las doce redes de Cole-Anticevic con la paleta que se aplica, como en la maqueta, y no las de la clasificación cargada, que Ajustes no conoce. Es decorativa (`aria-hidden`) y no lleva el nombre de cada red en una etiqueta emergente, que solo alcanzaría el ratón (spec 8).
+10. **La nota** es la del spec, no la primera frase de la maqueta («Cada red conserva su color de siempre, con otra intensidad.»).
+11. **`SettingsChoices`** es el contenido del panel sin el store, para probar su marcado en node. Por lo mismo, la prueba de que las muestras de Filtros siguen una elección guardada crea otro store, con `vi.resetModules()` y un `localStorage` simulado.
+12. **El generador,** además de lo que pide el spec:
+    - no escribe nada si un grupo no cumple la comprobación, que incluye el contraste del tema Original con «Suaves»;
+    - con `--check`, dice si la tabla está al día sin escribirla;
+    - un grupo con una sola red es un error claro;
+    - escribe en UTF-8 aunque la consola sea cp1252, como en Windows, y la tabla con finales de línea LF;
+    - la cabecera de la tabla dice que está generada, cómo se regenera y con qué bandas, márgenes y topes;
+    - el orden de las claves dentro de un grupo es parte del método;
+    - desde la revisión de la tanda 1, la tabla lleva al final la copia de `NETWORK_COLORS` de la que sale (`SOFT_PALETTE_SOURCE`).
+13. **El contraste con el panel se prueba en `theme/themeCss.test.ts`,** que lee el panel de cada tema de `index.css`. Cubre también el tema Original con «Suaves», que el spec no pedía: con la A quedaba en 3,66:1 como mínimo, y con la B queda en 3,02:1.
+14. **Tabla desfasada.** Si a la tabla le faltara una clave, `resolveNetworkColor` daría el color del atlas antes que un gris que parecería «sin red». La prueba de la tabla lo impide, y desde la revisión de la tanda 1 `npm test` detecta también cualquier cambio de `NETWORK_COLORS` sin regenerarla.
+15. **Las claves de demostración** son un grupo más del método. La tabla cubre las 73 claves de `NETWORK_COLORS`, `unclassified` incluida.
+16. **El logotipo sigue la paleta** (5.1, «del tema activo»): con «Originales del atlas», sus cuatro nodos son los primarios de Cole-Anticevic.
+17. **El tono se comprueba con un croma de 0,04 o más** en el color suave: por debajo, el redondeo a `#rrggbb` ya lo mueve más de 3°. Hoy ninguna red con color queda por debajo.
+18. **El panel de Ajustes crece** con la sección nueva, entre 160 y 185 px, calculado. La D3 lo midió en 412 px de alto, y la D3 y la D4 lo vieron entero a 900 × 600. Con 160-185 px más pasaría de los 480 px que le deja esa ventana (`max-height: calc(100svh - 120px)`), y se desplazaría por dentro. Es un cálculo: no se ha medido en un navegador.
+
+**Correcciones de las revisiones.**
+- **Tanda 1** (Tasks 1 y 2, datos y lógica), con dos revisores en paralelo. Commit `79ed7c5`:
+  - dos pruebas nuevas, y las mismas comprobaciones en el generador, para las dos correcciones del prototipo: ninguna red con color queda casi gris, y la más oscura y la más clara de cada grupo quedan en los extremos de la banda. Deshacer cualquiera de las dos hace fallar las pruebas y la comprobación;
+  - `SOFT_PALETTE_SOURCE`, con el que `npm test` detecta una tabla desfasada;
+  - la prueba del tope del croma de cada tema, también en la comprobación del generador;
+  - una prueba de un valor guardado sin `paletteMode`.
+- **Tanda 2** (Task 3, Ajustes), con un solo revisor, porque el diff era pequeño. Commit `38b2bdf`:
+  - las flechas del grupo, a mano (`logic/radioGroup.ts`): dan la vuelta en los extremos y conservan el anillo de foco también en WebKit, el motor de Tauri en Linux, que no hace ninguna de las dos cosas;
+  - el panel de Ajustes se cierra si el foco cae fuera (`focusin` en el documento), también con Tab tras un clic en un texto del panel;
+  - la muestra lleva el anillo de `--text-muted`, como los demás puntos de red;
+  - las pruebas de marcado comprueban lo que dicen: un `name` no vacío, una sola opción marcada, radios `.visually-hidden` sin `hidden` ni `style`, y doce redes en la muestra;
+  - `text-wrap: balance` en la ayuda y `user-select: none` en las opciones.
+
+**Limitaciones conocidas.**
+- **Dos colores casi blancos en los temas oscuros:** «Por defecto A» de Yeo 17 (`#fcffb0`) y «Sin identificar (temporal medial / parietal)» de Power (`#fffbcf`). Quedan cerca del color del texto.
+- **Original con «Suaves» queda justo por encima de 3:1:** 3,02:1, con «Visual central» de Yeo 17 (`#9849a3`) sobre `#1d1e26`. Una red nueva podría bajar de ahí, y entonces el generador se negaría a escribir la tabla.
+- **El croma por 0,85 apaga también las redes que ya tenían poco croma** en el atlas.
+- **En Claro,** los colores suaves quedan entre 1,97 y 2,52:1 sobre blanco, y cuentan con el anillo neutro (principio 6).
+- **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta (spec 12).
+- **Para el desarrollador principal:** la línea de estado del 3D dice «Cada región con el color real de su red» (`Brain3D.tsx`), y varios comentarios suyos hablan del «color real» (`Brain3D.tsx`, `theme/networks.ts` y `logic/surfaceParcels.ts`). Con «Suaves», no es literal. No se ha cambiado, porque es su código.
+- El tamaño del panel de Ajustes, sin medir (desviación 18).
+- La ventana real de Tauri no se ha comprobado.
+
+**Verificación.**
+- **Pruebas:** `vitest`, 411 en verde tras la paleta B (343 antes de la fase: 68 nuevas), y `oxlint` sin errores y con los 9 avisos de siempre. Hoy son 516, con la oclusión (D8) y las marcas (D9).
+- **Experimentos de regresión,** con la paleta B: se deshizo cada una de las dos correcciones del prototipo y se quitó el tope del croma. En los tres casos, el generador se niega a escribir (sale con código 1 y la tabla no cambia), y `softPalettes.test.ts` falla con la tabla que saldría: 7, 3 y 4 de sus 21 pruebas.
+- **La verificación en la app real (Tasks 4 y 5 del plan) se empezó y se paró.** Sus navegadores sin interfaz, cada uno con WebGL por software, sobrecargaban la máquina del usuario: la CPU al 98 % y una carga de 54. Más tarde, el núcleo cerró por falta de memoria el Chrome del usuario. Antes de pararla solo había comprobado los datos y un caso, Original con «Automática» y aún con la paleta A, hasta que una captura se quedó sin tiempo. No cuenta como verificación.
+- **Sin comprobar,** por eso, todo lo de la tabla del plan:
+  - los colores de red en pantalla, en los cuatro temas con las tres elecciones, y que «Automática» sea la paleta que se aplica;
+  - que las exportaciones sigan la paleta, con la columna de Claro con «Suaves»;
+  - que con «Originales del atlas» salgan iguales byte a byte que antes, con los temas Original y Grafito;
+  - el teclado por las tres opciones, en Chromium y en WebKit, y lo que se guarda;
+  - el tamaño del panel de Ajustes;
+  - la consola.
+- **Lo que queda en pie:** las pruebas unitarias, los experimentos de regresión y la prueba del propio usuario en la app, con la paleta B. La aprobó («perfecto») y dijo «creo que está todo operativo».
+- **Recomendado:** pasar más adelante una versión ligera, con la máquina libre: un solo navegador, con `nice 19`, y como versión «antes» la de `4977d05`, que tiene la oclusión pero no la paleta ni las marcas, para comparar solo la paleta.
+
+**Queda para la fase 4.** La leyenda del connectograma (5.4) y los gráficos de la sección 6 que no hizo la parte 3D: etiquetas radiales, arcos de hemisferio y nodos del connectograma, hemisferios, surcos y etiquetas 3D. Y, del diagrama de síntesis, el contorno de los nodos en Claro (D3).
+
+El spec queda al día con esta fase:
+- el estado del documento;
+- la nota del acento, que vale también para la opción marcada de «Colores de las redes» (4.1);
+- el método de la paleta B, con sus cifras y la tabla de Cole-Anticevic, y la nota de que la maqueta usaba la A (4.3);
+- «Automática», que es la elección `null` (4.5), y el control de tres opciones (5.2);
+- las unidades de la fase (9) y sus pruebas (10);
+- el orden y el estado de las fases (11);
+- los puntos abiertos (12).
+
+Spec: `docs/rediseno-interfaz-diseno.md`, secciones 4.1, 4.3 a 4.5, 5.2 y 9 a 12. Plan: `docs/rediseno-interfaz-plan-fase2.md`.
+
+## D8. Oclusión por la corteza en el cerebro 3D -- 25/09/2026
+
+**Motivación.** Sustituye a «Atenuar lo que queda detrás», de la D5. El usuario la descartó: dependía de la distancia a la cámara y no de lo que tapa la corteza, y en un primer plano se veía igual activada que desactivada. Pidió «simplemente oclusión con alfa en función de profundidad que seguramente render nativo 3d ya incorpora».
+
+**Decidido por el usuario (25/09/2026).** Lo que la corteza pintada tapa se ve tenue, y más cuanto más hondo queda, con la profundidad real de la corteza. Sin interruptor. Tras verlo en la app, aprobó los valores tal como están («perfecto»).
+
+**Qué cambia** (spec 6.3, commit `4ed9c82`).
+- En cada fotograma, la corteza pintada sola, en la capa 1 de three.js, se dibuja en un destino con textura de profundidad (`DepthTexture`). Usa la misma cámara y el mismo hemisferio visible, y un material que solo escribe profundidad (`scene.overrideMaterial`). Lo hace un `useFrame` de prioridad 0,5, entre los controles (0) y `ExportBridge` (1), que dibuja el lienzo.
+- Los materiales de la capa de foco (líneas, marcadores con su contorno, conos de dirección y etiquetas) comparan su profundidad en la vista con la de la corteza en su píxel. La posición en la textura sale de la posición de recorte, que el shader de vértices pasa al de fragmentos.
+- Su opacidad se multiplica por 1 − (1 − mínimo) · smoothstep(inicio, fin, detrás), con inicio 0,25, fin 0,75 y mínimo 0,2, en unidades de la escena (1 = 40 mm): entera hasta 10 mm por detrás de la corteza, y 0,2 desde 30 mm.
+- La capa de foco se sigue dibujando sin prueba de profundidad: la opacidad hace la oclusión.
+- No hay interruptor. Sin la corteza pintada (malla translúcida, atlas volumétricos o la vista de repuesto), no hay pasada y los materiales no llevan el parche: todo se ve entero, como antes de la D5.
+- La exportación la reproduce tal como se ve. `capture3d.ts` no cambia: la captura usa la misma cámara y la profundidad de la corteza del último fotograma.
+- Se quitan `logic/depthFade.ts`, `logic/depthFadePreference.ts` y `components/DepthFadeToggle.tsx`, con sus pruebas, y `fadeKey`, con la prueba de su regla. La clave `neurograph.cerebro3d.atenuar` deja de leerse. `PaintedCortex.tsx` pierde `visibleBounds`, que solo usaba la atenuación.
+- Sin el interruptor desaparece la fila que ocupaba él solo en la barra del 3D desde 40rem (limitación de la D5). En la prueba de humo, el lienzo mide 776 × 554, lo mismo que la D5 midió a 1400 × 900 con el interruptor oculto.
+
+**Rama y fusión.** Se hizo en la rama `rediseno-oclusion`, desde la D5 (`b3454e5`) y a la vez que la fase 2 (D7): la implementación en `be312e7` y las correcciones de la revisión en `4977d05`. Se fusionó en `rediseno-interfaz` con el commit `0e2ff8b`.
+
+**Detalles de la implementación.**
+- **Las luces también van en la capa 1,** aunque en la pasada no alumbran nada. three.js guarda un solo estado de luces para la pasada y para el lienzo: si el número de luces cambiara entre las dos, cada material con luces volvería a pasar por `getProgram` en cada fotograma. Medido en Chromium: 7 revisiones por fotograma con 6 marcadores sin el arreglo, y 0 con él.
+- **El parche solo va con la corteza pintada:** sin ella, `occlusionMaterialProps` devuelve `{}`. Solo entonces los marcadores y los conos pasan a `transparent`; en la translúcida siguen opacos, como antes de la D5.
+- **La limpieza va en un `useLayoutEffect`.** Corre en el mismo commit de React en que react-three-fiber quita el `useFrame` de la pasada, así que ningún fotograma se dibuja con la oclusión encendida y sin pasada; por ejemplo, al pasar de la corteza pintada a la translúcida.
+- **Guardas ante una actualización de three.js y de react-three-fiber:** pruebas que leen su código y fallan si cambia algo de lo que depende la oclusión.
+  - Que `packing.glsl.js` siga pasando la profundidad a la de la vista con la cuenta que copia el parche (`perspectiveDepthToViewZ`).
+  - Que `WebGLRenderer.js` siga usando `scene.overrideMaterial` y dibujando solo lo que ve la capa de la cámara, y que el material de la corteza lo admita (`allowOverride`).
+  - Que react-three-fiber siga ordenando los `useFrame` por prioridad, con números.
+- **La conexión, fijada:** `Brain3D.occlusionWiring.test.ts` lee `Brain3D.tsx` y `PaintedCortex.tsx` y comprueba las prioridades, la limpieza en `useLayoutEffect`, que la pasada solo se monta con la corteza pintada y que la corteza está en su capa. Otra prueba fija enteras las dos funciones que el parche añade al shader.
+
+**Diferencias con el spec.** Ninguna: se construyó lo que dice 6.3. Los valores son los de partida. La verificación con capturas que debía ajustarlos se interrumpió (abajo), y el usuario los aprobó al verlos en la app.
+
+**Limitaciones conocidas.**
+- **Salto en la silueta:** una línea que sale por el borde de la corteza pasa de tenue a entera en cosa de un píxel, porque el destino de la profundidad no tiene antialiasing.
+- **Con la forma «Real» (midthickness),** un marcador dentro de un surco se ve tenue: la corteza de alrededor lo tapa. La D5 ya lo preveía.
+- **Una etiqueta junto a la silueta** puede quedar partida: una parte tenue y otra entera.
+- **Coste.** En cada fotograma, un dibujo más de la corteza, solo de profundidad (64 984 vértices), y dos recorridos más de la escena. En memoria, un adjunto de color RGBA8 y una textura de profundidad de 24 bits, los dos del tamaño del búfer de dibujo: unos 3,4 MB a 776 × 554. Con un adjunto de color R8 se ahorrarían tres cuartas partes de ese adjunto; queda como opción.
+- **La tabla de la línea media de la D5 queda superada:** medía la atenuación por distancia, que ya no existe.
+
+**Verificación.**
+- **Pruebas,** en la rama: 352 (las 343 de antes, 61 nuevas y 52 quitadas con la atenuación), y 357 tras las correcciones de la revisión. `tsc -b` limpio, `oxlint` sin errores y con los 9 avisos de siempre, y `vite build` correcto.
+- **Prueba de humo** en Chromium sin interfaz, con WebGL por software (SwiftShader). No es la verificación.
+  - En la vista lateral de partida, las regiones del hemisferio izquierdo (5m, OP4 y V1) y los tramos de línea que pasan por dentro del cerebro se ven tenues. 4, 3b y 6mp, del lado que se ve, se ven enteras.
+  - Apagando la oclusión desde la prueba, porque no hay interruptor, cambian 1 873 píxeles, 1 849 de ellos más claros sin ella.
+  - La vista translúcida no cambia. Con un solo hemisferio, su cara interna se ve.
+  - Sin errores en la consola ni el aviso de que el parche no se aplicara.
+- **Revisión del código,** con 26 mutaciones. Cinco pasaban todas las pruebas: quitar la guarda de `ngOcclusionOn`, quitar el signo de `ngCortexViewDepth`, `#ifndef` en vez de `#ifdef`, cambiar near y far, y leer el canal `.y`. Desde `4977d05`, cada una hace fallar una prueba.
+- **La verificación con capturas,** que debía ajustar el inicio, el fin y el mínimo y medir las dos copias de los pares de la línea media (5m, 24dd y 6mp), se interrumpió antes de terminar, por la misma sobrecarga de la máquina que paró la de la D7: sin comprobar. La prueba de humo solo seleccionó una copia de cada región.
+- **El usuario lo vio en la app** y aprobó los valores tal como están («perfecto»).
+- **No comprobado:** la ventana real de Tauri, el rendimiento con una GPU real y los conos de dirección, que no están en los datos.
+
+El spec (6.3) se escribió para esta decisión, en `4ed9c82`. Después cambian: los valores, que dejan de ser de partida, la pasada, con la prioridad y las luces, y lo que se ve en la vista lateral, que ahora dice lo que vio la prueba de humo en lugar de dar por tenues los pares de la línea media (6.3); las unidades (9) y las pruebas (10); el orden (11); y, en 12, los puntos resueltos, la línea media y los valores de la oclusión, y un riesgo nuevo, su dependencia de three.js y de react-three-fiber.
+
+Spec: `docs/rediseno-interfaz-diseno.md`, sección 6.3.
+
+## D9. Marcas de regiones -- 25/09/2026
+
+**Origen.** El usuario arrastró sobre el connectograma, y el navegador seleccionó las etiquetas como texto, con barras azules. Propuso convertirlo en una función: «una cosa es activar red y otra seleccionar... remarcar nodos seleccionados en todas las vistas». Las marcas son una capa aparte de la selección. Seleccionar sigue activando la red de la región, con sus conexiones y el foco del 3D; marcar solo resalta, para encontrar regiones de un vistazo en las tres vistas sin cambiar lo que se dibuja (spec 5.9).
+
+**Decidido con el usuario (25/09/2026).**
+- Ctrl+clic en un nodo marca o desmarca la región; en macOS, Cmd+clic, porque allí Ctrl+clic abre el menú contextual. El clic normal sigue seleccionando.
+- Ctrl+Intro en el buscador de regiones marca la sugerencia activa. Lo propusimos nosotros, y lo aprobó.
+- En el 3D se marcan el marcador y la etiqueta.
+- Deshacer, sí; guardar, no.
+- No se exportan.
+- Los dibujos dejan de seleccionar texto al arrastrar (`user-select: none`).
+- Después, también decisión suya: la línea de las marcas en Filtros solo aparece cuando hay marcas. Hecho en la rama `rediseno-marcas` (`dec7cad`, fusión `7b9e161`): sin marcas no hay línea, y una región viva oculta, siempre presente, sigue anunciando «Ninguna región marcada» al quitar la última.
+
+**Spec:** 5.9, en `5c53cdb`, y `baf8889`: el aviso con «Deshacer» sale también al quitar dos o más marcas.
+
+**Qué cambia.** La implementación está en `f882e6d`, `0a1345e`, `438ed91`, `0f3f1d9`, `854b6df` y `1320dd3`. Las correcciones de la revisión, en `178e3ec`, se hicieron en la rama `rediseno-marcas` y se fusionaron con `c23aa91`.
+- **Store,** `state/marks.ts`: las regiones marcadas, con `toggleMark` y `clearMarks`. Cada cambio crea un `Set` nuevo, como la selección.
+- **Historial:** la instantánea guarda las marcas. Marcar, desmarcar y «Quitar marcas» son pasos («marcar IFJa (der.)», «quitar las marcas (5)»), y quitar dos o más saca el aviso con «Deshacer». Al cambiar de atlas, `resetForAtlasChange()` vacía las marcas y el historial, sin que el vaciado sea un paso: `handleChangeAtlas` la llama en lugar de `resetHistory()`. Con otra clasificación de redes, las marcas se conservan.
+- **Color de marca,** con los tokens `mark` y `markText` (`DRAW_TOKENS`, y `--mark` y `--mark-text` en `index.css`): `#2563eb` con texto blanco, y `#1d4ed8` en Claro.
+- **Connectograma, también en la lupa, y hemisferios.** La etiqueta va sobre una pastilla, `MarkedLabel`: un rectángulo redondeado con el mismo `transform` que el texto, medido con `getBBox` antes de pintar. El nodo lleva un anillo exterior del color de marca, separado de él por un hueco del color del fondo, así que se distingue aunque la red sea azul. La exportación quita del clon todo lo que lleva `data-ng-mark`.
+- **Filtros:** `MarksLine`, bajo la selección: «Marcadas: N», con los nombres de las primeras y «y N más», cuántas ocultan los filtros y «Quitar marcas».
+- **Buscador:** Ctrl+Intro (Cmd+Intro en macOS) marca o desmarca la sugerencia activa, en lugar de añadirla a la selección.
+- **Cerebro 3D.** El marcador lleva un anillo, un sprite de cara a la cámara con el hueco y el anillo, y la etiqueta va sobre la pastilla. Los dos llevan `toneMapped={false}`, para que salgan con el color de marca. Las marcas se dibujan también sin foco, fuera de la selección y con el mapa entero pintado, con la oclusión (D8). Mientras se captura la exportación, no se dibujan. `PaintedCortex` pasa a `onRegionClick` las teclas del clic y el desplazamiento del arrastre (cambio aditivo).
+- `user-select: none` en `.viz-svg` y `.legend-svg`.
+
+**Contrastes.** El texto de la pastilla queda a 5,17:1, y a 6,70:1 en Claro. El color de marca, a 3,21:1 o más sobre el fondo y el panel de los cuatro temas, y a 3,13–3,14:1 sobre `hemiFill`. En Original, la muestra de color de la línea de Filtros queda a 2,99:1 sobre `--code-bg`, pero es decorativa.
+
+**Correcciones de las revisiones.**
+- **Revisión propia** (`854b6df`): `MarkedLabel` solo escribe en la pastilla lo que cambia, porque cada escritura obligaba a recalcular el dibujo antes de medir la etiqueta siguiente; y la ayuda de Filtros, más clara.
+- **En el 3D, un Ctrl+clic ya no selecciona la línea de detrás** (`1320dd3`): react-three-fiber entrega el clic a todo lo que atraviesa el rayo, y las líneas se alcanzan desde 1 unidad de la escena, 40 mm.
+- **Los tres «importantes» de la revisión,** en `178e3ec`:
+  - **Doble marca en el 3D:** con esferas solapadas, como en la vista lateral de partida, un Ctrl+clic marcaba a la vez V1 (izq.) y V1 (der.). El gesto de marcar lleva ahora `stopPropagation` y se queda en la de delante; el clic normal sigue como estaba.
+  - **La línea de Filtros:** tiene siempre el mismo alto; «Quitar marcas» no se parte ni se encoge; los nombres se cortan con «…», y cuántas ocultan los filtros va en su propia línea, entera.
+  - **La sugerencia aplastada del buscador:** «seleccionada» y «marcada» van una sobre otra, y el aviso de Ctrl+Intro cabe en una línea.
+- **Además,** en la misma ronda: un Ctrl+arrastre en el 3D ya no marca al soltar (umbral de 4 px, `MARK_CLICK_MAX_DRAG`); la región viva de Filtros solo anuncia cuántas y cuáles; y cada prueba que añadió falla con su mutación.
+
+**Qué no cambia.** Los stores de selección y de filtros; el clic normal, que sigue seleccionando; y los JPEG, que salen como sin marcas. De `PaintedCortex.tsx`, que es del desarrollador principal, solo se amplía lo que pasa a `onRegionClick`.
+
+**Limitaciones conocidas.**
+- **Las marcas de la lupa repiten la geometría de sus etiquetas.** Las etiquetas radiales de la fase 4 tendrán que ponerla al día también ahí.
+- **Conducta del código del desarrollador principal, que se deja como estaba:** un arrastre normal para girar que acaba sobre la corteza selecciona una región.
+- **Falta un navegador real para comprobar:**
+  - la pastilla y el anillo con 360 nodos y en la lupa;
+  - el anillo 3D a distintos zooms;
+  - WebKitGTK, el motor de Tauri en Linux;
+  - que las exportaciones salgan sin marcas;
+  - la línea de Filtros con una barra de desplazamiento clásica.
+
+**Verificación.** Solo pruebas unitarias: 516 en `c23aa91`, 91 de ellas nuevas con las marcas. En un navegador no se ha comprobado nada todavía (la lista de arriba).
+
+El spec queda al día con esta decisión: la línea de Filtros solo con marcas (5.9), las unidades (9), las pruebas (10), el orden (11) y la geometría repetida de la lupa (12).
+
+Spec: `docs/rediseno-interfaz-diseno.md`, sección 5.9.
