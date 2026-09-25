@@ -475,6 +475,50 @@ Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el nave
 - **Exportación:** las marcas solo existen en pantalla; los JPEG salen como sin ellas (decisión del usuario). Los elementos de las marcas llevan un atributo que la exportación de SVG quita del clon, y el 3D no las dibuja mientras captura.
 - **Además:** los dibujos (connectograma, hemisferios y leyenda) dejan de seleccionar texto al arrastrar (`user-select: none`). Las barras azules que vio el usuario eran esa selección.
 
+### 5.10 Tour guiado
+
+Petición del usuario (25/09/2026): un tutorial práctico de unos dos minutos, en tono cercano, que explique las funciones clave con un ejemplo real y en el que la app haga sola lo que explica.
+
+- **Dónde:** un botón «?» (Ayuda) en la barra superior, junto al engranaje de Ajustes. El tour solo se abre con ese botón; no se ofrece por su cuenta (decisión del usuario).
+- **Componente:** driver.js 1.8.0 (MIT, sin dependencias). Lleva los colores, la tipografía y el anillo de foco de la app, con los tokens del tema, en los cuatro temas. Una caja anclada al elemento del que habla, con esa zona iluminada y el resto atenuado.
+- **Controles:**
+  - «← Anterior», «Siguiente →» y «Salir». Salir también con Escape.
+  - «▶ Automático»: avanza solo, unos 8 s por paso; se pausa con cualquier otro control.
+  - El paso actual: «3 de 13».
+  - Teclado: las flechas y Escape. El foco va a la caja y, al salir, vuelve al botón «?».
+- **Modo demo:** en cada paso, la app hace la acción que explica: mostrar u ocultar redes, resaltar, añadir, seleccionar, buscar, marcar, mover el peso, activar la lupa o cambiar de vista. Retroceder deshace la acción del paso.
+- **El montaje del usuario queda intacto.**
+  - Al empezar, se guarda el estado: atlas, clasificación de redes, selección, filtros, marcas, vista grande, lupa, texto del buscador e historial de deshacer.
+  - Al salir, en cualquier paso, se restaura todo tal como estaba.
+  - Los pasos del tour no quedan en el historial.
+- **Ejemplo real:** HCP-MMP1.0 con las redes de Cole-Anticevic, y la red frontoparietal, la que se enciende cuando algo exige atención. Si el atlas o la clasificación activos son otros, el tour cambia a estos y, al salir, vuelve a los del usuario. Si no hay datos reales, solo explica, sin hacer las acciones, y lo dice.
+- **Los verbos, bien separados.** Es lo que más importa que quede claro:
+  - **Mostrar u ocultar** una red, con su casilla: qué se dibuja.
+  - **◎ Resaltar** una red: la selección pasa a ser solo esa red. Es exclusivo: sustituye lo que había.
+  - **+ Añadir** una red: la suma a lo que ya está seleccionado.
+  - **Seleccionar** una región, con un clic: la añade o la quita de la selección; se ven sus conexiones en las tres vistas.
+  - **Marcar** una región, con Ctrl+clic o Ctrl+Intro en el buscador: solo la señala para encontrarla, sin cambiar lo que se dibuja (5.9).
+- **Guion,** en tono cercano, de tú y con frases cortas; unos dos minutos:
+  1. **Bienvenida:** qué va a enseñar, que puede ir a su ritmo o darle a ▶, y que su trabajo queda como estaba.
+  2. **Atlas y redes,** en la barra: qué es cada cosa. Deja HCP-MMP1.0 y Cole-Anticevic.
+  3. **Mostrar u ocultar,** con las casillas: oculta todas menos Frontoparietal y Lenguaje. «Así cruzas redes sin perderte entre 64.000 conexiones».
+  4. **◎ Resaltar Frontoparietal:** «ojo, es exclusivo: te quedas solo con ella».
+  5. **+ Añadir Lenguaje:** «y esto la suma a lo que ya tienes».
+  6. **Peso mínimo:** lo sube hasta que el dibujo respira; el recuadro dice cuántas conexiones quedan.
+  7. **Seleccionar IFJp (izq.),** un nudo de la red frontoparietal: empieza de cero con ella.
+  8. **Buscador** (Ctrl+K): escribe «TE1m». Su red está oculta, así que el buscador lo dice y ofrece «Mostrar la red»; con Intro se añade a la selección.
+  9. **Marcar V1 (izq.)** con Ctrl+clic: la pastilla azul y la línea «Marcadas» en Filtros.
+  10. **Lupa:** con 360 puntos a 5 px, amplía lo que hay bajo el ratón y el clic va al nodo más cercano.
+  11. **Cambiar de vista** con «Ampliar» en el 3D: la selección y las marcas se mantienen; lo que queda detrás de la corteza se ve tenue.
+  12. **Deshacer y rehacer:** Ctrl+Z y Ctrl+Mayús+Z, también para las marcas.
+  13. **Fin:** devuelve el montaje y recuerda el botón «?».
+- **Accesibilidad:**
+  - La caja es un diálogo con nombre y descripción, y el cambio de paso se anuncia.
+  - Con `prefers-reduced-motion`, sin animaciones.
+  - Se lee y se maneja entera con el teclado.
+- **No se exporta ni se guarda.**
+- **Además, por coherencia de palabras:** los botones «Todas» y «Ninguna» de las redes dicen «Mostrar todas las redes» y «Ocultar todas las redes» en su texto emergente, porque «marcar» es ahora otra cosa (5.9).
+
 ## 6. Gráficos, sin cambiar lo que representan
 
 ### 6.1 Connectograma
