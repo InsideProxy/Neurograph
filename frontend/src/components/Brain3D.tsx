@@ -49,8 +49,10 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportPixelsAsJpeg } from "../logic/exportImage";
 import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
-import { getLabelTexture } from "../logic/textSprite";
-import { markerSize } from "../logic/markerSize";
+import { MARK_RING_SPRITE_SCALE, getLabelTexture, getMarkRingTexture, type LabelPill } from "../logic/textSprite";
+import { markRing3d, markerSize } from "../logic/markerSize";
+import { isMarkGesture, type ClickKeys } from "../logic/marks";
+import { useMarksStore } from "../state/marks";
 import {
   OCCLUSION_PASS_PRIORITY,
   createCortexOcclusion,
@@ -475,17 +477,21 @@ function NodeLabel({
   offset,
   occlusion,
   overlay = false,
+  pill = null,
 }: {
   node: GraphNode;
   offset: number;
   occlusion: CortexOcclusion;
   overlay?: boolean;
+  // Región marcada (docs/rediseno-interfaz-diseno.md, 5.9): la etiqueta va
+  // sobre una pastilla del color de marca (logic/textSprite.ts).
+  pill?: LabelPill | null;
 }) {
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
   // abreviatura; getLabelTexture("") solo se pide una vez por caché.
-  const label = useMemo(() => getLabelTexture(node.abbreviation ?? ""), [node.abbreviation]);
+  const label = useMemo(() => getLabelTexture(node.abbreviation ?? "", pill), [node.abbreviation, pill]);
   if (!node.abbreviation) return null;
   // Separación aumentada (30/08/2026, ronda de ajustes tras revisión
   // visual: "las abreviaturas... se confunden con la esfera") de 0.15 a
@@ -513,12 +519,15 @@ function NodeLabel({
   const labelWidth = labelHeight * label.aspect;
   return (
     <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
+      {/* toneMapped: la pastilla de una región marcada sale con el color de
+          marca tal cual, sin la curva de tono del lienzo, como el anillo. */}
       <spriteMaterial
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
+        toneMapped={pill === null}
         {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
       />
     </sprite>
@@ -533,12 +542,21 @@ function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
   return overlay ? { raycast: () => null } : {};
 }
 
+// Cómo se ve una región marcada en el 3D (docs/rediseno-interfaz-diseno.md,
+// 5.9): la pastilla de su etiqueta y la textura de su anillo, con los colores
+// de marca del tema.
+interface MarkLook {
+  pill: LabelPill;
+  ringTexture: THREE.Texture;
+}
+
 function NodeMesh({
   node,
   isHomologyHighlighted,
   colors,
   occlusion,
   overlay = false,
+  mark = null,
 }: {
   node: GraphNode;
   // Con la corteza pintada y opaca (decisión 72), las esferas y líneas de
@@ -559,8 +577,12 @@ function NodeMesh({
   // y los uniforms que comparten los materiales de la capa de foco de este
   // lienzo.
   occlusion: CortexOcclusion;
+  // Región marcada (spec 5.9): con su anillo y su etiqueta sobre la pastilla.
+  // null si no lo está, o mientras se captura la exportación.
+  mark?: MarkLook | null;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
+  const toggleMark = useMarksStore((state) => state.toggleMark);
   const isSelected = selectedNodeIds.has(node.id);
   // Radio reducido dos veces (30/08/2026, ronda de ajustes tras revisión
   // visual: primero de 0.16/0.11 a 0.12/0.08, y de nuevo -- "aún más
@@ -580,6 +602,8 @@ function NodeMesh({
   // señales (red funcional real / homología real) nunca se mezclen en
   // un tercer color ambiguo que no sea ninguna de las dos.
   const fillColor = isHomologyHighlighted ? colors.homology : colors.networkColor(node.network);
+  // Tamaño del sprite del anillo de una región marcada (logic/markerSize.ts).
+  const ringSize = 2 * markRing3d(size).outerRadius * MARK_RING_SPRITE_SCALE;
   return (
     <>
       {/* Halo de contorno neutro (decisión 18, 30/08/2026) -- equivalente
@@ -632,13 +656,37 @@ function NodeMesh({
           node_modules): la encuentran igual, así que seleccionar con un
           clic sigue costando lo mismo que antes. Con la corteza pintada no
           hay, como antes: se selecciona pulsando la propia región. */}
+      {/* Ctrl+clic (⌘+clic en macOS) marca o desmarca la región (spec
+          5.9); el clic normal sigue seleccionándola. */}
       {!overlay && (
-        <mesh position={node.position3d} visible={false} onClick={() => toggleNode(node.id)}>
+        <mesh
+          position={node.position3d}
+          visible={false}
+          onClick={(event) => (isMarkGesture(event.nativeEvent) ? toggleMark(node.id) : toggleNode(node.id))}
+        >
           <sphereGeometry args={[size.hitRadius, 14, 14]} />
           <meshBasicMaterial />
         </mesh>
       )}
-      <NodeLabel node={node} offset={size.labelOffset} occlusion={occlusion} overlay={overlay} />
+      {/* Región marcada (spec 5.9): el hueco del color del fondo y el anillo
+          del color de marca, fuera del contorno, en un sprite siempre de cara
+          a la cámara; su centro, transparente, deja ver el marcador. Sin
+          prueba de profundidad con la corteza pintada y con la oclusión, como
+          el marcador: tenue detrás de la corteza. Sin la curva de tono del
+          lienzo, para que salga con el color de marca. */}
+      {mark && (
+        <sprite position={node.position3d} scale={[ringSize, ringSize, 1]} renderOrder={overlay ? 2 : 0}>
+          <spriteMaterial
+            map={mark.ringTexture}
+            transparent
+            depthWrite={false}
+            depthTest={!overlay}
+            toneMapped={false}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
+          />
+        </sprite>
+      )}
+      <NodeLabel node={node} offset={size.labelOffset} occlusion={occlusion} overlay={overlay} pill={mark?.pill ?? null} />
     </>
   );
 }
@@ -1044,6 +1092,24 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // de la capa de foco, uno por lienzo; CortexOcclusionPass la enciende.
   const [occlusion] = useState(createCortexOcclusion);
 
+  // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): las regiones
+  // marcadas que pasan los filtros llevan su marcador, con el anillo, y su
+  // etiqueta sobre la pastilla, también fuera de la selección y con el mapa
+  // entero pintado (renderFocus). Mientras se captura la exportación no se
+  // dibujan: los JPEG salen como sin ellas. Sus colores son siempre los de
+  // pantalla.
+  const markedIds = useMarksStore((state) => state.markedIds);
+  const toggleMark = useMarksStore((state) => state.toggleMark);
+  const drawMarks = exportPhase !== "capturing";
+  const markedNodes = nodes.filter((node) => markedIds.has(node.id));
+  const markLook = useMemo<MarkLook>(
+    () => ({
+      pill: { background: screenColors.mark, color: screenColors.markText },
+      ringTexture: getMarkRingTexture(screenColors.sceneBg, screenColors.mark),
+    }),
+    [screenColors.mark, screenColors.markText, screenColors.sceneBg],
+  );
+
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
   // sola vez al montar, nunca por cada cambio de selección/foco.
@@ -1256,12 +1322,16 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
 
   // Clic sobre la corteza = mismo efecto que un clic sobre el nodo en el
   // connectograma. Una región oculta por los filtros no se selecciona.
+  // Marcas (spec 5.9): con Ctrl+clic (⌘+clic en macOS), se marca o se
+  // desmarca, como el nodo; una región oculta tampoco se marca.
   const handleRegionClick = useCallback(
-    (region: number) => {
+    (region: number, keys: ClickKeys) => {
       const id = painted?.map.regionIds[region];
-      if (id && filteredNodeIds.has(id)) toggleNode(id);
+      if (!id || !filteredNodeIds.has(id)) return;
+      if (isMarkGesture(keys)) toggleMark(id);
+      else toggleNode(id);
     },
-    [painted, filteredNodeIds, toggleNode]
+    [painted, filteredNodeIds, toggleNode, toggleMark]
   );
   // Solo valores primitivos en el estado: pasar el ratón por la misma
   // región/red no vuelve a dibujar nada.
@@ -1359,10 +1429,15 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // región se dibuja sobre SU vértice ancla en la forma de superficie que
   // se está mostrando (en la midthickness es exactamente `position3d`),
   // y se omite si su hemisferio está oculto.
+  // Marcas (spec 5.9): las regiones marcadas que no están en el foco se
+  // colocan y se dibujan igual que él, también sin selección, con el mapa
+  // entero pintado.
   const renderFocus = (helpers: SurfaceOverlayHelpers | null) => {
-    if (!focus) return null;
+    const focusIds = new Set(focus?.nodes.map((node) => node.id));
+    const markedOutside = drawMarks ? markedNodes.filter((node) => !focusIds.has(node.id)) : [];
+    if (!focus && markedOutside.length === 0) return null;
     const placed = new Map<string, GraphNode>();
-    for (const node of focus.nodes) {
+    for (const node of [...(focus?.nodes ?? []), ...markedOutside]) {
       if (helpers && anchorById) {
         const anchor = anchorById.get(node.id);
         if (anchor === undefined || !helpers.isVertexVisible(anchor)) continue;
@@ -1383,6 +1458,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
             colors={colors}
             occlusion={occlusion}
             overlay={overlay}
+            mark={drawMarks && markedIds.has(node.id) ? markLook : null}
           />
         ))}
         {visibleFocusConnections.map((conn) => {
@@ -1424,7 +1500,12 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // en cualquiera de los otros dos en vez de mostrar un lienzo vacío sin
   // explicación. Excepción (decisión 72): con la corteza pintada sí se
   // muestra el mapa completo de regiones, ver `regionColors`.
-  if (!focus && !painted) {
+  // Marcas (spec 5.9): con regiones marcadas que se ven, el lienzo las
+  // muestra, solas, porque se marcan para encontrarlas en todas las vistas.
+  // Mientras carga el mapa de regiones de la corteza, sigue el aviso de
+  // «cargando».
+  const waitingForCortex = effectiveSurfaceMode !== "translucent" && parcelsLoading;
+  if (!focus && !painted && (markedNodes.length === 0 || waitingForCortex)) {
     return (
       <>
         {!compact && (
@@ -1456,9 +1537,15 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
             clic durante la exportación ya no hace nada por su cuenta (ver
             el comentario junto a handleExport, más arriba); aria-disabled
             solo muestra ese estado. */}
-        <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
-          Exportar JPEG
-        </button>
+        {/* Marcas (spec 5.9): el lienzo que solo muestra regiones marcadas,
+            sin selección ni corteza pintada, no ofrece exportar: las marcas
+            no se exportan, y la imagen saldría vacía (spec 5.4: sin
+            selección y con la corteza translúcida, no hay botón). */}
+        {(focus || painted) && (
+          <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
+            Exportar JPEG
+          </button>
+        )}
       </div>
     )}
     {!compact && parcelError}

@@ -36,3 +36,28 @@ export function markerSize(isSelected: boolean): MarkerSize {
     labelOffset: radius + LABEL_GAP,
   };
 }
+
+// Anillo de una región marcada (docs/rediseno-interfaz-diseno.md, 5.9), como
+// en el connectograma y los hemisferios: fuera del contorno neutro, un hueco
+// del color del fondo y el anillo del color de marca. Brain3D lo dibuja con
+// un sprite, siempre de cara a la cámara, cuya textura (logic/textSprite.ts)
+// es el hueco y el anillo: su centro, transparente, deja ver el marcador. Los
+// grosores van en proporción al radio del marcador, así que una sola textura
+// sirve para el normal y el seleccionado. Con el radio base, el hueco mide
+// 0,0126 y el anillo 0,0165: cerca de 1,5 y 2 px en la vista de partida.
+export const MARK_RING_GAP_RATIO = 0.42;
+export const MARK_RING_WIDTH_RATIO = 0.55;
+
+export interface MarkRing3d {
+  // Donde empieza el hueco: el borde del contorno neutro.
+  gapInner: number;
+  // Donde empieza el anillo.
+  ringInner: number;
+  outerRadius: number;
+}
+
+export function markRing3d(size: MarkerSize): MarkRing3d {
+  const gapInner = size.radius * size.outlineScale;
+  const ringInner = gapInner + size.radius * MARK_RING_GAP_RATIO;
+  return { gapInner, ringInner, outerRadius: ringInner + size.radius * MARK_RING_WIDTH_RATIO };
+}

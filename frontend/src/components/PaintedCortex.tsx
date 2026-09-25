@@ -59,7 +59,10 @@ interface Props {
   paintBy?: VertexPaint | null;
   grays: CortexGrays;
   hemisphere: HemisphereVisibility;
-  onRegionClick: (regionIndex: number) => void;
+  // Marcar regiones (docs/rediseno-interfaz-diseno.md, 5.9): el clic llega
+  // con sus teclas, para que Brain3D distinga Ctrl+clic (marcar) del clic
+  // normal (seleccionar).
+  onRegionClick: (regionIndex: number, keys: Pick<MouseEvent, "ctrlKey" | "metaKey" | "altKey" | "shiftKey">) => void;
   // `face`: los tres vértices del triángulo bajo el cursor, para quien
   // necesite saber algo más que la región (p. ej. la red del vértice).
   onRegionHover: (regionIndex: number | null, face: [number, number, number] | null) => void;
@@ -180,7 +183,7 @@ export function PaintedCortex({
           onClick={(e) => {
             e.stopPropagation();
             const region = regionOfEvent(e);
-            if (region !== null) onRegionClick(region);
+            if (region !== null) onRegionClick(region, e.nativeEvent);
           }}
           onPointerMove={(e) => {
             e.stopPropagation();

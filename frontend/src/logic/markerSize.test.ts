@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markerSize } from "./markerSize";
+import { markRing3d, markerSize } from "./markerSize";
 
 // Radios de antes de la Legibilidad del 3D, para comparar.
 const OLD_RADIUS = 0.06;
@@ -40,6 +40,38 @@ describe("markerSize", () => {
     for (const selected of [false, true]) {
       const size = markerSize(selected);
       expect(size.labelOffset - size.radius).toBeCloseTo(gap, 10);
+    }
+  });
+});
+
+// Anillo de una región marcada en el 3D (spec 5.9): como en los dibujos, un
+// hueco del color del fondo y el anillo del color de marca, fuera del
+// contorno neutro del marcador.
+describe("markRing3d", () => {
+  it("el hueco empieza en el borde del contorno neutro, y el anillo va detrás", () => {
+    for (const selected of [false, true]) {
+      const size = markerSize(selected);
+      const ring = markRing3d(size);
+      expect(ring.gapInner).toBeCloseTo(size.radius * size.outlineScale, 10);
+      expect(ring.ringInner).toBeGreaterThan(ring.gapInner);
+      expect(ring.outerRadius).toBeGreaterThan(ring.ringInner);
+    }
+  });
+
+  it("guarda la proporción con el marcador: una sola textura sirve para el normal y el seleccionado", () => {
+    const normal = markRing3d(markerSize(false));
+    const selected = markRing3d(markerSize(true));
+    expect(selected.outerRadius).toBeGreaterThan(normal.outerRadius);
+    expect(selected.ringInner / selected.outerRadius).toBeCloseTo(normal.ringInner / normal.outerRadius, 10);
+    expect(selected.gapInner / selected.outerRadius).toBeCloseTo(normal.gapInner / normal.outerRadius, 10);
+  });
+
+  // La etiqueta mide 0,13 de alto (NodeLabel, en Brain3D.tsx) y va centrada
+  // a labelOffset del centro del marcador.
+  it("la etiqueta queda fuera del anillo", () => {
+    for (const selected of [false, true]) {
+      const size = markerSize(selected);
+      expect(size.labelOffset - 0.13 / 2).toBeGreaterThan(markRing3d(size).outerRadius);
     }
   });
 });
