@@ -256,13 +256,13 @@ export function FilterPanel({
               </span>
             </SectionToggle>
           </h3>
-          {/* «Mostrar» y «Ocultar», no «marcar»: marcar es ahora otra cosa
-              (spec 5.9 y 5.10; D11). */}
+          {/* Las etiquetas emergentes son las del desarrollador principal y se
+              conservan: aquí «marcar» es la casilla, no la marca (D11). */}
           <span className="filters__bulk">
-            <button type="button" className="filters__text-btn" title="Mostrar todas las redes" onClick={markAllNetworks}>
+            <button type="button" className="filters__text-btn" title="Marcar todas las redes" onClick={markAllNetworks}>
               Todas
             </button>
-            <button type="button" className="filters__text-btn" title="Ocultar todas las redes" onClick={unmarkAllNetworks}>
+            <button type="button" className="filters__text-btn" title="Desmarcar todas las redes" onClick={unmarkAllNetworks}>
               Ninguna
             </button>
           </span>

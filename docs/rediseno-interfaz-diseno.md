@@ -517,7 +517,7 @@ Petición del usuario (25/09/2026): un tutorial práctico de unos dos minutos, e
   - Con `prefers-reduced-motion`, sin animaciones.
   - Se lee y se maneja entera con el teclado.
 - **No se exporta ni se guarda.**
-- **Además, por coherencia de palabras:** los botones «Todas» y «Ninguna» de las redes dicen «Mostrar todas las redes» y «Ocultar todas las redes» en su texto emergente, porque «marcar» es ahora otra cosa (5.9).
+- **Las palabras del desarrollador principal se quedan** (decisión del usuario, 26/09/2026): el tour no cambia sus textos, aunque «marcar» sea ahora también otra cosa (5.9); los textos nuevos se adaptan a los suyos.
 
 Cómo quedó (D11):
 
@@ -534,6 +534,7 @@ Cómo quedó (D11):
 - **Deshacer y rehacer:** ↶ y ↷ enseñan el historial del propio tour (la marca de V1), y el paso deshace y rehace con las funciones de la app.
 - **Fin:** el montaje ya está devuelto cuando se ve el paso.
 - **Textos:** cada paso tiene lo que explica, que vale con y sin datos reales, y lo que hace la app, solo con datos reales. Antes de empezar el ejemplo se comprueba que los datos cuentan lo que dicen los textos: 360 regiones, más de 64 000 conexiones, IFJp (izq.) en Frontoparietal, TE1m (izq.) en una red oculta y (der.) como la que añade Intro, y V1 (izq.) en Visual. Si algo no cuadra, solo explica y lo dice.
+- **Filtros:** «Todas» y «Ninguna» siguen diciendo «Marcar todas las redes» y «Desmarcar todas las redes», y la ayuda, «◎ resalta solo esa red · + la añade a lo ya resaltado». El tour explica las casillas con sus propias palabras: «Cada casilla muestra u oculta una red».
 - **Sin datos reales,** el tour solo lleva a la vista Atlas y despliega Filtros y sus secciones, para señalar.
 - **Al salir,** tras dos fotogramas, para que el tour vea en App lo último que pidió, vuelven el atlas y la clasificación, y se espera a sus datos, también si ya los había pedido la bienvenida o el final: al llegar, App vacía el historial. Luego la selección, los filtros y las marcas, con sus mismos Set, y el historial tal cual, o vacío si los datos cayeron a los de demostración. Por último, las secciones de Filtros, el texto del buscador, la lupa, la vista grande, Filtros plegado y la pestaña. Mientras dura el tour, el historial no registra nada. Si driver.js no puede enseñar un paso, el tour sale igual.
 - **Atajos:** mientras dura, Ctrl+Z, Ctrl+Mayús+Z, Ctrl+Y y Ctrl+K no actúan.
@@ -806,7 +807,7 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 **Tour guiado.** 124 pruebas más, de 600 a 724 (D11):
 
 - **Nuevas:** `tourSteps.test.ts` (los pasos, sus anclas, los cinco verbos, que «resaltar» es solo de ◎, los textos sin datos reales, los atajos que bloquea), `tourPlan.test.ts` (el ejemplo, el peso mínimo y que cada paso empieza donde acabó el anterior; los datos que no cuadran, también si ningún peso deja respirar el dibujo), `tourRestore.test.ts` (el orden y la vuelta exacta), `tourAutoplay.test.ts`, `state/tourControls.test.ts`, `state/tourRunner.test.ts` (el recorrido con una App de mentira que se porta como la de verdad: salir desde cada paso deja todo igual, con los mismos Set y el mismo historial, también con otro atlas y otra clasificación, mientras llegan sus datos y antes de que App se ponga al día; si caen los de demostración, el historial queda vacío; si la caja falla, sale; sin datos reales no cambia nada; el automático) y `tourWiring.test.ts` (App, las anclas, los estilos y lo que se da por hecho de driver.js).
-- **Ampliadas:** `history.test.ts` (la pausa), `TopBar.test.tsx` (el botón «?»), `FilterPanel.test.tsx` (los títulos de «Todas» y «Ninguna» y las anclas) y `RegionSearch.test.tsx` (su ancla).
+- **Ampliadas:** `history.test.ts` (la pausa), `TopBar.test.tsx` (el botón «?»), `FilterPanel.test.tsx` (que «Todas», «Ninguna» y la ayuda de ◎ y + conservan los textos del desarrollador principal, y las anclas) y `RegionSearch.test.tsx` (su ancla).
 - **Mutaciones:** de 36 probadas en el código del tour, 17 en `state/tourRunner.ts`, fallan las 30 que cambian el resultado. Entre ellas: sin la pausa, sin esperar a los datos, también si ya los pidió una vuelta cortada, sin el historial o sin vaciarlo si caen los de demostración, sin los dos fotogramas al salir, sin salir si la caja falla, sin pausar el automático al retroceder, sin el respaldo si algo falla y sin volver a registrar. Sobreviven 6 sin efecto en la app: el orden de dos pasos internos de la vuelta, dos guardas del historial para casos que la app no produce y dos reglas del plan que, con el margen de 300 a 600 y los datos de hoy, eligen lo mismo.
 
 ## 11. Fases

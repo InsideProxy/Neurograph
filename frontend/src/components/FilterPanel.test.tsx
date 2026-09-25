@@ -45,10 +45,10 @@ describe("FilterPanel", () => {
     expect(html).toContain(">Ninguna</button>");
   });
 
-  it("«Todas» y «Ninguna» dicen que muestran u ocultan las redes: «marcar» es ahora otra cosa (spec 5.9 y 5.10)", () => {
-    expect(html).toContain('title="Mostrar todas las redes">Todas</button>');
-    expect(html).toContain('title="Ocultar todas las redes">Ninguna</button>');
-    expect(html).not.toMatch(/title="(Des)?[mM]arcar todas/);
+  it("«Todas», «Ninguna» y la ayuda de ◎ y + conservan los textos del desarrollador principal (D11)", () => {
+    expect(html).toContain('title="Marcar todas las redes">Todas</button>');
+    expect(html).toContain('title="Desmarcar todas las redes">Ninguna</button>');
+    expect(html).toContain("<p>◎ resalta solo esa red · + la añade a lo ya resaltado.</p>");
   });
 
   it("lleva las anclas del tour guiado (D11): la selección, la sección de redes, cada red con su clave y el peso mínimo", () => {

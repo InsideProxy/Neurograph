@@ -78,8 +78,9 @@ describe("pasos del tour guiado (spec 5.10)", () => {
     expect(full("marcar")).toMatch(/ni lo que se dibuja/);
     expect(full("marcar")).toMatch(/Ctrl\+clic/);
     expect(full("marcar")).toMatch(/Ctrl\+Intro/);
-    // Y no se cruzan: «marcar» ya no nombra las casillas de las redes
-    // (spec 5.9), así que ningún paso dice «marcar todas» ni «desmarcar».
+    // Y no se cruzan: en el tour, «marcar» es solo la marca (spec 5.9), así
+    // que ningún paso lo usa para las casillas, aunque Filtros conserve
+    // «Marcar todas las redes», del desarrollador principal (D11).
     for (const step of TOUR_STEPS) {
       expect(full(step.id), step.id).not.toMatch(/desmarc|marcar todas|marcarla|marca la casilla/i);
     }

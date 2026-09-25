@@ -64,7 +64,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
   - la selección, en dos líneas, con «Limpiar», ↶ y ↷;
   - la línea de las marcas, solo si hay alguna;
   - las secciones plegables «Redes», «Tipo de conectividad» y «Peso mínimo»;
-  - en «Redes», una línea por red, con el nombre corto y el número de regiones (el completo, en la etiqueta emergente), y «Todas» y «Ninguna», que solo afectan a las redes y lo dicen en su etiqueta emergente: «Mostrar todas las redes» y «Ocultar todas las redes».
+  - en «Redes», una línea por red, con el nombre corto y el número de regiones (el completo, en la etiqueta emergente), y «Todas» y «Ninguna», que solo afectan a las redes y lo dicen en su etiqueta emergente, con las palabras del desarrollador principal: «Marcar todas las redes» y «Desmarcar todas las redes».
 
   (19, 61, D1, D4, D9, D11)
 - **Recuentos:** junto a cada tipo de conectividad, cuántas conexiones de ese tipo pasan los demás filtros; bajo el peso mínimo, «N de M conexiones pasan los filtros», porque las vistas pueden dibujar menos. La ayuda va bajo «¿Cómo funcionan los filtros?». (D1, D4)
@@ -72,9 +72,10 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **El buscador solo sugiere regiones de las redes visibles.** Si lo buscado está en una red oculta, lo dice y ofrece mostrarla: ninguna coincidencia se queda escondida sin decirlo. (D4)
 - **Textos de los controles:**
   - cada texto describe lo que el control hace de verdad;
-  - un control deshabilitado explica por qué en su texto emergente.
+  - un control deshabilitado explica por qué en su texto emergente;
+  - los textos del desarrollador principal se conservan, aunque choquen con palabras más nuevas: los nuevos se adaptan a ellos.
 
-  (43, 60)
+  (43, 60, D11)
 
 ## Deshacer
 
