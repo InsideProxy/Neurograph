@@ -17,6 +17,6 @@ Reglas para trabajar en `frontend/`. Las generales están en el CLAUDE.md de la 
 
 ## Verificar (en `frontend/`)
 
-- `npx tsc -b`, `npm test`, `npm run lint` y `npm run build`.
+- `npx --no -- tsc -b`, `npm test`, `npm run lint` y `npm run build`. El `--no` impide que `npx` descargue un paquete de npm si no encuentra TypeScript instalado: sin él, ejecutado fuera de `frontend/` bajaría y ejecutaría el paquete `tsc`, que no es TypeScript.
 - La comprobación visual automática usa un navegador headless propio, nunca la ventana del usuario.
 - `node_modules` se instala por separado en cada sistema operativo.

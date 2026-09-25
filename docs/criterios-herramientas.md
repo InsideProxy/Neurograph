@@ -144,7 +144,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 
   (28, 46, 49)
 - **Frontend:**
-  - se prueba con `npx tsc -b`, `npm test` (vitest), `npm run lint` (oxlint) y `npm run build`;
+  - se prueba con `npx --no -- tsc -b` (el `--no` impide que `npx` descargue paquetes), `npm test` (vitest), `npm run lint` (oxlint) y `npm run build`;
   - solo la lógica pura de `src/logic/` lleva tests;
   - los componentes se comprueban visualmente.
 
@@ -164,3 +164,4 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 
   (22, 63, 72)
 - **Documentación:** tras tocar criterios, logs o un CLAUDE.md, `python3 scripts/check_docs.py` debe dar OK. (H2)
+- **Permisos de los agentes** (`.claude/settings.json`): solo comandos de verificación de solo lectura, en forma exacta. Nunca intérpretes, `docker exec` ni comodines como `npm run *` o `npx *`, que equivalen a ejecutar cualquier código. (H2)

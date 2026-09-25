@@ -38,7 +38,7 @@ Del zip no quedó ningún checksum en el repositorio. Para confirmar que son los
 
 ## H2. Documentación para agentes: criterios vigentes aparte de los logs, CLAUDE.md y comprobación de coherencia -- 25/09/2026
 
-**Qué.** Los criterios vigentes pasan a `docs/principios.md` y a `docs/criterios-funcionales.md`, `docs/criterios-diseno.md` y `docs/criterios-herramientas.md`, cada uno con la entrada del log de la que sale. Los logs (general, D y H) quedan como historia. Hay un `CLAUDE.md` en la raíz, que importa los principios y fija dónde se escribe cada cosa, y otro en `frontend/`, `backend/` y `scripts/`. `scripts/check_docs.py` comprueba fuentes, rutas, redirecciones y el mapa de documentos.
+**Qué.** Los criterios vigentes pasan a `docs/principios.md` y a `docs/criterios-funcionales.md`, `docs/criterios-diseno.md` y `docs/criterios-herramientas.md`, cada uno con la entrada del log de la que sale. Los logs (general, D y H) quedan como historia. Hay un `CLAUDE.md` en la raíz, que importa los principios y fija dónde se escribe cada cosa, y otro en `frontend/`, `backend/` y `scripts/`. `scripts/check_docs.py` comprueba fuentes, rutas, redirecciones y el mapa de documentos. `.claude/settings.json` permite sin preguntar cinco comandos de verificación de solo lectura, sacados de las sesiones anteriores.
 
 **Por qué.** El log general mezclaba en ~400 KB criterios, historia y conversación: para conocer una regla vigente había que leerlo entero y averiguar qué decisión corregía a cuál. Los criterios suman ~40 KB y cada agente carga solo los de su área.
 
