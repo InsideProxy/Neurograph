@@ -345,7 +345,7 @@ export function FilterPanel({
               <li key={type}>
                 <label
                   className="filters__type"
-                  title="Conexiones de este tipo que pasan los filtros de redes y de peso mínimo, aunque su casilla esté desmarcada"
+                  title="Conexiones de este tipo que pasan los filtros de redes y de peso mínimo, también si el tipo está oculto"
                 >
                   <input
                     type="checkbox"
@@ -409,12 +409,12 @@ export function FilterPanel({
         <p>◎ resalta solo esa red · + la añade a lo ya resaltado.</p>
         <p>
           Ctrl+clic (⌘+clic en macOS) en una región, o Ctrl+Intro (⌘+Intro) en el buscador, la marca o la
-          desmarca: se resalta en las tres vistas para encontrarla de un vistazo, sin cambiar la selección. Las
-          marcas no salen en las imágenes exportadas.
+          desmarca: queda señalada en las tres vistas para encontrarla de un vistazo, sin cambiar la selección.
+          Las marcas no salen en las imágenes exportadas.
         </p>
         <p>
           El número junto a cada tipo de conectividad cuenta sus conexiones que pasan los filtros de redes y de
-          peso mínimo, aunque su casilla esté desmarcada: así se ve cuántas añadiría al marcarla.
+          peso mínimo, también si el tipo está oculto: así se ve cuántas añadiría al mostrarlo.
         </p>
         <p>
           Las vistas pueden dibujar menos conexiones de las que pasan los filtros: con dos o más regiones

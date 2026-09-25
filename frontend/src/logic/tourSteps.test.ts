@@ -86,6 +86,12 @@ describe("pasos del tour guiado (spec 5.10)", () => {
     expect(full("mostrar-ocultar")).not.toMatch(/marca/i);
   });
 
+  it("«resaltar» es solo de ◎: ningún otro paso lo usa, para que no se confunda con seleccionar ni con marcar", () => {
+    for (const step of TOUR_STEPS) {
+      if (step.id !== "resaltar") expect(full(step.id), step.id).not.toMatch(/resalt/i);
+    }
+  });
+
   it("el ejemplo es el real del guion", () => {
     expect(full("bienvenida")).toMatch(/HCP-MMP1\.0/);
     expect(full("atlas-y-redes")).toMatch(/Cole-Anticevic/);

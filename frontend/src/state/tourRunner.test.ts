@@ -54,6 +54,8 @@ class FakeApp implements TourHost {
   search = "";
   sections: TourSections = ALL_SECTIONS_OPEN;
   loads = 0;
+  // Lo que tardan en llegar los datos.
+  loadMs = 40;
   // Lo que responde la API: datos reales o, si no responde, los de demostración.
   api: "real" | "demo";
   private unregister: Partial<Record<"lupa" | "buscador" | "secciones", () => void>> = {};
@@ -96,7 +98,7 @@ class FakeApp implements TourHost {
       this.loads += 1;
       resetHistory();
       this.sync();
-    }, 40);
+    }, this.loadMs);
   }
   // Monta y desmonta los componentes con controles.
   sync() {
@@ -165,9 +167,54 @@ let view: FakeView;
 let exits: number;
 let finished: number;
 
-function makeRunner(host: FakeApp = app) {
+// Como GuidedTour, que pone al día host() en un efecto, después de pintar:
+// justo después de pedir otro atlas u otra clasificación, host() aún dice lo
+// de antes durante unos milisegundos.
+function laggingHost(target: FakeApp, lagMs: number): () => TourHost {
+  let stale: Pick<TourHost, "atlasId" | "networkSource" | "data"> | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const request = () => {
+    stale ??= { atlasId: target.atlasId, networkSource: target.networkSource, data: target.data };
+    clearTimeout(timer);
+    timer = setTimeout(() => (stale = null), lagMs);
+  };
+  const host: TourHost = {
+    get view() {
+      return target.view;
+    },
+    get atlasId() {
+      return (stale ?? target).atlasId;
+    },
+    get networkSource() {
+      return (stale ?? target).networkSource;
+    },
+    get data() {
+      return (stale ?? target).data;
+    },
+    get mainView() {
+      return target.mainView;
+    },
+    get filtersCollapsed() {
+      return target.filtersCollapsed;
+    },
+    setView: (value) => target.setView(value),
+    changeAtlas: (value) => {
+      request();
+      target.changeAtlas(value);
+    },
+    setNetworkSource: (value) => {
+      request();
+      target.setNetworkSource(value);
+    },
+    setMainView: (value) => target.setMainView(value),
+    setFiltersCollapsed: (value) => target.setFiltersCollapsed(value),
+  };
+  return () => host;
+}
+
+function makeRunner(host: FakeApp | (() => TourHost) = app) {
   return new TourRunner({
-    host: () => host,
+    host: typeof host === "function" ? host : () => host,
     view,
     frame: () => new Promise((resolve) => setTimeout(resolve, 16)),
     userAgent: "X11; Linux",
@@ -507,6 +554,29 @@ describe("tour guiado: al salir, el montaje queda exactamente como estaba", () =
     expect(useHistoryStore.getState().past).toHaveLength(before.past.length + 1);
   });
 
+  it("si la caja no se puede enseñar (falla driver.js), sale y lo devuelve todo, y el historial vuelve a registrar", async () => {
+    await userSetup();
+    const before = snapshotOfEverything();
+    const show = view.show.bind(view);
+    view.show = (step) => {
+      if (step.index === 2) throw new Error("driver.js");
+      show(step);
+    };
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, 1);
+    await settle(runner.next());
+    expect(errors).toHaveBeenCalledWith(expect.stringContaining("Tour guiado"), expect.any(Error));
+    errors.mockRestore();
+    expect(view.closed).toBe(true);
+    expect(finished).toBe(1);
+    expectExactly(before);
+    useSelectionStore.getState().toggleNode(HCP_NODES[20].id);
+    await flush();
+    expect(useHistoryStore.getState().past).toHaveLength(before.past.length + 1);
+  });
+
   it("si la app se desmonta a medias, al menos devuelve la selección, los filtros, las marcas y el historial", async () => {
     await userSetup();
     const before = snapshotOfEverything();
@@ -521,6 +591,121 @@ describe("tour guiado: al salir, el montaje queda exactamente como estaba", () =
     useSelectionStore.getState().toggleNode(HCP_NODES[20].id);
     await flush();
     expect(useHistoryStore.getState().past).toHaveLength(before.past.length + 1);
+  });
+});
+
+describe("tour guiado: salir mientras llegan unos datos también lo devuelve todo", () => {
+  // Los datos del usuario tardan en volver, como los de verdad: más que lo
+  // que espera la salida antes de empezar (dos fotogramas).
+  const SLOW_LOAD_MS = 200;
+
+  // En otro atlas, con pasos por deshacer y por rehacer.
+  async function otherAtlasSetup() {
+    app.changeAtlas("atlas.otro");
+    await vi.advanceTimersByTimeAsync(100);
+    useSelectionStore.getState().selectNodes([OTHER_NODES[0].id]);
+    await flush();
+    useSelectionStore.getState().selectNodes([OTHER_NODES[0].id, OTHER_NODES[1].id]);
+    await flush();
+    useMarksStore.getState().toggleMark(OTHER_NODES[1].id);
+    await flush();
+    undo();
+    expect(useHistoryStore.getState().past.length).toBeGreaterThan(0);
+    expect(useHistoryStore.getState().future.length).toBeGreaterThan(0);
+  }
+
+  it("con «← Anterior» a la bienvenida, que vuelve a su atlas, y Escape antes de que lleguen sus datos", async () => {
+    await otherAtlasSetup();
+    const before = snapshotOfEverything();
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, 1);
+    expect(app.atlasId).toBe(TOUR_ATLAS_ID);
+    app.loadMs = SLOW_LOAD_MS;
+    const pending = runner.prev();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(app.atlasId).toBe("atlas.otro");
+    expect(app.data.kind).toBe("loading");
+    const exited = runner.exit();
+    await settle(Promise.all([pending, exited]), 500);
+    expectExactly(before);
+  });
+
+  it("en el último paso, que vuelve a su atlas, y «Salir» antes de que lleguen sus datos", async () => {
+    await otherAtlasSetup();
+    const before = snapshotOfEverything();
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, LAST - 1);
+    app.loadMs = SLOW_LOAD_MS;
+    const pending = runner.next();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(app.data.kind).toBe("loading");
+    const exited = runner.exit();
+    await settle(Promise.all([pending, exited]), 500);
+    expectExactly(before);
+  });
+
+  it("en HCP-MMP1.0 con otra clasificación: el último paso la pide y se sale antes de que llegue", async () => {
+    app.setNetworkSource("yeo2011-7");
+    await vi.advanceTimersByTimeAsync(100);
+    useSelectionStore.getState().selectNodes([HCP_NODES[3].id]);
+    await flush();
+    useSelectionStore.getState().selectNodes([HCP_NODES[3].id, HCP_NODES[4].id]);
+    await flush();
+    undo();
+    const before = snapshotOfEverything();
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, LAST - 1);
+    expect(app.networkSource).toBe("cole-anticevic");
+    app.loadMs = SLOW_LOAD_MS;
+    const pending = runner.next();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(app.networkSource).toBe("yeo2011-7");
+    const exited = runner.exit();
+    await settle(Promise.all([pending, exited]), 500);
+    expectExactly(before);
+  });
+
+  it("salir mientras la bienvenida espera los datos del usuario devuelve también el historial, el buscador, las secciones de Filtros y la lupa", async () => {
+    app.changeAtlas("atlas.otro");
+    await vi.advanceTimersByTimeAsync(100);
+    useSelectionStore.getState().selectNodes([OTHER_NODES[0].id]);
+    await flush();
+    useMarksStore.getState().toggleMark(OTHER_NODES[1].id);
+    await flush();
+    undo();
+    // Son estado de sus componentes, que se desmontan al cambiar de atlas y
+    // vuelven como de partida.
+    app.lens = true;
+    app.search = "b";
+    app.sections = { networks: true, types: false, weight: true };
+    const before = snapshotOfEverything();
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, 1);
+    app.loadMs = SLOW_LOAD_MS;
+    const pending = runner.prev();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(app.data.kind).toBe("loading");
+    await settle(Promise.all([pending, runner.exit()]), 500);
+    expectExactly(before);
+  });
+
+  it("Escape justo cuando el automático pide HCP-MMP1.0, antes de que App se ponga al día, también vuelve a su atlas", async () => {
+    await otherAtlasSetup();
+    const before = snapshotOfEverything();
+    const runner = makeRunner(laggingHost(app, 5));
+    await settle(runner.start());
+    runner.toggleAutoplay();
+    // El automático pasa a «Atlas y redes», que pide HCP-MMP1.0, y 2 ms
+    // después, Escape: host() aún dice el atlas del usuario.
+    await vi.advanceTimersByTimeAsync(autoplayDelay(view.shown[0].description));
+    expect(app.atlasId).toBe(TOUR_ATLAS_ID);
+    await vi.advanceTimersByTimeAsync(2);
+    await settle(runner.exit(), 500);
+    expectExactly(before);
   });
 });
 
@@ -560,6 +745,37 @@ describe("tour guiado: sin datos reales, solo explica", () => {
     await settle(runner.next());
     expect(view.shown.at(-1)?.description).not.toMatch(/\bAquí\b/);
     await settle(runner.exit());
+  });
+
+  it("si al volver a su atlas caen los datos de demostración, el historial se vacía y parte de lo devuelto", async () => {
+    app.changeAtlas("atlas.otro");
+    await vi.advanceTimersByTimeAsync(100);
+    useSelectionStore.getState().selectNodes([OTHER_NODES[0].id]);
+    await flush();
+    useMarksStore.getState().toggleMark(OTHER_NODES[1].id);
+    await flush();
+    const before = snapshotOfEverything();
+    expect(before.past).toHaveLength(2);
+    const runner = makeRunner();
+    await settle(runner.start());
+    await goToStep(runner, 6);
+    await vi.advanceTimersByTimeAsync(1500);
+    // Al volver, la API ya no da datos reales.
+    app.api = "demo";
+    await settle(runner.exit());
+    expect(app.data.kind).toBe("demo");
+    const after = snapshotOfEverything();
+    expect(after.stores.selectedNodeIds).toBe(before.stores.selectedNodeIds);
+    expect(after.stores.markedIds).toBe(before.stores.markedIds);
+    // Sus pasos eran de los datos reales: no vuelven. Y lo siguiente se
+    // deshace hasta lo devuelto, no hasta una escena del tour.
+    expect(after.past).toEqual([]);
+    expect(after.future).toEqual([]);
+    expect(after.present.selectedNodeIds).toBe(before.stores.selectedNodeIds);
+    expect(after.present.markedIds).toBe(before.stores.markedIds);
+    useSelectionStore.getState().toggleNode(OTHER_NODES[2].id);
+    await flush();
+    expect(useHistoryStore.getState().lastStep?.before.selectedNodeIds).toBe(before.stores.selectedNodeIds);
   });
 });
 

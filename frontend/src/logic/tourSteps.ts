@@ -127,7 +127,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "seleccionar",
     title: "Seleccionar una región",
-    text: "Seleccionar es un clic en una región: la añade o, si ya estaba, la quita. Sus conexiones se resaltan en las tres vistas.",
+    text: "Seleccionar es un clic en una región: la añade o, si ya estaba, la quita. Sus conexiones se ven en las tres vistas.",
     demo: "Aquí se empieza de cero con IFJp (izq.), un nudo de la red frontoparietal.",
     anchor: { tour: "vista", view: "connectogram" },
     side: "right",
@@ -154,8 +154,8 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "lupa",
     title: "La lupa",
-    text: "Con las 360 regiones, los puntos quedan a unos 5 px. La lupa amplía lo que hay bajo el ratón, y el clic va al nodo más cercano.",
-    demo: "Ya está encendida: pasa el ratón por el círculo.",
+    text: "Con muchas regiones, los puntos quedan muy juntos. La lupa amplía lo que hay bajo el ratón, y el clic va al nodo más cercano.",
+    demo: "Con las 360 regiones a la vista quedarían a unos 5 px. Ya está encendida: pasa el ratón por el círculo.",
     anchor: { tour: "vista", view: "connectogram" },
     side: "right",
     align: "start",

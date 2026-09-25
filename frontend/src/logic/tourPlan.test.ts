@@ -217,6 +217,13 @@ describe("si los datos no cuentan lo que dice el guion, el tour solo explica", (
     expect(planTour(NODES, CONNECTIONS.slice(0, 60_000)).ok).toBe(false);
   });
 
+  it("si ningún peso mínimo deja 600 conexiones o menos de Frontoparietal y Lenguaje: el dibujo no respiraría", () => {
+    // Todas con el mismo peso: cada candidato deja las 2628 o ninguna.
+    const flat = CONNECTIONS.map((connection) => ({ ...connection, weight: 0.5 }));
+    const result = planTour(NODES, flat);
+    expect(result.ok ? [] : result.problems).toEqual([expect.stringContaining("peso mínimo")]);
+  });
+
   it("y dice por qué", () => {
     const result = planTour(moved("V1", "L", "cole-anticevic.visual2"), CONNECTIONS);
     expect(result.ok ? [] : result.problems).toEqual([expect.stringContaining("V1")]);

@@ -47,6 +47,7 @@ import {
   loadHistory,
   pauseRecording,
   redo,
+  resetHistory,
   resumeRecording,
   undo,
   useHistoryStore,
@@ -288,9 +289,15 @@ export class TourRunner {
     this.autoplay = false;
     this.deps.view.close();
     this.deps.onExit();
+    const alive = () => !this.finished;
     let restored = false;
     try {
-      await this.restore(() => !this.finished);
+      // host() se pone al día en un efecto (GuidedTour), que puede llegar
+      // después de pintar: justo después de pedir otro atlas (el automático,
+      // con Escape a la vez), aún diría el de antes. Dos fotogramas después,
+      // ya dice lo pedido.
+      await this.settle(alive);
+      await this.restore(alive);
       restored = true;
     } catch (error) {
       console.error("Tour guiado: no se pudo devolver el montaje entero", error);
@@ -342,7 +349,15 @@ export class TourRunner {
     this.autoplay = autoplayOnShow(this.autoplay, index, TOUR_STEPS.length);
     const step = this.stepView(index, selectors);
     this.description = step.description;
-    this.deps.view.show(step);
+    try {
+      this.deps.view.show(step);
+    } catch (error) {
+      // Sin caja no hay «Salir»: se sale ya, y vuelven el montaje, el
+      // registro del historial y los atajos.
+      console.error("Tour guiado: no se pudo enseñar el paso", error);
+      void this.exit();
+      return;
+    }
     this.deps.view.announce(stepAnnouncement(index, TOUR_STEPS.length, step.title));
     this.scheduleMoves(index, alive);
     if (this.autoplay) this.scheduleAutoplay();
@@ -397,8 +412,8 @@ export class TourRunner {
   // Devuelve el montaje del usuario: primero su atlas y su clasificación, con
   // sus datos ya llegados; luego la selección, los filtros y las marcas con
   // sus mismos Set, y el historial tal cual (salvo si los datos ya no son del
-  // mismo tipo: al caer a los de demostración, App lo vació); por último, la
-  // interfaz.
+  // mismo tipo: al caer a los de demostración, sus pasos ya no valen y queda
+  // vacío, desde lo devuelto); por último, la interfaz.
   private async restore(alive: () => boolean): Promise<void> {
     const saved = this.saved;
     if (!saved) return;
@@ -410,9 +425,11 @@ export class TourRunner {
         if (op.kind === "atlas") host.changeAtlas(op.value);
         else host.setNetworkSource(op.value);
       }
-      await this.waitForData(saved.data, alive);
-      if (!alive()) return;
     }
+    // También si ya los pidió una vuelta que se cortó (Salir o Escape mientras
+    // la bienvenida o el final esperaban sus datos).
+    await this.waitForData(saved.data, alive);
+    if (!alive()) return;
     const target: TourUiTarget = saved.ui;
     await this.applyUi(target, alive, () => {
       if (!sameStores(currentSnapshot(), saved.stores)) applySnapshot(saved.stores);
@@ -421,6 +438,7 @@ export class TourRunner {
       const sameData = saved.dataKind === "loading" || dataKind === saved.dataKind;
       const same = history.past === saved.history.past && history.present === saved.history.present && history.future === saved.history.future;
       if (sameData && !same) loadHistory(saved.history);
+      else if (!sameData) resetHistory();
     });
   }
 

@@ -7,8 +7,8 @@ import { isConnectionVisible, isNodeVisible } from "./visibility";
 
 export interface ConnectionCounts {
   // Por tipo: las que pasan los demás filtros (redes y peso mínimo), sin
-  // contar la casilla de su propio tipo. Así se ve cuántas añadiría
-  // marcarla.
+  // contar la casilla de su propio tipo. Así se ve cuántas añadiría al
+  // mostrarlo.
   byType: Record<ConnectionType, number>;
   // Las que pasan todos los filtros («N de M…»): las mismas que
   // filterGraph.

@@ -21,7 +21,7 @@ const CONNECTIONS = [
 ];
 
 describe("countConnections", () => {
-  it("cuenta cada tipo con los filtros de redes y peso, aunque su casilla esté desmarcada", () => {
+  it("cuenta cada tipo con los filtros de redes y peso, también si el tipo está oculto", () => {
     const counts = countConnections(NODES, CONNECTIONS, {
       hiddenNetworks: new Set(),
       hiddenConnectionTypes: new Set<ConnectionType>(["structural"]),
