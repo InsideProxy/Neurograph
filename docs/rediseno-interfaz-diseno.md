@@ -444,12 +444,20 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
-- **Atenuar lo que queda detrás** (idea del usuario, 24/09/2026; D5):
-  - Es un interruptor en los controles del 3D, activado por defecto y guardado en este navegador con su propia clave (`neurograph.cerebro3d.atenuar`), aparte de la apariencia. Desactivado, los materiales son los de siempre.
-  - Líneas, marcadores con su contorno, conos de dirección y etiquetas se ven más tenues cuanto más lejos de la cámara están, dentro de la profundidad del cerebro. Así una región de la cara interna o del otro hemisferio no parece flotar delante. Se calcula en cada fragmento, así que una línea larga se desvanece a lo largo de su recorrido.
-  - **Tramo:** se mide con el elipsoide inscrito en la caja del cerebro que se ve (la de un solo hemisferio si solo se ve uno y, sin corteza pintada, la de todos los nodos del atlas), en la profundidad del eje de la cámara y no en la distancia euclídea. Va desde 0,2 de la semiprofundidad del cerebro por delante de su centro hasta su cara más lejana en la dirección de la vista. Lo más lejano conserva 0,2 de opacidad.
-  - Para las líneas no se usa la oclusión estricta: van en recta entre dos puntos de la corteza y pasan por dentro, así que quedarían casi todas tapadas.
-  - La exportación reproduce la atenuación tal como se ve.
+- **Oclusión por la corteza** (petición del usuario, 25/09/2026). Sustituye a «Atenuar lo que queda detrás» (D5), que el usuario descartó: dependía de la distancia a la cámara y no de lo que tapa la corteza, así que en un primer plano no cambiaba nada.
+  - **Qué se ve.** Con la corteza pintada, lo que ella tapa se ve tenue, y más cuanto más hondo queda. Lo que está delante, o en la misma superficie, se ve entero. Vale para las líneas, los marcadores con su contorno, los conos de dirección y las etiquetas. En la vista lateral, las regiones de la cara interna y las del otro hemisferio quedan tenues, también los pares de la línea media, como 5m, 24dd o 6mp. No hay interruptor: es como se dibuja.
+  - **Cómo.** En cada fotograma, antes de dibujar la escena, la corteza sola se dibuja en un destino fuera de pantalla con textura de profundidad. Lo hace con la misma cámara y el mismo hemisferio visible, y se separa del resto con una capa de three.js. Cada fragmento de la capa de foco lee esa profundidad en su posición de pantalla y calcula cuánto queda detrás de la corteza, en el eje de la cámara. Su opacidad se multiplica por 1 − (1 − mínimo) · smoothstep(inicio, fin, detrás).
+  - **Valores de partida:** inicio 0,25 (10 mm), fin 0,75 (30 mm) y mínimo 0,2. La verificación ajusta los tres. El inicio cubre la etiqueta: queda a 0,21 del centro de su marcador en +Y de los datos (0,222 en la seleccionada), así que, vista desde detrás, queda detrás de él.
+  - **Sin prueba de profundidad contra la corteza,** como hasta ahora. La opacidad hace la oclusión, y lo que queda un poco por debajo de la superficie, como la mitad de un marcador en su vértice ancla, no se corta de golpe.
+  - **Líneas.** Van en recta entre dos puntos de la corteza y pasan por dentro de ella.
+    - Una línea entre regiones cercanas apenas se hunde y se ve entera.
+    - Una larga se atenúa en el tramo que pasa por dentro, más cuanto más hondo.
+    - Una que pasa por detrás de la corteza se ve tenue. Una que cruza el hueco entre hemisferios, sin corteza delante, se ve entera.
+
+    Así las conexiones cambian con la profundidad, como pidió el usuario.
+  - **Sin corteza pintada** (malla translúcida y atlas volumétricos), no hay nada opaco que tape, y todo se ve entero, como antes de la D5.
+  - **Exportación:** la reproduce tal como se ve. La captura usa la misma cámara y la profundidad de la corteza del último fotograma.
+  - **Se quitan** el interruptor y su preferencia. La clave `neurograph.cerebro3d.atenuar` deja de leerse.
 - **Captura del 3D sin parpadeo** (D5): la captura se dibuja en un `WebGLRenderTarget` fuera de pantalla, con el mismo proceso de color que el lienzo (curva de tono y codificación sRGB). Mientras dura «exportando», el lienzo visible no se vuelve a dibujar: lo dibuja un `useFrame` de prioridad 1, y solo fuera de la exportación. Así ya no se ven en pantalla los fotogramas con los colores de exportación (limitación anotada en D3). Si se ha perdido el contexto WebGL, el lienzo no tiene tamaño o la captura sale vacía, no se descarga nada, y la consola lo dice.
 
 ## 7. Tipografía
@@ -514,10 +522,8 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 **Parte 3D de la fase 4.** Lo construido añade estas unidades (D5 de `docs/decisiones-diseno.md`):
 
 - `logic/markerSize.ts`: el radio del marcador y, en un solo sitio, lo que depende de él: el contorno, la zona de clic y la separación de la etiqueta (6.3).
-- `logic/depthFade.ts`: la atenuación por profundidad. El factor, el tramo con el tamaño del cerebro que se ve, el parche de los shaders y los uniforms y las props que comparten los materiales.
-- `logic/depthFadePreference.ts`: la preferencia del interruptor, guardada en el navegador.
+- `logic/cortexOcclusion.ts`: la oclusión por la corteza (6.3). Contiene el factor, el paso de la profundidad de la textura a la de la vista, el parche de los shaders, los uniforms y las props que comparten los materiales, y la pasada que dibuja la profundidad de la corteza. Sustituye a `logic/depthFade.ts`, `logic/depthFadePreference.ts` y `components/DepthFadeToggle.tsx` de la D5, que se quitan.
 - `logic/capture3d.ts`: las fases de la exportación y la captura fuera de pantalla.
-- `components/DepthFadeToggle.tsx`: el interruptor «Atenuar lo que queda detrás».
 - `exportPixelsAsJpeg`, en `logic/exportImage.ts`: el JPEG a partir de los píxeles de la captura, sin leer el lienzo.
 
 ### Archivos que cambian
@@ -588,9 +594,9 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Suaves / Originales del atlas» en Ajustes. La exportación ya la sigue.
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
-4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
+4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo).
 
-Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`).
+Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`). Después, la oclusión por la corteza sustituyó a la atenuación (6.3), a petición del usuario.
 
 ## 12. Riesgos y puntos abiertos
 
@@ -604,8 +610,8 @@ Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la palet
 - **Umbral en Filtros** (pregunta abierta para el usuario, D4): el recuadro de lectura y el historial truncan el umbral para no exagerarlo («3.9e-3»), y Filtros lo redondea al más cercano («4.0e-3», con `formatMinWeight`, que es del desarrollador principal). ¿Debe Filtros truncarlo también, para que los dos digan lo mismo?
 - **Captura del 3D y three.js** (D5): la captura depende de un detalle interno de three.js 0.185. Su destino se marca como de WebXR (`isXRRenderTarget`) para recibir la curva de tono y la codificación sRGB, como el lienzo, con el formato interno `RGBA8` fijado. Una prueba fija esa configuración, y otra lee `WebGLPrograms.js` de three.js y falla si deja de mirar esa marca. Si three.js cambiara ese detalle, el JPEG perdería la curva de tono.
 - **Para decidir el usuario tras ver las capturas** (D5):
-  - **La línea media:** las etiquetas de los pares mediales, como 5m, 24dd o 6mp, siguen dobles, porque sus dos copias quedan casi a la misma profundidad, y ajustar el tramo no las separa. Lo recomendado es la oclusión real contra la superficie pintada para marcadores y etiquetas: una pasada tenue sin prueba de profundidad, como hoy, y otra a opacidad plena con ella. Las líneas se quedan con la atenuación por distancia.
-  - **El mínimo de la atenuación,** hoy 0,2.
+  - **La línea media:** la oclusión por la corteza (6.3) sustituye a la atenuación. La verificación mide si las copias de detrás de 5m, 24dd y 6mp quedan tenues.
+  - **Los valores de la oclusión** (inicio, fin y mínimo): los ajusta la verificación con capturas.
   - **El cono de dirección,** con datos que tengan conectividad efectiva: hoy tiene radio 0,035, algo mayor que un marcador normal.
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
