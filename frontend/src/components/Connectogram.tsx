@@ -39,6 +39,7 @@ import {
   radialLabel,
   ringLayout,
   selectionHalo,
+  thumbnailArcsFit,
 } from "../logic/connectogramLayout";
 import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
@@ -176,23 +177,38 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const nodeRadius = nodes.length > 150 ? 3 : nodes.length > 40 ? 4.5 : 6;
   const labelFontSize = nodes.length > 150 ? 5.5 : nodes.length > 40 ? 7 : 9;
 
+  // Las etiquetas para las que el anillo reserva sitio: las de todas las
+  // regiones del atlas, también las que ocultan los filtros (decisión del
+  // usuario del 25/09/2026), para que el círculo no cambie al mostrar u
+  // ocultar redes. El tamaño de la letra sigue contando los nodos que se ven,
+  // y el sitio se reserva con la letra con que se dibujan: si al ocultar redes
+  // el número de nodos cruza 40 o 150, la letra cambia, y el radio con ella.
+  const ringLabels = allNodes.map((node) => node.abbreviation);
+
   // Arcos de hemisferio (fase 4 del rediseño; spec 6.1): dos arcos finos por
   // fuera de las etiquetas, rotulados IZQUIERDO y DERECHO. Solo si, en el
   // orden actual, cada hemisferio forma un único bloque seguido y ningún nodo
   // tiene el hemisferio sin asignar; si no, no se dibujan. El orden de los
-  // nodos no se toca. Se mira aquí porque el margen del anillo los incluye.
-  const blocks = hemisphereBlocks(nodes.map((node) => node.hemisphere));
+  // nodos no se toca. En la vista grande, el anillo aparta los arcos de las
+  // etiquetas; en la miniatura no, y si las etiquetas en reposo los alcanzan
+  // (abreviaturas largas con letra grande, como en el IPL), no se dibujan
+  // (logic/connectogramLayout.ts).
+  const blocks =
+    compact && !thumbnailArcsFit(ringLabels, nodeRadius, labelFontSize)
+      ? null
+      : hemisphereBlocks(nodes.map((node) => node.hemisphere));
 
   // Radio del anillo (fase 4 del rediseño; spec 6.1; decisión del usuario
   // del 25/09/2026). Antes era siempre `size / 2 - 40`. Ahora esos 40 px de
   // margen son el mínimo, y crecen lo justo para que la etiqueta más larga
-  // quepa entera, también ampliada, y los arcos de hemisferio, si se dibujan,
-  // por fuera de las etiquetas: al ir giradas en dirección radial, las
-  // etiquetas llegan también al borde de arriba y al de abajo. En la
-  // miniatura, el de siempre (logic/connectogramLayout.ts).
+  // quepa entera, también ampliada: al ir giradas en dirección radial, las
+  // etiquetas llegan también al borde de arriba y al de abajo. Los arcos de
+  // hemisferio, si se dibujan, van por fuera de las etiquetas en reposo y
+  // dentro de ese margen. En la miniatura, el de siempre
+  // (logic/connectogramLayout.ts).
   const { radius, arcOffset } = ringLayout({
     size,
-    labels: nodes.map((node) => node.abbreviation),
+    labels: ringLabels,
     nodeRadius,
     fontSize: labelFontSize,
     fitLabels: !compact,

@@ -5,6 +5,7 @@ import {
   HEMISPHERE_ARC_GAP,
   HEMISPHERE_ARC_OFFSET,
   HEMISPHERE_ARC_WIDTH,
+  PAGE_LETTER_SPACING,
   RING_MARGIN,
   SELECTION_HALO_GAP,
   SELECTION_HALO_OPACITY,
@@ -18,6 +19,7 @@ import {
   radialLabel,
   ringLayout,
   selectionHalo,
+  thumbnailArcsFit,
   type Hemisphere,
 } from "./connectogramLayout";
 import { markRing, pillAround } from "./marks";
@@ -69,7 +71,7 @@ const pillPad = (fontSize: number) => {
 
 // Las abreviaturas más largas de HCP-MMP1.0, las de los datos, repetidas hasta
 // sus 360 regiones.
-const HCP_LONGEST = ["p9-46v", "a9-46v", "v23ab", "d23ab", "a32pr", "p32pr", "a24pr", "p24pr", "OP2-3", "TPOJ1", "STSdp", "PoI2"];
+const HCP_LONGEST = ["p9-46v", "a9-46v", "v23ab", "d23ab", "a32pr", "p32pr", "a24pr", "p24pr", "OP2-3", "TPOJ1", "TPOJ2", "TPOJ3", "STSdp", "PoI2"];
 const HCP = Array.from({ length: 360 }, (_, index) => HCP_LONGEST[index % HCP_LONGEST.length]);
 
 describe("estimatedLabelWidth", () => {
@@ -95,6 +97,24 @@ describe("estimatedLabelWidth", () => {
   it("crece con el tamaño de la letra, y sin texto no ocupa nada", () => {
     expect(estimatedLabelWidth("IFJa", 7)).toBeGreaterThan(estimatedLabelWidth("IFJa", 5.5));
     expect(estimatedLabelWidth("", 9)).toBe(0);
+  });
+
+  // El texto del SVG hereda el letter-spacing de :root (index.css), en px: la
+  // estimación suma el mismo por cada letra. Se lee como texto, como en
+  // theme/themeCss.test.ts; se pide "node:fs" con process.getBuiltinModule
+  // porque tsconfig.app.json solo carga los tipos de vite/client.
+  it("el espaciado entre letras que suma es el de la página, el de :root en index.css", () => {
+    const { readFileSync } = (
+      globalThis as unknown as {
+        process: { getBuiltinModule(id: "node:fs"): { readFileSync(path: URL, encoding: "utf8"): string } };
+      }
+    ).process.getBuiltinModule("node:fs");
+    const css = readFileSync(new URL("../index.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const spacing = /^:root \{[^}]*?\bletter-spacing: ([\d.]+)px;/m.exec(css);
+    expect(spacing).not.toBeNull();
+    expect(Number(spacing![1])).toBe(PAGE_LETTER_SPACING);
+    // Sin letra (tamaño 0), solo queda el espaciado: uno por letra.
+    expect(estimatedLabelWidth("V1-a", 0)).toBeCloseTo(4 * PAGE_LETTER_SPACING, 12);
   });
 });
 
@@ -254,8 +274,11 @@ describe("arcLabelSides", () => {
   });
 });
 
-// El margen del anillo incluye los arcos, por fuera de las etiquetas
-// (decisión del usuario del 25/09/2026).
+// Los arcos, por fuera de las etiquetas en reposo y dentro del margen del
+// anillo (decisión del usuario del 25/09/2026). El margen les deja sitio
+// como guarda, pero con las constantes de hoy lo decide siempre la etiqueta
+// más larga ampliada, que llega más lejos: con arcos o sin ellos, el mismo
+// círculo.
 describe("ringLayout con arcos de hemisferio", () => {
   it("con las etiquetas de HCP-MMP1.0, a 34 px del anillo, por fuera de las etiquetas en reposo, y el círculo como sin ellos", () => {
     const withArcs = ringLayout({ size: 666, labels: HCP, nodeRadius: 3, fontSize: 5.5, fitLabels: true, withArcs: true });
@@ -265,12 +288,13 @@ describe("ringLayout con arcos de hemisferio", () => {
     expect(withArcs.radius).toBe(without.radius);
   });
 
-  it("con etiquetas largas, se apartan hasta quedar por fuera de ellas, y el margen los incluye", () => {
+  it("con etiquetas largas, se apartan hasta quedar por fuera de ellas y caben en el margen de la etiqueta ampliada, sin cambiar el círculo", () => {
     const labels = [...Array.from({ length: 199 }, () => "l_visual_1"), "r_frontoparietal_20"];
     const ring = ringLayout({ size: 666, labels, nodeRadius: 3, fontSize: 5.5, fitLabels: true, withArcs: true });
     expect(ring.arcOffset).toBeGreaterThan(HEMISPHERE_ARC_OFFSET);
     expect(ring.arcOffset).toBeCloseTo(labelReach(labels, 3, 5.5).rest + HEMISPHERE_ARC_CLEARANCE);
     expect(ring.arcOffset + HEMISPHERE_ARC_WIDTH / 2).toBeLessThanOrEqual(666 / 2 - ring.radius);
+    expect(ring.radius).toBe(ringLayout({ size: 666, labels, nodeRadius: 3, fontSize: 5.5, fitLabels: true }).radius);
   });
 
   it("en la miniatura, a 34 px del anillo de siempre", () => {
@@ -282,5 +306,30 @@ describe("ringLayout con arcos de hemisferio", () => {
     const ring = ringLayout({ size: 320, labels: ["r_ventraldiencephalon"], nodeRadius: 6, fontSize: 9, fitLabels: true, withArcs: true });
     expect(ring.radius).toBe((320 / 2 - RING_MARGIN) / 2);
     expect(ring.radius + ring.arcOffset + HEMISPHERE_ARC_WIDTH / 2).toBeLessThanOrEqual(320 / 2);
+  });
+});
+
+// En la miniatura, los arcos no se apartan de las etiquetas: si las de en
+// reposo llegan hasta ellos, no se dibujan.
+describe("thumbnailArcsFit", () => {
+  it("con las etiquetas de HCP-MMP1.0 (letra de 5,5 px), los arcos caben por fuera de ellas", () => {
+    expect(thumbnailArcsFit(HCP, 3, 5.5)).toBe(true);
+    expect(labelReach(HCP, 3, 5.5).rest + HEMISPHERE_ARC_CLEARANCE).toBeLessThanOrEqual(HEMISPHERE_ARC_OFFSET);
+  });
+
+  it("con las del IPL (18 regiones, letra de 9 px), las cruzarían: no caben", () => {
+    const ipl = ["2_1", "2_2", "3_1", "3_2", "3_3", "4_1", "4_2", "4_3", "4_4"].map((part) => `IPL_${part}`);
+    expect(thumbnailArcsFit(ipl, 6, 9)).toBe(false);
+  });
+
+  it("el límite: la etiqueta más larga en reposo acaba a HEMISPHERE_ARC_CLEARANCE de los arcos, o antes", () => {
+    // Del anillo al final del texto: el nodo (3 px), los 7 hasta la etiqueta
+    // y el texto.
+    const room = HEMISPHERE_ARC_OFFSET - HEMISPHERE_ARC_CLEARANCE - 3 - 7;
+    const texts = Array.from({ length: 20 }, (_, i) => "l".repeat(i + 1));
+    const longest = texts.filter((text) => estimatedLabelWidth(text, 5.5) <= room).at(-1)!;
+    expect(thumbnailArcsFit([longest], 3, 5.5)).toBe(true);
+    expect(thumbnailArcsFit([`${longest}l`], 3, 5.5)).toBe(false);
+    expect(thumbnailArcsFit([null, ""], 3, 5.5)).toBe(true);
   });
 });

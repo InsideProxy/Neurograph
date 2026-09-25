@@ -9,6 +9,14 @@
 // las líneas del dibujo.
 import type { ReactNode } from "react";
 
+// Las muestras de las dos líneas, como las líneas del dibujo: 1 px, el grosor
+// de casi todas (Connectogram.tsx: el peso por 6, y 1 como poco), y extremos
+// rectos (butt). Con los redondos y 1,6 px de las demás muestras, cada trazo
+// del discontinuo crecía 0,8 px por cada lado y se comía los huecos: con el
+// «3 3» de los temas 2 a 4, bajaban de 3 px a 1,4. La flecha y el punto
+// conservan su trazo, más visible.
+const LINE_SAMPLE_WIDTH = 1;
+
 function Sample({ children }: { children: ReactNode }) {
   return (
     <svg
@@ -25,17 +33,18 @@ function Sample({ children }: { children: ReactNode }) {
 }
 
 export function ConnectogramLegend({ dash }: { dash: string }) {
+  // role="list": con list-style: none, Safari deja de anunciarla como lista.
   return (
-    <ul className="connectogram-legend" aria-label="Leyenda del connectograma">
+    <ul className="connectogram-legend" role="list" aria-label="Leyenda del connectograma">
       <li>
         <Sample>
-          <path d="M1 4H25" strokeDasharray={dash} />
+          <path d="M1 4H25" strokeDasharray={dash} strokeWidth={LINE_SAMPLE_WIDTH} strokeLinecap="butt" />
         </Sample>
         Evidencia no directa (indirecta o hipótesis)
       </li>
       <li>
         <Sample>
-          <path d="M1 4H25" />
+          <path d="M1 4H25" strokeWidth={LINE_SAMPLE_WIDTH} strokeLinecap="butt" />
         </Sample>
         Evidencia directa
       </li>

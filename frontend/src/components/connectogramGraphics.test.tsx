@@ -5,13 +5,21 @@ import { DRAW_TOKENS } from "../theme/themes";
 import { HEMISPHERE_ARC_WIDTH, RING_MARGIN, estimatedLabelWidth, ringLayout } from "../logic/connectogramLayout";
 import { pillAround } from "../logic/marks";
 import { Connectogram } from "./Connectogram";
+import { ConnectogramLegend } from "./ConnectogramLegend";
 
 // Gráficos del connectograma de la fase 4 del rediseño
 // (docs/rediseno-interfaz-diseno.md, 6.1 y 5.4), en el marcado. Con
 // renderToStaticMarkup, zustand da el estado inicial de cada store: aquí la
 // selección empieza con IFJa (der.), y las marcas con IFJa (der.) y V1
-// (izq.). El tema es el de por defecto, Grafito. Sin DOM, el <svg> mide lo de
-// partida, 420 px: el centro está en (210, 210).
+// (izq.). Los filtros no ocultan nada, salvo en las pruebas que ocultan
+// redes (filters.hiddenNetworks). El tema es el de por defecto, Grafito. Sin
+// DOM, el <svg> mide lo de partida, 420 px: el centro está en (210, 210).
+const filters = vi.hoisted(() => ({
+  hiddenNetworks: new Set<string>(),
+  hiddenConnectionTypes: new Set<string>(),
+  minWeight: 0,
+}));
+vi.mock("../state/filters", () => ({ useFiltersStore: () => filters }));
 vi.mock("../state/selection", async () => {
   const { create } = await import("zustand");
   return {
@@ -33,13 +41,13 @@ vi.mock("../state/marks", async () => {
   };
 });
 
-function region(id: string, abbreviation: string, hemisphere: "L" | "R" | null): GraphNode {
+function region(id: string, abbreviation: string, hemisphere: "L" | "R" | null, network = "cole-anticevic.visual"): GraphNode {
   return {
     id,
     label: `Area ${abbreviation}`,
     abbreviation,
     hemisphere,
-    network: "cole-anticevic.visual",
+    network,
     position3d: [0, 0, 0],
     referenceSpace: null,
   };
@@ -144,15 +152,26 @@ describe("espacio de las etiquetas (6.1)", () => {
     return Math.hypot(x - CENTER, y - CENTER);
   };
 
+  // La pastilla acaba justo en el borde, ni antes ni después: así las cuentas
+  // que logic/connectogramLayout.ts repite del dibujo (los 7 px hasta la
+  // etiqueta, el nodo 3 px mayor y la letra 1,5 px mayor) quedan atadas en
+  // los dos sentidos.
   it("el anillo se encoge para que la etiqueta más larga quepa entera, ampliada y con su pastilla", () => {
     const html = renderToStaticMarkup(<Connectogram nodes={LONG} connections={[]} />);
     const { label } = nodeLabels(html).get("R_MVOcC _5_4")!;
     const fontSize = Number(label["font-size"]);
     expect(label["font-weight"]).toBe("700");
     const pill = pillAround({ x: Number(label.x), y: 0, width: estimatedLabelWidth("R_MVOcC _5_4", fontSize), height: 0 }, fontSize);
-    expect(pill.x + pill.width).toBeLessThanOrEqual(2 * CENTER + 1e-9);
+    expect(pill.x + pill.width).toBeCloseTo(2 * CENTER, 6);
     expect(ringOf(html)).toBeLessThan(CENTER - RING_MARGIN);
-    const expected = ringLayout({ size: 2 * CENTER, labels: LONG.map((node) => node.abbreviation), nodeRadius: 6, fontSize: 9, fitLabels: true });
+    const expected = ringLayout({
+      size: 2 * CENTER,
+      labels: LONG.map((node) => node.abbreviation),
+      nodeRadius: 6,
+      fontSize: 9,
+      fitLabels: true,
+      withArcs: true,
+    });
     expect(ringOf(html)).toBeCloseTo(expected.radius, 6);
   });
 
@@ -164,6 +183,55 @@ describe("espacio de las etiquetas (6.1)", () => {
   it("en la miniatura, el anillo de siempre", () => {
     const html = renderToStaticMarkup(<Connectogram nodes={LONG} connections={[]} compact />);
     expect(ringOf(html)).toBeCloseTo(CENTER - RING_MARGIN, 6);
+  });
+});
+
+// Un radio por atlas (decisión del usuario del 25/09/2026): el anillo reserva
+// sitio a las etiquetas de todas las regiones, también las que ocultan los
+// filtros, así que el círculo no salta al mostrar u ocultar redes. La
+// etiqueta más larga va en la red que se oculta: si el sitio se reservara
+// solo para las que se ven, el círculo crecería al ocultarla. Las dos redes
+// ocultas dejan el mismo número de nodos a un lado de 40 y de 150, así que la
+// letra no cambia. Con un lado de 720 px, el círculo no llega a su mínimo.
+describe("un radio por atlas: mostrar u ocultar redes no cambia el círculo (6.1)", () => {
+  const SIZE = 720;
+  const radiusWith = (nodes: GraphNode[], hidden: string[]) => {
+    filters.hiddenNetworks = new Set(hidden);
+    try {
+      const html = renderToStaticMarkup(<Connectogram nodes={nodes} connections={[]} size={SIZE} />);
+      const drawn = [...nodeLabels(html).values()];
+      expect(drawn.length).toBe(nodes.filter((node) => !hidden.includes(node.network)).length);
+      return Math.hypot(drawn[0].x - SIZE / 2, drawn[0].y - SIZE / 2);
+    } finally {
+      filters.hiddenNetworks = new Set();
+    }
+  };
+
+  it("como en Gordon 333: 333 regiones, y la etiqueta más larga en la red frontoparietal", () => {
+    const nodes = Array.from({ length: 333 }, (_, i) =>
+      i < 24
+        ? region(`r_fp_${i}`, `r_frontoparietal_${i + 1}`, "R", "gordon333.frontoparietal")
+        : region(`l_vis_${i}`, `l_visual_${i}`, "L", "gordon333.visual"),
+    );
+    const all = radiusWith(nodes, []);
+    expect(all).toBeLessThan(SIZE / 2 - RING_MARGIN);
+    expect(radiusWith(nodes, ["gordon333.frontoparietal"])).toBeCloseTo(all, 6);
+  });
+
+  it("como en el Subcórtex: 19 regiones, una sin hemisferio, y la más larga, el diencéfalo ventral", () => {
+    const nodes = [
+      ...["accumbens", "amygdala", "caudate", "hippocampus", "pallidum", "putamen", "thalamus", "cerebellum"].flatMap((name) => [
+        region(`l_${name}`, `l_${name}`, "L", "subcortex.basal"),
+        region(`r_${name}`, `r_${name}`, "R", "subcortex.basal"),
+      ]),
+      region("l_vdc", "l_ventraldiencephalon", "L", "subcortex.diencephalon"),
+      region("r_vdc", "r_ventraldiencephalon", "R", "subcortex.diencephalon"),
+      region("brainstem", "brainstem", null, "subcortex.basal"),
+    ];
+    expect(nodes).toHaveLength(19);
+    const all = radiusWith(nodes, []);
+    expect(all).toBeLessThan(SIZE / 2 - RING_MARGIN);
+    expect(radiusWith(nodes, ["subcortex.diencephalon"])).toBeCloseTo(all, 6);
   });
 });
 
@@ -252,10 +320,25 @@ describe("arcos de hemisferio (6.1)", () => {
     for (const { attrs } of titles) expect([attrs.fill, attrs["data-ng-fill"]]).toEqual([TOKENS.label, "label"]);
   });
 
-  it("en la miniatura, los arcos sin rótulos", () => {
-    const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} compact />);
+  // En la miniatura, el anillo no deja sitio a las etiquetas y los arcos no
+  // se apartan de ellas. Con etiquetas cortas, las de en reposo acaban antes
+  // que los arcos; con largas y letra grande, como en el IPL (18 regiones,
+  // letra de 9 px), los cruzarían, y no se dibujan. En la vista grande sí,
+  // apartados. Con las cuatro de NODES («TE1m», a 9 px) tampoco caben.
+  it("en la miniatura, los arcos sin rótulos, si las etiquetas en reposo no llegan hasta ellos", () => {
+    const short = [region("r_v1", "V1", "R"), region("r_v2", "V2", "R"), region("l_v1", "V1", "L"), region("l_v2", "V2", "L")];
+    const html = renderToStaticMarkup(<Connectogram nodes={short} connections={[]} compact />);
     expect(arcsOf(html)).toHaveLength(2);
     expect(titlesOf(html)).toHaveLength(0);
+    expect(arcsOf(renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} compact />))).toHaveLength(0);
+  });
+
+  it("en la miniatura, sin arcos si las etiquetas los cruzarían, como en el IPL", () => {
+    const ipl = (["L", "R"] as const).flatMap((side) =>
+      ["2_1", "2_2", "3_1", "3_2", "3_3", "4_1", "4_2", "4_3", "4_4"].map((part) => region(`${side}_${part}`, `IPL_${part}`, side)),
+    );
+    expect(arcsOf(renderToStaticMarkup(<Connectogram nodes={ipl} connections={[]} compact />))).toHaveLength(0);
+    expect(arcsOf(renderToStaticMarkup(<Connectogram nodes={ipl} connections={[]} />))).toHaveLength(2);
   });
 
   it("no se dibujan si los hemisferios alternan, si alguna región no tiene hemisferio o si solo hay uno", () => {
@@ -273,9 +356,11 @@ describe("arcos de hemisferio (6.1)", () => {
 // La leyenda va bajo el dibujo, no encima (decisión del usuario del
 // 25/09/2026): encima, como en la maqueta, tapaba nodos, y también la lupa.
 describe("leyenda del connectograma (5.4)", () => {
+  // role="list" en la lista: con list-style: none, Safari deja de anunciarla
+  // como lista.
   it("en la vista grande, bajo el dibujo y fuera del <svg>, con sus cuatro entradas; la discontinua, con el discontinuo del tema", () => {
     const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} />);
-    const legend = /<ul class="connectogram-legend" aria-label="Leyenda del connectograma">(.*?)<\/ul>/.exec(html);
+    const legend = /<ul class="connectogram-legend" role="list" aria-label="Leyenda del connectograma">(.*?)<\/ul>/.exec(html);
     expect(legend).not.toBeNull();
     // Fuera del hueco del dibujo, que el <svg> llena, justo después de él y
     // antes del recuadro de lectura.
@@ -290,6 +375,25 @@ describe("leyenda del connectograma (5.4)", () => {
     for (const entry of entries) expect(entry).toMatch(/^<svg class="connectogram-legend__sample"[^>]*aria-hidden="true"/);
     expect(entries[0]).toContain(`stroke-dasharray="${TOKENS.dash}"`);
     expect(entries[1]).not.toContain("stroke-dasharray");
+  });
+
+  // Con otro discontinuo que el del tema por defecto: uno fijo en la leyenda
+  // no pasaría.
+  it("cada muestra, la suya: la discontinua con el discontinuo que recibe (el del tema), la flecha y el punto", () => {
+    const entries = [...renderToStaticMarkup(<ConnectogramLegend dash="6 4" />).matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
+    expect(entries[0]).toContain('stroke-dasharray="6 4"');
+    expect(entries[2]).toContain('d="M1 4H22 M18 1l4 3-4 3"');
+    expect(entries[3]).toMatch(/<circle [^>]*r="2.5"/);
+  });
+
+  // Como las líneas del dibujo (Connectogram.tsx): 1 px y extremos rectos. Con
+  // extremos redondos, cada trazo del discontinuo crece por los dos lados y
+  // los huecos encogen.
+  it("las muestras de las dos líneas, con el grosor y los extremos de las líneas del dibujo", () => {
+    const entries = [...renderToStaticMarkup(<ConnectogramLegend dash="3 3" />).matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
+    for (const entry of entries.slice(0, 2)) {
+      expect(entry).toMatch(/<path d="M1 4H25"[^>]* stroke-width="1" stroke-linecap="butt"><\/path>/);
+    }
   });
 
   it("no está en la miniatura", () => {
@@ -328,13 +432,27 @@ describe("leyenda del connectograma: estilos", () => {
     expect(declarations(".viz-panel__area")).toContain("flex: 1 1 0;");
   });
 
-  it("sin selección de texto, a 0,7rem, y con el fondo del panel al 84 %, opaco si no hay color-mix()", () => {
+  it("sin selección de texto, a 0,7rem, y sobre el panel, con su mismo fondo", () => {
     const legend = declarations(".connectogram-legend");
     expect(legend).toContain("-webkit-user-select: none;");
     expect(legend).toContain(" user-select: none;");
     expect(legend).toContain("font-size: 0.7rem;");
     expect(legend).toContain("background: var(--panel-bg);");
-    expect(legend).toContain("background: color-mix(in srgb, var(--panel-bg) 84%, transparent);");
-    expect(APP_CSS).toMatch(/@supports \(color: color-mix\([^)]*\)\) \{\s*\.connectogram-legend \{ background: color-mix/);
+    expect(APP_CSS).not.toContain("color-mix(in srgb, var(--panel-bg) 84%");
+  });
+
+  // A 1400 × 900, la leyenda tiene 776 px: con 14 px entre entradas y 8
+  // dentro de cada una necesitaba 797 y se partía en dos filas; con 8 y 6,
+  // unos 771.
+  it("en una fila a 1400 × 900: 8 px entre entradas y 6 entre la muestra y su texto", () => {
+    expect(declarations(".connectogram-legend")).toContain("gap: 2px 8px;");
+    expect(declarations(".connectogram-legend li")).toContain("gap: 6px;");
+  });
+
+  it("el texto, secundario; las muestras, del color del texto y con trazo", () => {
+    expect(declarations(".connectogram-legend")).toContain(" color: var(--text-muted);");
+    const sample = declarations(".connectogram-legend__sample");
+    for (const rule of ["color: var(--text);", "stroke: currentColor;", "fill: currentColor;"]) expect(sample).toContain(rule);
+    expect(declarations(".connectogram-legend__sample path")).toContain("fill: none;");
   });
 });

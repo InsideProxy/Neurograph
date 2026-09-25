@@ -56,17 +56,23 @@ export const RING_MARGIN = 40;
 // - estrechas: i, j, l, f, r, t, I, 1, el espacio y los signos, 0,36;
 // - anchas: las demás mayúsculas, m y w, 0,68;
 // - las demás minúsculas, las cifras y lo que no sea ASCII, 0,57.
-// Encima, un 10 % de seguridad: cubre las letras más anchas de cada grupo y
-// la fuente del sistema con que sale el JPEG (logic/exportImage.ts), que no
-// es la de la pantalla. Y el espaciado entre letras de la página (:root, en
-// index.css), que el texto del SVG hereda.
+// Encima, un 10 % de seguridad. No cubre letra a letra las más anchas de
+// cada grupo (1 e I, 0,44 em; 0, 0,66; M, W y m, hasta 0,89), pero sí las
+// etiquetas largas, que son las que deciden el margen: en los atlas de los
+// datos, la más ancha de verdad queda un 5 a 10 % por debajo de la más
+// ancha estimada. En el JPEG (logic/exportImage.ts), sin el espaciado de la
+// página ni pastilla, caben con Noto Sans, Ubuntu o Liberation; con DejaVu
+// Sans, más ancha, una seleccionada muy larga puede perder hasta 3 px junto
+// a un eje.
+// Y se suma el espaciado entre letras de la página (el letter-spacing de
+// :root, en index.css), que el texto del SVG hereda: una prueba lo ata.
 const NARROW_LETTERS = /[fijlrtI1\s.,:;'"|!()[\]{}_/-]/;
 const WIDE_LETTERS = /[A-HJ-Zmw]/;
 const NARROW_ADVANCE = 0.36;
 const WIDE_ADVANCE = 0.68;
 const REGULAR_ADVANCE = 0.57;
 const LABEL_WIDTH_SAFETY = 1.1;
-const PAGE_LETTER_SPACING = 0.18;
+export const PAGE_LETTER_SPACING = 0.18;
 
 export function estimatedLabelWidth(text: string, fontSize: number): number {
   let ems = 0;
@@ -180,8 +186,10 @@ export const HEMISPHERE_ARC_GAP = (4 * Math.PI) / 180;
 // (una larga y ampliada, seleccionada o con el ratón encima, llega a unos 40
 // y lo cruza), y dentro del margen de 40 px del dibujo. Con etiquetas más
 // largas, los arcos se apartan hasta quedar a HEMISPHERE_ARC_CLEARANCE del
-// final de la más larga en reposo, y el margen del anillo crece para que
-// quepan (ringLayout, al final).
+// final de la más larga en reposo, y caben en el margen que el anillo deja a
+// esa misma etiqueta ampliada, que llega más lejos (ringLayout, al final).
+// En la miniatura no se apartan: si las etiquetas los alcanzan, no se dibujan
+// (thumbnailArcsFit).
 export const HEMISPHERE_ARC_OFFSET = 34;
 export const HEMISPHERE_ARC_CLEARANCE = 3;
 export const HEMISPHERE_ARC_WIDTH = 1.5;
@@ -240,17 +248,20 @@ export function arcLabelSides(arcs: readonly HemisphereArc[]): Map<Hemisphere, "
 export interface RingInput {
   // Lado del dibujo, en píxeles.
   size: number;
-  // Las abreviaturas de los nodos que se dibujan; null, sin etiqueta.
+  // Las abreviaturas de todas las regiones del atlas, también las que ocultan
+  // los filtros (decisión del usuario del 25/09/2026): así el círculo no
+  // cambia al mostrar u ocultar redes. null, sin etiqueta.
   labels: readonly (string | null)[];
   // El radio de los nodos y la letra de las etiquetas en reposo, de la regla
-  // según el número de nodos.
+  // según el número de nodos: los de la letra con que se dibujan.
   nodeRadius: number;
   fontSize: number;
   // false en la miniatura: el margen de siempre, sin mirar las etiquetas. A
   // ese tamaño no se leen, y reservarles sitio dejaría el círculo en un
   // punto.
   fitLabels: boolean;
-  // Si se dibujan los arcos de hemisferio: el margen los incluye.
+  // Si se dibujan los arcos de hemisferio: el margen les deja sitio (con las
+  // constantes de hoy ya lo tienen: ver ringLayout).
   withArcs?: boolean;
 }
 
@@ -262,18 +273,35 @@ export interface RingLayout {
 }
 
 // El anillo de los nodos: su radio deja entre él y el borde del dibujo el
-// margen de siempre o, si no caben en él, lo que ocupan la etiqueta más
-// larga, ampliada y con su pastilla, y los arcos de hemisferio, si se
-// dibujan, por fuera de las etiquetas en reposo. En un dibujo pequeño con
-// etiquetas muy largas, el círculo no baja de la mitad de su radio de
-// siempre: antes de reducirlo a un punto, las más largas se cortan, como
-// antes, y los arcos se acercan al anillo para no salirse del dibujo.
+// margen de siempre o, si no cabe en él, lo que ocupa la etiqueta más larga,
+// ampliada y con su pastilla. Los arcos de hemisferio, si se dibujan, van
+// por fuera de las etiquetas en reposo, dentro de ese margen. En un dibujo
+// pequeño con etiquetas muy largas, el círculo no baja de la mitad de su
+// radio de siempre: antes de reducirlo a un punto, las más largas se cortan,
+// como antes, y los arcos se acercan al anillo para no salirse del dibujo.
 export function ringLayout({ size, labels, nodeRadius, fontSize, fitLabels, withArcs = false }: RingInput): RingLayout {
   const usual = size / 2 - RING_MARGIN;
   if (!fitLabels) return { radius: usual, arcOffset: HEMISPHERE_ARC_OFFSET };
   const reach = labelReach(labels, nodeRadius, fontSize);
   const arcOffset = Math.max(HEMISPHERE_ARC_OFFSET, reach.rest + HEMISPHERE_ARC_CLEARANCE);
+  // El término de los arcos es una guarda. Con las constantes de hoy no
+  // decide nunca el margen: los arcos acaban dentro de los 40 px (34 + 0,75)
+  // o a 3,75 px del final de la etiqueta más larga en reposo, y esa misma
+  // etiqueta, ampliada y con su pastilla, llega siempre más lejos (3 px más
+  // de nodo y, solo de pastilla, 0,4 veces la letra, 2,8 px como poco). Si
+  // un día cambian, el margen seguirá dejándoles sitio.
   const margin = Math.max(RING_MARGIN, reach.enlarged, withArcs ? arcOffset + HEMISPHERE_ARC_WIDTH / 2 : 0);
   const radius = Math.max(usual / 2, size / 2 - margin);
   return { radius, arcOffset: Math.min(arcOffset, size / 2 - radius - HEMISPHERE_ARC_WIDTH / 2) };
+}
+
+// En la miniatura, el anillo es el de siempre (ringLayout, con fitLabels en
+// false) y los arcos van a HEMISPHERE_ARC_OFFSET de él, sin apartarse. Si la
+// etiqueta más larga en reposo no acaba al menos HEMISPHERE_ARC_CLEARANCE
+// antes que ellos, la separación que tienen en la vista grande, los tocaría
+// o los cruzaría: pasa con abreviaturas largas y letra grande, como las del
+// IPL («IPL_4_4», con 18 regiones y letra de 9 px). Entonces no se dibujan.
+// Con las etiquetas de HCP-MMP1.0 (letra de 5,5 px) sí caben.
+export function thumbnailArcsFit(labels: readonly (string | null)[], nodeRadius: number, fontSize: number): boolean {
+  return labelReach(labels, nodeRadius, fontSize).rest + HEMISPHERE_ARC_CLEARANCE <= HEMISPHERE_ARC_OFFSET;
 }
