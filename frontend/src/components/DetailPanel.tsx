@@ -19,9 +19,8 @@
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
-import { exportResolverFor, ngFill, ngStroke } from "../theme/colors";
-import { useDrawColors } from "../theme/useDrawColors";
-import { useAppearanceStore } from "../state/appearance";
+import { ngFill, ngStroke } from "../theme/colors";
+import { currentExportResolver, useDrawColors } from "../theme/useDrawColors";
 import { useSelectionStore } from "../state/selection";
 import { fetchInducedTracts } from "../data/api";
 import { inducedConnections } from "../logic/induced";
@@ -402,7 +401,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
       exportSvgAsJpeg(
         legendSvgRef.current,
         `neurograph-leyenda-${Date.now()}.jpg`,
-        exportResolverFor(useAppearanceStore.getState().theme),
+        currentExportResolver(),
         { fitWidthToContent: true },
       );
     }

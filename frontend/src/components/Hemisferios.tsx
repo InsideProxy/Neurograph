@@ -58,9 +58,8 @@ import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
-import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
-import { useDrawColors } from "../theme/useDrawColors";
-import { useAppearanceStore } from "../state/appearance";
+import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
+import { currentExportResolver, useDrawColors } from "../theme/useDrawColors";
 import { RegionSummary } from "./NetworkTag";
 import { connectionArrow } from "../logic/displayText";
 import type { GraphConnection } from "../types/domain";
@@ -309,7 +308,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
       exportSvgAsJpeg(
         svgRef.current,
         `neurograph-hemisferios-${Date.now()}.jpg`,
-        exportResolverFor(useAppearanceStore.getState().theme),
+        currentExportResolver(),
       );
     }
   };

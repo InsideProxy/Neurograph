@@ -14,8 +14,8 @@ export interface ExportableElement {
 }
 
 // Recibe la referencia y el tipo de atributo: un color para fill/stroke, una
-// opacidad para stroke-opacity. exportResolverFor (theme/colors.ts) cumple
-// esta firma.
+// opacidad para stroke-opacity. exportResolverFor (theme/colors.ts) y
+// currentExportResolver (theme/useDrawColors.ts) devuelven uno.
 export type ColorResolver = (ref: string, kind: ExportAttributeKind) => string | null;
 
 const MAPPINGS: readonly (readonly [dataAttribute: string, target: string, kind: ExportAttributeKind])[] = [

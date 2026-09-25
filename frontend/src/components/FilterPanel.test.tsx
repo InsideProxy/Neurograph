@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { GraphNode } from "../types/domain";
+import { NETWORK_COLORS } from "../theme/networks";
+import { SOFT_NETWORK_COLORS } from "../theme/softPalettes";
 import { FilterPanel } from "./FilterPanel";
 
 const NODES: GraphNode[] = [
@@ -75,5 +77,42 @@ describe("FilterPanel", () => {
 
   it("el deslizador dice el peso mínimo con palabras", () => {
     expect(html).toContain('aria-valuetext="0 (sin filtro, se muestra todo)"');
+  });
+});
+
+// Paleta suave (fase 2 del rediseño). En node no hay almacenamiento: el store
+// empieza en Grafito sin paleta elegida, y la automática es «Suaves».
+describe("FilterPanel: muestras de color", () => {
+  const counts = {
+    connectionCountsByType: { structural: 0, functional: 0, effective: 0 },
+    connectionTotals: { visible: 0, loaded: 0 },
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("siguen la paleta automática", () => {
+    const html = renderToStaticMarkup(<FilterPanel nodes={NODES} {...counts} />);
+    const visual = SOFT_NETWORK_COLORS.grafito["cole-anticevic.visual"];
+    expect(html).toMatch(new RegExp(`class="filters__swatch"[^>]*style="background-color:${visual}"`));
+    expect(html).not.toContain(NETWORK_COLORS["cole-anticevic.visual"]);
+  });
+
+  // El store lee la elección guardada al crearse. vi.resetModules lo vuelve
+  // a crear, ahora con un localStorage simulado que guarda «Originales del
+  // atlas». Si useDrawColors no leyera el modo guardado, la muestra seguiría
+  // siendo la suave.
+  it("siguen la paleta guardada", async () => {
+    vi.resetModules();
+    const saved = JSON.stringify({ theme: "grafito", paletteMode: "original" });
+    vi.stubGlobal("window", { localStorage: { getItem: () => saved, setItem: () => {} } });
+    const server = await import("react-dom/server");
+    const { FilterPanel: StoredFilterPanel } = await import("./FilterPanel");
+    const html = server.renderToStaticMarkup(<StoredFilterPanel nodes={NODES} {...counts} />);
+    expect(html).toMatch(
+      new RegExp(`class="filters__swatch"[^>]*style="background-color:${NETWORK_COLORS["cole-anticevic.visual"]}"`),
+    );
   });
 });

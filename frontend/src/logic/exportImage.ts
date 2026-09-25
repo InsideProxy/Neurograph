@@ -52,8 +52,9 @@ function triggerDownload(blob: Blob, filename: string): void {
  * fondo blanco.
  *
  * @param resolveColor Resuelve las referencias `data-ng-*` del clon a la
- * paleta de exportación del tema activo (D3 de docs/decisiones-diseno.md).
- * Quien llama lo obtiene con `exportResolverFor(theme)` (theme/colors.ts).
+ * paleta de exportación del tema y de los colores de red activos (D3 de
+ * docs/decisiones-diseno.md; spec 4.4). Quien llama lo obtiene con
+ * `currentExportResolver()` (theme/useDrawColors.ts).
  * @param options.fitWidthToContent Ensancha la imagen hasta el borde
  * derecho del contenido, medido con la fuente de la exportación, más
  * FIT_WIDTH_MARGIN. Solo se ajusta el borde derecho: nunca estrecha la

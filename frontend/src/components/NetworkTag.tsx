@@ -10,7 +10,7 @@ import type { GraphNode } from "../types/domain";
 // A la vista, el nombre corto de la red, porque la clasificación ya está en
 // el botón «Redes» de la barra; para los lectores de pantalla y en la
 // etiqueta emergente, el completo. El color sale de useDrawColors, como en
-// las vistas: cuando llegue la paleta suave (fase 2), la seguirá. El punto
+// las vistas, así que sigue la paleta activa (fase 2 del rediseño). El punto
 // lleva un anillo neutro (principio 6 del spec) en App.css. Si el nombre
 // corto no cabe (los de Yeo y Power llegan a 600 px), se corta con «…»: el
 // completo sigue en el title y en el texto oculto.

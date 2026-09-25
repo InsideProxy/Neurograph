@@ -3,11 +3,11 @@
 // paleta suave, en la fase 2.
 import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { useAppearanceStore } from "../state/appearance";
-import { resolveNetworkColor } from "../theme/colors";
+import { effectivePaletteMode, resolveNetworkColor } from "../theme/colors";
 import { THEME_IDS, THEME_INFO } from "../theme/themes";
 
-// Cinco redes de Cole-Anticevic para la vista previa de cada tema. En la
-// fase 1, con sus colores originales en todos los temas.
+// Cinco redes de Cole-Anticevic para la vista previa de cada tema, con la
+// paleta que tendría ese tema (fase 2 del rediseño).
 const PREVIEW_NETWORKS = [
   "cole-anticevic.visual",
   "cole-anticevic.default",
@@ -19,6 +19,7 @@ const PREVIEW_NETWORKS = [
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const theme = useAppearanceStore((state) => state.theme);
+  const paletteMode = useAppearanceStore((state) => state.paletteMode);
   const setTheme = useAppearanceStore((state) => state.setTheme);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -123,7 +124,7 @@ export function SettingsMenu() {
                     <span className="settings__preview-side" />
                     <span className="settings__preview-main">
                       {PREVIEW_NETWORKS.map((key) => (
-                        <span key={key} className="settings__preview-dot" style={{ background: resolveNetworkColor(key) }} />
+                        <span key={key} className="settings__preview-dot" style={{ background: resolveNetworkColor(key, id, effectivePaletteMode(id, paletteMode)) }} />
                       ))}
                     </span>
                   </span>

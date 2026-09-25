@@ -27,9 +27,8 @@ import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
-import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
-import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
-import { useAppearanceStore } from "../state/appearance";
+import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
+import { currentExportResolver, useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { Icon } from "./Icon";
 import { RegionSummary } from "./NetworkTag";
 
@@ -140,7 +139,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
       exportSvgAsJpeg(
         svgRef.current,
         `neurograph-connectograma-${Date.now()}.jpg`,
-        exportResolverFor(useAppearanceStore.getState().theme),
+        currentExportResolver(),
       );
     }
   };

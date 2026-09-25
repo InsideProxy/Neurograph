@@ -41,6 +41,8 @@ describe("readAppearance", () => {
   it("descarta valores inválidos campo a campo", () => {
     const storage = memoryStorage({ [APPEARANCE_STORAGE_KEY]: '{"theme":"azul","paletteMode":"suave"}' });
     expect(readAppearance(storage)).toEqual({ theme: "grafito", paletteMode: "suave" });
+    const badMode = memoryStorage({ [APPEARANCE_STORAGE_KEY]: '{"theme":"noche","paletteMode":"vivo"}' });
+    expect(readAppearance(badMode)).toEqual({ theme: "noche", paletteMode: null });
   });
 
   it("un JSON roto o un almacenamiento que falla no rompen nada", () => {
@@ -89,5 +91,19 @@ describe("useAppearanceStore", () => {
 
     expect(JSON.parse(storage.data[APPEARANCE_STORAGE_KEY])).toEqual({ theme: "claro", paletteMode: "original" });
     expect(document.documentElement.dataset.theme).toBe("claro");
+  });
+
+  it("setPaletteMode guarda la elección con el tema actual, sin cambiar el tema; null vuelve a «Automática»", () => {
+    const storage = memoryStorage();
+    vi.stubGlobal("window", { localStorage: storage });
+
+    useAppearanceStore.setState({ theme: "noche", paletteMode: null });
+    useAppearanceStore.getState().setPaletteMode("original");
+    expect(useAppearanceStore.getState()).toMatchObject({ theme: "noche", paletteMode: "original" });
+    expect(JSON.parse(storage.data[APPEARANCE_STORAGE_KEY])).toEqual({ theme: "noche", paletteMode: "original" });
+
+    useAppearanceStore.getState().setPaletteMode(null);
+    expect(useAppearanceStore.getState()).toMatchObject({ theme: "noche", paletteMode: null });
+    expect(JSON.parse(storage.data[APPEARANCE_STORAGE_KEY])).toEqual({ theme: "noche", paletteMode: null });
   });
 });

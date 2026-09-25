@@ -18,7 +18,7 @@
 // redes que de verdad tienen al menos un nodo, nunca una lista fija.
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { CONNECTION_TYPE_LABELS, NETWORK_LABELS } from "../theme/networks";
-import { resolveNetworkColor } from "../theme/colors";
+import { useDrawColors } from "../theme/useDrawColors";
 import { useFiltersStore, type ConnectionType } from "../state/filters";
 import { useSelectionStore } from "../state/selection";
 import { formatMinWeight, sliderPositionToWeight, weightToSliderPosition } from "../logic/weightScale";
@@ -89,6 +89,9 @@ export function FilterPanel({
   } = useFiltersStore();
   const { selectedNodeIds, selectedConnectionId, selectNodes, addNodes, clearNodeSelection } =
     useSelectionStore();
+
+  // Muestras de color con la paleta activa (spec 4.3), como en las vistas.
+  const { networkColor } = useDrawColors();
 
   // Redes presentes de verdad en los nodos actuales (real o demo, nunca
   // los dos a la vez -- App.tsx ya garantiza eso). El orden sigue el de
@@ -278,7 +281,7 @@ export function FilterPanel({
                         checked={!hiddenNetworks.has(network)}
                         onChange={() => toggleNetwork(network)}
                       />
-                      <span className="filters__swatch" style={{ backgroundColor: resolveNetworkColor(network) }} />
+                      <span className="filters__swatch" style={{ backgroundColor: networkColor(network) }} />
                       <span className="filters__name">{shortLabel}</span>
                       <span className="visually-hidden">, {regions}</span>
                     </label>

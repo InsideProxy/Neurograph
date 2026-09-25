@@ -1,12 +1,10 @@
 // Tema elegido y modo de la paleta de redes (D3 de docs/decisiones-diseno.md;
 // docs/rediseno-interfaz-diseno.md, 4.5). paletteMode null = automático:
-// "original" con el tema 1 y "suave" con los demás. La paleta suave llega
-// en la fase 2, pero el formato guardado ya la incluye para no tener que
-// migrarlo después.
+// "original" con el tema 1 y "suave" con los demás (effectivePaletteMode, en
+// theme/colors.ts). Cambiar de tema no borra un modo elegido a mano.
 import { create } from "zustand";
+import { isPaletteMode, type PaletteMode } from "../theme/colors";
 import { DEFAULT_THEME, isThemeId, type ThemeId } from "../theme/themes";
-
-export type PaletteMode = "suave" | "original";
 
 export interface Appearance {
   theme: ThemeId;
@@ -31,7 +29,7 @@ export function readAppearance(storage: StorageLike | null): Appearance {
     const { theme, paletteMode } = parsed as Record<string, unknown>;
     return {
       theme: isThemeId(theme) ? theme : DEFAULT_THEME,
-      paletteMode: paletteMode === "suave" || paletteMode === "original" ? paletteMode : null,
+      paletteMode: isPaletteMode(paletteMode) ? paletteMode : null,
     };
   } catch {
     return { ...DEFAULT_APPEARANCE };
@@ -64,6 +62,7 @@ export function applyThemeToDocument(theme: ThemeId): void {
 
 interface AppearanceState extends Appearance {
   setTheme: (theme: ThemeId) => void;
+  setPaletteMode: (paletteMode: PaletteMode | null) => void;
 }
 
 export const useAppearanceStore = create<AppearanceState>((set, get) => ({
@@ -72,5 +71,12 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     set({ theme });
     writeAppearance(browserStorage(), { theme, paletteMode: get().paletteMode });
     applyThemeToDocument(theme);
+  },
+  // «Colores de las redes» en Ajustes (5.2). No toca el documento: los
+  // colores de red no son variables CSS, los componentes los leen del store
+  // con useDrawColors.
+  setPaletteMode: (paletteMode) => {
+    set({ paletteMode });
+    writeAppearance(browserStorage(), { theme: get().theme, paletteMode });
   },
 }));
