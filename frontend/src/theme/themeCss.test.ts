@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SOFT_NETWORK_COLORS } from "./softPalettes";
 import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "./themes";
 
 // Bloques de tema de index.css (D3 de docs/decisiones-diseno.md;
@@ -139,6 +140,21 @@ describe("contraste de los temas", () => {
     for (const name of ["--success", "--warning", "--error", "--synthesis"]) {
       const tinted = over(vars.get(`${name}-bg`)!, bg);
       expect(contrast(parseColor(vars.get(name)!).rgb, tinted), name).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // Paleta suave (4.3 y 10): sobre el panel de los temas oscuros, los
+  // colores de red superan 3:1. El tema Original, con «Suaves», usa la
+  // columna de Grafito sobre su propio panel. En Claro no se exige: ahí los
+  // nodos cuentan con el anillo neutro (principio 6).
+  it.each([
+    ["grafito", "grafito"],
+    ["noche", "noche"],
+    ["original", "grafito"],
+  ] as const)("tema %s: los colores de red suaves (columna %s) superan 3:1 sobre el panel", (id, column) => {
+    const panel = parseColor(variables(THEME_BLOCKS.get(id)!.body).get("--panel-bg")!).rgb;
+    for (const [key, color] of Object.entries(SOFT_NETWORK_COLORS[column])) {
+      expect(contrast(parseColor(color).rgb, panel), key).toBeGreaterThanOrEqual(3);
     }
   });
 });
