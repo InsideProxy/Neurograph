@@ -93,7 +93,9 @@ export interface CapturedPixels {
  * borrado y el fondo de la escena como estaban.
  *
  * Si se ha perdido el contexto WebGL o el búfer de dibujo no tiene tamaño,
- * no dibuja nada: lo dice en la consola y devuelve null. Con el contexto
+ * no dibuja nada: lo dice en la consola y devuelve null. Tampoco si, ya
+ * dibujada, la captura sale vacía (alfa distinto de 255: el contexto se
+ * perdió a mitad, o el destino quedó incompleto) -- con el contexto
  * perdido, readPixels no lee nada y el JPEG saldría negro.
  */
 export function renderSceneOffscreen(
@@ -126,6 +128,13 @@ export function renderSceneOffscreen(
     gl.render(scene, camera);
     const pixels = new Uint8Array(size.x * size.y * 4);
     gl.readRenderTargetPixels(target, 0, 0, size.x, size.y, pixels);
+    // Una captura válida es opaca (fondo blanco, mezcla normal): alfa 0 es que
+    // no se leyó nada (contexto perdido a mitad o destino incompleto).
+    if (gl.getContext().isContextLost() || pixels[3] !== 255) {
+      // eslint-disable-next-line no-console
+      console.error("No se pudo exportar el cerebro 3D: la captura salió vacía.");
+      return null;
+    }
     return { pixels: flipRows(pixels, size.x, size.y), width: size.x, height: size.y };
   } finally {
     gl.setRenderTarget(previousTarget);

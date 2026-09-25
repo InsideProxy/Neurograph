@@ -567,9 +567,10 @@ function NodeMesh({
           (`side: THREE.BackSide`), deja ver solo un fino borde alrededor
           del nodo real -- técnica estándar de "contorno por casco
           invertido". Usa los tokens nodeRing/selected del tema (D3 de
-          docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a
-          dibujar con los de la paleta de exportación, así que el
-          contorno también se ve en la figura exportada. */}
+          docs/decisiones-diseno.md); al exportar, `colors` ya lleva la
+          paleta de exportación -- la captura se dibuja fuera de pantalla
+          (logic/capture3d.ts) --, así que el contorno también se ve en
+          la figura exportada. */}
       <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
@@ -595,15 +596,20 @@ function NodeMesh({
         />
       </mesh>
       {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
-          three.js no dibuja un material con visible={false}, pero el
-          raycast de react-three-fiber sí la encuentra: el marcador encogió,
-          y seleccionarlo con un clic cuesta lo mismo que antes. Con la
-          corteza pintada no hay, como antes: se selecciona pulsando la
-          propia región. */}
+          visible={false} va en el <mesh>, no en su material: WebGLRenderer
+          descarta un Object3D con visible={false} nada más empezar
+          (projectObject), antes de recortarlo contra la cámara o subir su
+          geometría a la GPU (~9 KB por nodo). Con el material invisible en
+          vez del mesh (como antes), three.js sí hace las dos cosas y solo
+          deja de dibujarlo al final. Ni el raycaster de three.js ni el de
+          react-three-fiber miran `visible` (comprobado en su código de
+          node_modules): la encuentran igual, así que seleccionar con un
+          clic sigue costando lo mismo que antes. Con la corteza pintada no
+          hay, como antes: se selecciona pulsando la propia región. */}
       {!overlay && (
-        <mesh position={node.position3d} onClick={() => toggleNode(node.id)}>
+        <mesh position={node.position3d} visible={false} onClick={() => toggleNode(node.id)}>
           <sphereGeometry args={[size.hitRadius, 14, 14]} />
-          <meshBasicMaterial visible={false} />
+          <meshBasicMaterial />
         </mesh>
       )}
       <NodeLabel node={node} offset={size.labelOffset} fade={fade} overlay={overlay} />
@@ -1434,10 +1440,11 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
         {homologyControl}
         {surfaceControls}
         <DepthFadeToggle enabled={depthFadeOn} onToggle={toggleDepthFade} />
-        {/* Desactivado mientras se exporta (ver handleExport y
-            ExportBridge): un segundo clic antes de que acabe la exportación
-            dejaría el modo «exportando» atascado. aria-disabled y no
-            disabled: así el botón conserva el foco del teclado. */}
+        {/* aria-disabled, no disabled: así el botón conserva el foco del
+            teclado mientras se exporta. No hace de guarda -- un segundo
+            clic durante la exportación ya no hace nada por su cuenta (ver
+            el comentario junto a handleExport, más arriba); aria-disabled
+            solo muestra ese estado. */}
         <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
           Exportar JPEG
         </button>

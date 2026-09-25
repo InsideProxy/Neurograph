@@ -259,6 +259,11 @@ export function createDepthFade(onMissing: (missing: string[]) => void = warnMis
  * `transparent`. Así se pueden atenuar, y three.js los dibuja con las
  * líneas, de atrás adelante; los renderOrder no cambian. Sin atenuación
  * (null) no añade nada: el material es el de siempre.
+ *
+ * Regla: todo elemento que lleve `{...fadeMaterialProps(fade, …)}` tiene que
+ * llevar también `key={fadeKey(fade)}` (ver su comentario, más abajo, para
+ * el motivo). Un test de frontend/src/components/Brain3D.fadeKeyRule.test.ts
+ * lo comprueba leyendo Brain3D.tsx.
  */
 export function fadeMaterialProps(fade: DepthFade | null, opaque: boolean) {
   if (!fade) return {};
