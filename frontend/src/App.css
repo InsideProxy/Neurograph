@@ -633,7 +633,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 }
 /* El mismo anillo en las muestras de las vistas de tractografía, que
    siguen con .legend-swatch: en Claro, los amarillos casi no se veían
-   sobre el blanco (D3, «Limitaciones conocidas»). */
+   sobre el blanco (D3; «Anillo neutro» en docs/criterios-diseno.md). */
 .legend-swatch { box-shadow: 0 0 0 1px var(--text-muted); }
 
 /* Herramientas de cada vista (spec 5.4): lupa, exportar y «Ocultar no

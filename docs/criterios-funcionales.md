@@ -228,9 +228,10 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 - **Color del nodo:**
   - es la red, con los colores de cada atlas (`NETWORK_COLORS`): son datos y no se cambian por estética;
   - es idéntico en todas las vistas;
-  - lo no clasificado va en gris `#8a8a8a`.
+  - con la paleta «Suaves», cada red se ve con una versión de su color que conserva el tono, calculada a partir de `NETWORK_COLORS` sin cambiarlo;
+  - lo no clasificado va en gris: `#8a8a8a` con los colores del atlas, y el gris de la paleta suave de cada tema con «Suaves».
 
-  (18, 72, 73)
+  (18, 72, 73, D7)
 - **Líneas:**
   - el grosor es proporcional al peso;
   - el trazo discontinuo indica evidencia no directa o hipotética;
@@ -243,10 +244,11 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 
   (15)
 - **Colores reservados:**
-  - la selección usa el color de acento;
-  - el amarillo `#ffd84a` queda para el resaltado al pasar el ratón y ninguna conexión lo usa.
+  - la selección usa el color de selección del tema;
+  - el color de resaltado al pasar el ratón (amarillo `#ffd84a`, y `#b7791f` en Claro) no lo usa ninguna conexión;
+  - el azul de las marcas (`#2563eb`, y `#1d4ed8` en Claro) queda para las marcas.
 
-  (18, D2c)
+  (18, D2c, D3, D9)
 - **Tractos:** ORG no define colores propios, así que se reparten de forma determinista sobre la rueda de tono. (62)
 - **Comparación de especies:**
   - el connectograma de homología tiene tres colores fijos: exclusiva de A, exclusiva de B y compartida, con una cuerda por homología real;
@@ -261,7 +263,7 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
   - sin selección, un aviso; con la corteza pintada, todo el atlas coloreado por red.
 
   (16, 72)
-- **Etiqueta de datos:** «DATOS REALES», «DATOS SINTÉTICOS · SOLO ILUSTRATIVOS» o «SÍNTESIS DE IA — NO VERIFICADO», siempre visible. (71, D1)
+- **Etiqueta de datos:** en la vista Atlas, un punto con «Datos reales» o «Datos de demostración», siempre visible. «Datos de demostración» no se pliega nunca; «Datos reales» se queda en su punto si la barra no cabe. La síntesis de IA lleva «SÍNTESIS DE IA A PARTIR DE LITERATURA · NO VERIFICADO». (71, D1, D4)
 
 ## 11. Exportación
 

@@ -777,3 +777,16 @@ Por último, el resto de la fase 4 (D10), en la rama `rediseno-fase4`, que sali�
 - **Pastillas de las etiquetas del 3D** (D10): tapan más corteza que el texto con contorno de antes, sobre todo con una región de muchas conexiones. En Claro, queda por mirar si el texto se ve demasiado fino con el zoom de partida.
 - **Anillo de los nodos del diagrama de síntesis en Claro** (D3): la D3 lo dejó para la fase 4, pero está fuera de la sección 6, y queda para más adelante (D10).
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
+
+- **Limitaciones conocidas, sacadas de las entradas del log al resumirlas:**
+  - **Oclusión (D8):**
+    - una línea que sale por el borde de la corteza pasa de tenue a entera en cosa de un píxel, porque el destino de la profundidad no tiene antialiasing;
+    - con la forma «Real», un marcador dentro de un surco se ve tenue;
+    - una etiqueta junto a la silueta puede quedar partida;
+    - cuesta un dibujo más de la corteza por fotograma, solo de profundidad, y unos 3,4 MB a 776 × 554.
+  - **Paleta B (D7):** el croma por 0,85 apaga también las redes que ya tenían poco croma en el atlas.
+  - **Estructura (D4):**
+    - Para el desarrollador principal: el comentario de `state/selection.ts` dice que `FilterPanel` es el único que llama a `addNodes`, y ya lo llama también el buscador.
+    - Con el teclado y sin lector de pantalla no se ve la etiqueta emergente del punto de «Datos reales».
+  - **Temas (D3):** en el navegador, con otro tema elegido, puede verse Grafito un instante antes de que cargue el JavaScript. En la ventana de Tauri no se ha comprobado.
+  - **Gráficos (D10):** en el vistazo rápido, un Ctrl+clic sobre un nodo no marcó nada; probablemente cayó entre dos nodos, que están a unos 5 px. Marcar desde el buscador sí funcionó.
