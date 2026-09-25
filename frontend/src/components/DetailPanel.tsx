@@ -17,7 +17,7 @@
 // tractografía real que consultar, así que `canFetchTracts=false` evita
 // la petición por completo en vez de mostrar un resultado vacío que
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { exportResolverFor, ngFill, ngStroke } from "../theme/colors";
 import { useDrawColors } from "../theme/useDrawColors";
@@ -28,7 +28,7 @@ import { inducedConnections } from "../logic/induced";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { copyShortcutLabel, copyText } from "../logic/clipboard";
-import { formatCount, hemisphereLabel, regionTitleParts } from "../logic/displayText";
+import { connectionArrow, connectionTitle, formatCount, hemisphereLabel, regionTitleParts } from "../logic/displayText";
 import { CONNECTIONS_PREVIEW_COUNT, regionConnectionsByWeight, visibleRegionConnections } from "../logic/regionConnections";
 import { weightToSliderPosition } from "../logic/weightScale";
 import type { GraphConnection, GraphNode, InducedTract } from "../types/domain";
@@ -39,6 +39,25 @@ interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
   canFetchTracts?: boolean;
+}
+
+// Ancho mínimo de la leyenda de la selección múltiple (el de siempre) y
+// hueco a la derecha de su texto más largo (el mismo que a la izquierda).
+const LEGEND_MIN_WIDTH = 260;
+const LEGEND_MARGIN = 10;
+
+// Escribe en el <svg> de la leyenda el ancho de su texto. Si el navegador
+// todavía no puede medirlo (getBBox falla sin maqueta), se queda el que
+// tenga, como hace contentRightEdge en logic/exportImage.ts.
+function fitLegendWidth(svg: SVGSVGElement | null) {
+  if (!svg) return;
+  let box: DOMRect;
+  try {
+    box = svg.getBBox();
+  } catch {
+    return;
+  }
+  svg.setAttribute("width", String(Math.max(LEGEND_MIN_WIDTH, Math.ceil(box.x + box.width + LEGEND_MARGIN))));
 }
 
 // Mismo criterio que Connectogram.tsx/Hemisferios.tsx (fix del
@@ -345,15 +364,31 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   }, [canFetchTracts, selectedNodesList.map((n) => n.id).join(",")]);
 
   const legendSvgRef = useRef<SVGSVGElement>(null);
+  // La leyenda cortaba en pantalla las etiquetas largas (spec, sección 12;
+  // D3 de docs/decisiones-diseno.md). Tras cada render se mide su texto y
+  // se escribe el ancho en el propio <svg>: LEGEND_MIN_WIDTH, el de
+  // siempre, o más si el texto lo necesita. Si el panel es más estrecho,
+  // su recuadro se desplaza en horizontal. El ancho no es estado de React
+  // (el <svg> no lleva la prop width), así que medir no provoca otro
+  // render. La exportación parte de este ancho y solo lo ensancha
+  // (fitWidthToContent): con etiquetas cortas el JPEG sale como antes, y
+  // con largas puede salir algo más ancho, nunca cortado.
+  useLayoutEffect(() => fitLegendWidth(legendSvgRef.current));
+  // Una fuente que llega tarde cambia lo que mide el texto: se vuelve a medir.
+  useEffect(() => {
+    const fonts = document.fonts;
+    const refit = () => fitLegendWidth(legendSvgRef.current);
+    fonts?.addEventListener("loadingdone", refit);
+    return () => fonts?.removeEventListener("loadingdone", refit);
+  }, []);
   const colors = useDrawColors();
   const handleExportLegend = () => {
     if (legendSvgRef.current) {
-      // fitWidthToContent: la leyenda es un SVG de ancho fijo (260 px), y
-      // la fuente de la exportación (una pila del sistema) es más ancha
-      // que la serif con la que salía antes el JPEG. Sin esto, una
-      // etiqueta larga se cortaría en la imagen. En pantalla la leyenda
-      // sigue igual: la fase 3 rehace este panel (D3 de
-      // docs/decisiones-diseno.md).
+      // fitWidthToContent: la exportación usa otra fuente (una pila del
+      // sistema, D3 de docs/decisiones-diseno.md), así que vuelve a medir
+      // el texto con ella y, si no cabe en el ancho que el <svg> tiene en
+      // pantalla (el del efecto de arriba, D4), ensancha la imagen. Nunca
+      // la estrecha. Sin esto, una etiqueta larga podría salir cortada.
       exportSvgAsJpeg(
         legendSvgRef.current,
         `neurograph-leyenda-${Date.now()}.jpg`,
@@ -377,14 +412,17 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
     const source = nodeById.get(connection.source);
     const target = nodeById.get(connection.target);
     return (
-      <aside className="detail-panel">
-        <h2>Conexión</h2>
-        <dl>
-          <dt>ID</dt>
-          <dd><code>{connection.id}</code></dd>
-          <dt>Origen</dt>
+      <aside className="detail-panel detail detail--with-id" aria-label="Conexión seleccionada">
+        <p className="detail__eyebrow">Conexión seleccionada</p>
+        <h2 className="detail__title">
+          <span className="detail__main detail__main--text">{connectionTitle(connection, nodeById)}</span>
+        </h2>
+        <dl className="detail__facts">
+          {/* «Origen» y «Destino» solo si la conexión tiene sentido (efectiva);
+              si no, las dos regiones van en pie de igualdad. */}
+          <dt>{connection.type === "effective" ? "Origen" : "Región A"}</dt>
           <dd>{regionDisplayText(source, connection.source)}</dd>
-          <dt>Destino</dt>
+          <dt>{connection.type === "effective" ? "Destino" : "Región B"}</dt>
           <dd>{regionDisplayText(target, connection.target)}</dd>
           <dt>Tipo</dt>
           <dd>{CONNECTION_TYPE_LABELS[connection.type]}</dd>
@@ -393,6 +431,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           <dt>Nivel de evidencia</dt>
           <dd>{EVIDENCE_LEVEL_LABELS[connection.evidenceLevel]}</dd>
         </dl>
+        <ScientificId key={connection.id} id={connection.id} label="ID" />
       </aside>
     );
   }
@@ -407,11 +446,14 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   const legendHeight = 28 + selectedNodesList.length * legendLineHeight;
 
   return (
-    <aside className="detail-panel">
-      <h2>{selectedNodesList.length} regiones seleccionadas</h2>
+    <aside className="detail-panel detail" aria-label="Regiones seleccionadas">
+      <p className="detail__eyebrow">Selección múltiple</p>
+      <h2 className="detail__title">
+        <span className="detail__main detail__main--text">{selectedNodesList.length} regiones seleccionadas</span>
+      </h2>
 
-      <div className="detail-panel__legend-header">
-        <span>Leyenda</span>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Leyenda</h3>
         <button type="button" className="export-btn" onClick={handleExportLegend}>
           Exportar leyenda JPEG
         </button>
@@ -425,42 +467,45 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           token label del tema; al exportar, applyExportColors los cambia
           por los de la paleta de exportación (D3 de
           docs/decisiones-diseno.md). */}
-      <svg
-        ref={legendSvgRef}
-        width={260}
-        height={legendHeight}
-        role="img"
-        aria-label="Leyenda de regiones seleccionadas"
-        className="legend-svg"
-      >
-        {selectedNodesList.map((node, i) => (
-          <g key={node.id} transform={`translate(10, ${20 + i * legendLineHeight})`}>
-            <circle
-              r={5}
-              cy={-4}
-              fill={colors.networkColor(node.network)}
-              {...ngFill(`net:${node.network}`)}
-              stroke={colors.nodeRing}
-              {...ngStroke("nodeRing")}
-              strokeWidth={1}
-            />
-            <text x={14} fontSize={11} fill={colors.label} {...ngFill("label")}>
-              {abbreviationAddsInformation(node) ? (
-                <>
-                  <tspan fontWeight={700}>{node.abbreviation}</tspan>
-                  {" — " + node.label}
-                </>
-              ) : (
-                node.label
-              )}
-            </text>
-          </g>
-        ))}
-      </svg>
+      <div className="detail__legend">
+        <svg
+          ref={legendSvgRef}
+          height={legendHeight}
+          role="img"
+          aria-label="Leyenda de regiones seleccionadas"
+          className="legend-svg"
+        >
+          {selectedNodesList.map((node, i) => (
+            <g key={node.id} transform={`translate(10, ${20 + i * legendLineHeight})`}>
+              <circle
+                r={5}
+                cy={-4}
+                fill={colors.networkColor(node.network)}
+                {...ngFill(`net:${node.network}`)}
+                stroke={colors.nodeRing}
+                {...ngStroke("nodeRing")}
+                strokeWidth={1}
+              />
+              <text x={14} fontSize={11} fill={colors.label} {...ngFill("label")}>
+                {abbreviationAddsInformation(node) ? (
+                  <>
+                    <tspan fontWeight={700}>{node.abbreviation}</tspan>
+                    {" — " + node.label}
+                  </>
+                ) : (
+                  node.label
+                )}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
 
-      <h3>Conectividad entre las regiones seleccionadas</h3>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Conectividad entre las regiones seleccionadas</h3>
+      </div>
       {induced && induced.length > 0 ? (
-        <ul>
+        <ul className="detail__list">
           {induced.map((c) => {
             const source = nodeById.get(c.source);
             const target = nodeById.get(c.target);
@@ -475,7 +520,8 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
             const targetLabel = regionDisplayText(target, c.target);
             return (
               <li key={c.id}>
-                {sourceLabel} → {targetLabel} — {CONNECTION_TYPE_LABELS[c.type]}, peso {c.weight}, {EVIDENCE_LEVEL_LABELS[c.evidenceLevel]}
+                {sourceLabel} {connectionArrow(c.type)} {targetLabel} — {CONNECTION_TYPE_LABELS[c.type]}, peso {c.weight},{" "}
+                {EVIDENCE_LEVEL_LABELS[c.evidenceLevel]}
               </li>
             );
           })}
@@ -486,7 +532,9 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
         </p>
       )}
 
-      <h3>Tractos con nombre</h3>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Tractos con nombre</h3>
+      </div>
       {!canFetchTracts ? (
         <p className="detail-panel__empty-note">
           No disponible con datos de demostración (solo con un atlas real cargado en la base de datos).
@@ -496,7 +544,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
       ) : tractsError ? (
         <p className="detail-panel__empty-note">No se pudo consultar la API de conectividad.</p>
       ) : tracts.length > 0 ? (
-        <ul>
+        <ul className="detail__list">
           {tracts.map((tract) => (
             <TractRow key={tract.id} tract={tract} nodeById={nodeById} />
           ))}

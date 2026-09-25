@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  connectionArrow,
+  connectionTitle,
   connectionsPassingText,
   formatCount,
   hemisphereLabel,
   networkShortLabel,
+  regionNameWithSide,
   regionPassingText,
   regionTitleParts,
   selectionStatusText,
 } from "./displayText";
+import type { GraphNode } from "../types/domain";
 
 describe("formatCount", () => {
   it("separa los miles con un espacio duro a partir de cinco cifras", () => {
@@ -110,5 +114,46 @@ describe("regionTitleParts", () => {
       main: "IFJa",
       secondary: "Area IFJa (hemisferio derecho)",
     });
+  });
+});
+
+describe("connectionArrow", () => {
+  it("«→» solo para la conectividad efectiva; «↔» para las demás", () => {
+    expect(connectionArrow("effective")).toBe("→");
+    expect(connectionArrow("structural")).toBe("↔");
+    expect(connectionArrow("functional")).toBe("↔");
+  });
+});
+
+describe("regionNameWithSide", () => {
+  it("añade el lado, salvo si no hay hemisferio o si la abreviatura ya lo dice", () => {
+    expect(regionNameWithSide({ abbreviation: "IFJa", label: "Area IFJa (hemisferio derecho)", hemisphere: "R" })).toBe("IFJa (der.)");
+    expect(regionNameWithSide({ abbreviation: "L_SFG_7_1", label: "SFG_L_7_1", hemisphere: "L" })).toBe("L_SFG_7_1");
+    expect(regionNameWithSide({ abbreviation: "l_amygdala", label: "Amígdala", hemisphere: "L" })).toBe("l_amygdala");
+    expect(regionNameWithSide({ abbreviation: null, label: "Tronco del encéfalo", hemisphere: null })).toBe("Tronco del encéfalo");
+  });
+});
+
+describe("connectionTitle", () => {
+  const NODES = new Map<string, Pick<GraphNode, "abbreviation" | "label" | "hemisphere">>([
+    ["l_v1", { abbreviation: "V1", label: "Primary Visual Cortex (hemisferio izquierdo)", hemisphere: "L" }],
+    ["r_v1", { abbreviation: "V1", label: "Primary Visual Cortex (hemisferio derecho)", hemisphere: "R" }],
+    ["l_v2", { abbreviation: "V2", label: "Second Visual Area (hemisferio izquierdo)", hemisphere: "L" }],
+    ["talamo", { abbreviation: null, label: "Tálamo", hemisphere: null }],
+  ]);
+
+  it("la flecha, solo para la conectividad efectiva", () => {
+    expect(connectionTitle({ source: "l_v1", target: "l_v2", type: "effective" }, NODES)).toBe("V1 → V2");
+    expect(connectionTitle({ source: "l_v1", target: "l_v2", type: "structural" }, NODES)).toBe("V1 ↔ V2");
+  });
+
+  it("con el mismo nombre o en hemisferios distintos, cada región lleva su lado", () => {
+    expect(connectionTitle({ source: "l_v1", target: "r_v1", type: "functional" }, NODES)).toBe("V1 (izq.) ↔ V1 (der.)");
+    expect(connectionTitle({ source: "l_v2", target: "r_v1", type: "structural" }, NODES)).toBe("V2 (izq.) ↔ V1 (der.)");
+  });
+
+  it("una región sin hemisferio no lleva lado, y una que no está cargada se nombra con su id", () => {
+    expect(connectionTitle({ source: "talamo", target: "l_v1", type: "structural" }, NODES)).toBe("Tálamo ↔ V1 (izq.)");
+    expect(connectionTitle({ source: "x", target: "l_v1", type: "structural" }, NODES)).toBe("x ↔ V1 (izq.)");
   });
 });

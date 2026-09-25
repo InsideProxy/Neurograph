@@ -22,7 +22,7 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
-import { regionPassingText } from "../logic/displayText";
+import { connectionArrow, regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
@@ -250,7 +250,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
             mostrando solo la abreviatura. Mismo `RegionReadoutText` que ya
             usa el resto del panel. */}
         {source ? <RegionReadoutText node={source} /> : <strong>{selectedConnection.source}</strong>}
-        {" → "}
+        {` ${connectionArrow(selectedConnection.type)} `}
         {target ? <RegionReadoutText node={target} /> : <strong>{selectedConnection.target}</strong>}
         {" · "}
         {CONNECTION_TYPE_LABELS[selectedConnection.type]}

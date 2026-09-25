@@ -107,15 +107,10 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filter-panel__weight-help { margin: 0.4rem 0 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
 .tractography-panel__count { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 
-.detail-panel dl { margin: 0.5rem 0 0; }
-.detail-panel dt { font-weight: 600; margin-top: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
-.detail-panel dd { margin: 0.1rem 0 0; }
 .detail-panel ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
 .detail-panel--empty { color: var(--text-muted); font-style: italic; }
 /* Modo de selección múltiple (30/08/2026): leyenda exportable + listas de
    conectividad inducida y tractos con nombre, ver DetailPanel.tsx. */
-.detail-panel h3 { font-size: 0.82rem; font-weight: 600; color: var(--text-h); margin: 0.9rem 0 0.3rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
-.detail-panel__legend-header { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
 .detail-panel__empty-note { color: var(--text-muted); font-size: 0.82rem; margin: 0.2rem 0 0; }
 .detail-panel__no-citation { color: var(--text-muted); font-size: 0.78rem; font-style: italic; margin-top: 2px; }
 
@@ -684,3 +679,13 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .detail-panel .detail__id-copy:hover { background: var(--hover); color: var(--text-h); }
 /* Si no se pudo copiar, se dice bajo el ID. */
 .detail-panel .detail__id-status { flex-basis: 100%; font-size: 0.7rem; line-height: 1.35; color: var(--text); }
+.detail-panel .detail__main--text { font-size: 1rem; font-weight: 600; letter-spacing: 0; }
+.detail-panel .detail__facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 0.7rem; }
+.detail-panel .detail__facts dt { margin: 0; font-size: inherit; font-weight: 400; color: var(--text-muted); }
+.detail-panel .detail__facts dd { margin: 0; color: var(--text-h); overflow-wrap: anywhere; }
+.detail-panel .detail__list { margin: 0; padding-left: 1.1rem; font-size: 0.7rem; line-height: 1.45; }
+.detail-panel .detail__list > li + li { margin-top: 6px; }
+/* Recuadro de la leyenda: si su texto es más ancho que el panel, se
+   desplaza en horizontal, sin ensanchar el panel entero. */
+.detail-panel .detail__legend { max-width: 100%; overflow-x: auto; }
+.ws-detail .detail-panel--empty { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.72rem; line-height: 1.5; }

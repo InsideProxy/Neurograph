@@ -62,6 +62,7 @@ import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/c
 import { useDrawColors } from "../theme/useDrawColors";
 import { useAppearanceStore } from "../state/appearance";
 import { RegionSummary } from "./NetworkTag";
+import { connectionArrow } from "../logic/displayText";
 import type { GraphConnection } from "../types/domain";
 
 interface Props {
@@ -355,7 +356,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             criterio de cuándo el nombre completo aporta algo nuevo sea
             siempre el mismo (ver logic/regionLabel.ts). */}
         {source ? <RegionReadoutText node={source} /> : <strong>{selectedConnection.source}</strong>}
-        {" → "}
+        {` ${connectionArrow(selectedConnection.type)} `}
         {target ? <RegionReadoutText node={target} /> : <strong>{selectedConnection.target}</strong>}
         {" · "}
         {CONNECTION_TYPE_LABELS[selectedConnection.type]}
