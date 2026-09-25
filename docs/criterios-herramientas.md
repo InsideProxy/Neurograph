@@ -23,6 +23,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   (27, 31, 49, 63)
 - **Cliente MCP:** `.mcp.json` en la raíz, con el Python del entorno virtual, `-m backend.mcp.server` y la contraseña por variable de entorno. (32)
 - **`node_modules` no sirve de una plataforma a otra.** En Windows y en Linux se instala por separado. (18)
+- **Dependencias de npm al día solas:** `npm run dev` y `npm run build`, también desde Tauri, ejecutan antes `frontend/scripts/ensure-deps.mjs`, que hace `npm install` si `node_modules` no tiene lo de `frontend/package-lock.json`; un opcional que falte no cuenta. Con `ignore-scripts=true`, npm se salta ese paso, y el script se ejecuta a mano. (H5)
 
 ## Carga de SQL y codificación
 
