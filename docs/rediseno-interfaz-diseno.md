@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6 lleva los avisos arriba a la derecha, bajo la barra (5.6).
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6 lleva los avisos arriba a la derecha, bajo la barra (5.6). Y el tour guiado, con el botón «?» de la barra, es la D11 (5.10); su verificación en la app real quedó pendiente.
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -33,7 +33,7 @@ Fuera:
 - La disposición de la decisión 74, que se mantiene: una vista grande, dos miniaturas, filtros a la izquierda y detalle a la derecha.
 - La distribución de Comparar especies, Tractografía 3D, Nodos de tractografía y las pestañas de síntesis. Heredan temas, tipografía y controles, pero no se rediseñan en esta ronda.
 - Los colores de los tractos (`logic/tractColors.ts`).
-- Un botón de ayuda general: el lienzo lo dibuja, pero todavía no hay contenido de ayuda.
+- Un botón de ayuda general con contenido propio, como el del lienzo. El «?» de la barra abre el tour guiado (5.10; D11).
 - La línea de fuente del panel de detalle («Rosen y Halgren, 2021») que aparece en el lienzo: `GraphConnection` no trae el estudio.
 - Una paleta segura para daltonismo (ver 12).
 
@@ -242,7 +242,7 @@ De izquierda a derecha:
    - La etiqueta emergente de «Datos reales» dice qué es y da las cifras: «Datos reales · 360 regiones · 64 620 conexiones».
    - La de «Datos de demostración» conserva el aviso de siempre: datos sintéticos, solo ilustrativos, y que la API no respondió o el atlas aún no tiene datos.
    - Mientras carga, un punto neutro con «Cargando…».
-5. **Acciones:** «Importar» (botón secundario con icono; etiqueta emergente «Importar una síntesis de IA») y el engranaje de Ajustes.
+5. **Acciones:** «Importar» (botón secundario con icono; etiqueta emergente «Importar una síntesis de IA»), el botón «?» del tour guiado (5.10; D11) y el engranaje de Ajustes.
 
 **Ancho.** La barra va en una fila. Si no cabe, pliega lo secundario por este orden, y solo lo que haga falta:
 
@@ -253,7 +253,7 @@ De izquierda a derecha:
 
 - Lo plegado conserva su nombre para los lectores de pantalla y su etiqueta emergente, que aparece también con el foco del teclado. El punto de «Datos reales» no se enfoca.
 - La barra mide si cabe y elige el menor paso que basta (`logic/topBarFit.ts`, atributo `data-collapse`), en lugar de puntos de corte fijos. Lo que ocupa depende del contenido: el atlas y la clasificación, datos reales o de demostración, y cuántas síntesis hay y cómo se llaman. Si ni así cabe, pasa a dos filas.
-- Medido en la vista Atlas, con HCP-MMP1.0, Cole-Anticevic y datos reales (D4), siempre en una fila de 56 px:
+- Medido en la vista Atlas, con HCP-MMP1.0, Cole-Anticevic y datos reales (D4), siempre en una fila de 56 px. Fue antes del botón «?» (D11), que ocupa 44 px más con su hueco: con él, cada paso llega algo antes, sin medir en un navegador.
   - 1600, 1440, 1400 y 1366 px: no se pliega nada.
   - 1280 px: solo «Datos reales».
   - 1152 px: también «Importar». Se ven los cuatro nombres de vista.
@@ -519,6 +519,26 @@ Petición del usuario (25/09/2026): un tutorial práctico de unos dos minutos, e
 - **No se exporta ni se guarda.**
 - **Además, por coherencia de palabras:** los botones «Todas» y «Ninguna» de las redes dicen «Mostrar todas las redes» y «Ocultar todas las redes» en su texto emergente, porque «marcar» es ahora otra cosa (5.9).
 
+Cómo quedó (D11):
+
+- **El botón «?»** es un icono de ayuda, entre «Importar» y el engranaje, con el nombre y la etiqueta emergente «Ayuda: tour de 2 minutos», que se ve también con el foco del teclado.
+- **La caja** mide 300 px: al lado de la vista grande cabe en la columna de la derecha. Arriba lleva el paso, «3 de 13», y «Salir», un botón de texto como «Limpiar»; abajo, «▶ Automático» y «← Anterior», con el patrón de «Exportar JPEG», y «Siguiente →», con el del «Deshacer» de los avisos. En el último paso, «Siguiente →» es «Terminar». Lo demás se atenúa con `--bg` al 60 %.
+- **Un clic en lo atenuado no hace nada:** se sale con «Salir» o con Escape, para no perder el tour por un clic de más.
+- **Automático:** 8 s por paso, y en los largos, 250 ms por palabra hasta 12 s: el tour entero dura 1 min 50 s. Se para en el último paso.
+- **Cada paso entra en lo que dejó el anterior** y la app hace su acción al poco (0,8 s), así que volver atrás deshace el paso siguiente y repite el suyo. «Atlas y redes» parte de cero: HCP-MMP1.0 con Cole-Anticevic, todo a la vista, nada seleccionado ni marcado y el connectograma en grande.
+- **Peso mínimo:** se prueban 1, 2 y 5 por cada potencia de diez, y queda el que deja entre 300 y 600 conexiones de Frontoparietal y Lenguaje, lo más cerca de 450. Con los datos de hoy, 1.0e-3: 442 de 2628.
+- **Buscador:** escribe «TE1m» y, a los 3 s, Intro añade TE1m (der.) y el campo se vacía, como en la app. Mientras, se ve el aviso de TE1m (izq.) con «Mostrar la red».
+- **Marcar V1 (izq.):** V1 está en la red Visual, oculta desde el paso 3. El tour la muestra antes con su casilla, para que se vea la pastilla, y después la marca.
+- **Lupa:** es el único paso en que el connectograma señalado admite el ratón, para probarla.
+- **Cambiar de vista:** el paso entra con el 3D en miniatura y lo amplía.
+- **Deshacer y rehacer:** ↶ y ↷ enseñan el historial del propio tour (la marca de V1), y el paso deshace y rehace con las funciones de la app.
+- **Fin:** el montaje ya está devuelto cuando se ve el paso.
+- **Textos:** cada paso tiene lo que explica, que vale con y sin datos reales, y lo que hace la app, solo con datos reales. Antes de empezar el ejemplo se comprueba que los datos cuentan lo que dicen los textos: 360 regiones, más de 64 000 conexiones, IFJp (izq.) en Frontoparietal, TE1m (izq.) en una red oculta y (der.) como la que añade Intro, y V1 (izq.) en Visual. Si algo no cuadra, solo explica y lo dice.
+- **Sin datos reales,** el tour solo lleva a la vista Atlas y despliega Filtros y sus secciones, para señalar.
+- **Al salir,** primero vuelven el atlas y la clasificación, y se espera a sus datos: al llegar, App vacía el historial. Luego la selección, los filtros y las marcas, con sus mismos Set, y el historial tal cual, salvo si los datos cayeron a los de demostración. Por último, las secciones de Filtros, el texto del buscador, la lupa, la vista grande, Filtros plegado y la pestaña. Mientras dura el tour, el historial no registra nada.
+- **Atajos:** mientras dura, Ctrl+Z, Ctrl+Mayús+Z, Ctrl+Y y Ctrl+K no actúan.
+- **Anclas:** `data-tour` en el contexto de datos, cada vista, la selección, el buscador, la sección de redes y cada red (con `data-network`), el peso mínimo y el botón «?». Mientras se señala la fila de una red, ◎ y + se ven.
+
 ## 6. Gráficos, sin cambiar lo que representan
 
 ### 6.1 Connectograma
@@ -688,6 +708,15 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - `labelStart`, `labelAnchor` y `LABEL_CLEARANCE`, en `logic/markerSize.ts`, que pierde `labelOffset` y `LABEL_GAP`;
   - la letra (`labelFont` y `LABEL_FONT`), la clave de la caché (`labelTextureKey`) y `raycastLabelFirst`, en `logic/textSprite.ts`, donde `LabelPill` pasa a llamarse `LabelColors`.
 
+**Tour guiado.** Lo construido añade estas unidades (D11 de `docs/decisiones-diseno.md`, 5.10):
+
+- **Lógica pura,** en `logic/`: `tourSteps.ts` (los 13 pasos, sus textos y sus anclas), `tourPlan.ts` (el ejemplo sobre los datos cargados y el peso mínimo), `tourRestore.ts` (qué cambiar y en qué orden para entrar en un paso y para volver), `tourAutoplay.ts` (el tiempo del automático) y `tourTestData.ts` (datos de prueba parecidos a HCP-MMP1.0, solo para las pruebas).
+- `state/tourRunner.ts`: quien lleva el tour con los stores y lo que App le da, espera a los datos y devuelve el montaje.
+- `state/tourControls.ts` y `components/useTourControl.ts`: la lupa, el texto del buscador y las secciones de Filtros, que son estado de su componente, ofrecidos al tour mientras está montado.
+- `components/GuidedTour.tsx` y `components/tourDriver.ts`: el componente y la caja de driver.js.
+- En `state/history.ts`: `pauseRecording`, `loadHistory` y `resumeRecording`, y se exportan `applySnapshot` y `currentSnapshot`.
+- Dependencia nueva: driver.js 1.8.0 (MIT, sin dependencias). La compilación pasa de 1357 a 1407 kB de JS (de 380 a 395 kB con gzip) y de 48 a 54 kB de CSS.
+
 ### Archivos que cambian
 
 - **Estilos:** `index.css` (tokens por `data-theme` y `@font-face`) y `App.css` (colores fijos pasados a tokens y estilos nuevos).
@@ -774,9 +803,15 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 - **Ampliadas:** `themeCss.test.ts` (los tokens de las etiquetas del 3D y su contraste con cualquier cosa detrás), `textSprite.test.ts` (la clave, la caché y su liberación, la letra y `raycastLabelFirst`, con el raycaster de three.js) y `markerSize.test.ts` (dónde empieza la etiqueta y su ancla, también con el raycaster de three.js; sustituyen a las dos pruebas de la separación de 0,18).
 - **Cambiadas:** dos pruebas de `Brain3D.marksWiring.test.ts` fijaban líneas de la etiqueta que cambian: ahora todas llevan pastilla, y ninguna, la curva de tono. Y se quita la prueba de `cortexOcclusion.test.ts` que ataba el inicio de la oclusión a la separación de la etiqueta, que ya no existe.
 
+**Tour guiado.** 115 pruebas más, de 600 a 715 (D11):
+
+- **Nuevas:** `tourSteps.test.ts` (los pasos, sus anclas, los cinco verbos, los textos sin datos reales, los atajos que bloquea), `tourPlan.test.ts` (el ejemplo, el peso mínimo y que cada paso empieza donde acabó el anterior; los datos que no cuadran), `tourRestore.test.ts` (el orden y la vuelta exacta), `tourAutoplay.test.ts`, `state/tourControls.test.ts`, `state/tourRunner.test.ts` (el recorrido con una App de mentira que se porta como la de verdad: salir desde cada paso deja todo igual, con los mismos Set y el mismo historial, también con otro atlas y otra clasificación; sin datos reales no cambia nada; el automático) y `tourWiring.test.ts` (App, las anclas, los estilos y lo que se da por hecho de driver.js).
+- **Ampliadas:** `history.test.ts` (la pausa), `TopBar.test.tsx` (el botón «?»), `FilterPanel.test.tsx` (los títulos de «Todas» y «Ninguna» y las anclas) y `RegionSearch.test.tsx` (su ancla).
+- Cada mutación probada de `state/tourRunner.ts` (sin la pausa, sin esperar a los datos, sin el historial, sin repetir el paso al volver, sin pausar el automático al retroceder, sin el respaldo si algo falla y sin volver a registrar) hace fallar alguna prueba.
+
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5, la fase 2 la D7 y el resto de la fase 4 la D10), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, se hizo en la rama `rediseno-avisos` y se fusionó después de la D10.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5, la fase 2 la D7 y el resto de la fase 4 la D10), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, las marcas de regiones, la D9, y el tour guiado, la D11, en la rama `rediseno-tour`. La D6, los avisos arriba a la derecha, se hizo en la rama `rediseno-avisos` y se fusionó después de la D10.
 
 1. **Base de temas.** Hecha (D3).
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
@@ -813,6 +848,10 @@ Por último, el resto de la fase 4 (D10), en la rama `rediseno-fase4`, que sali�
 - **«Color real» en el código del desarrollador principal** (D7): la línea de estado del 3D dice «Cada región con el color real de su red» (`Brain3D.tsx`), y varios comentarios suyos hablan del «color real». Con «Suaves» no es literal. No se ha cambiado, porque es su código: queda anotado para él.
 - **Verificación de la fase 2 en la app real, pendiente** (D7): la del plan se paró porque sus navegadores sobrecargaban la máquina del usuario. Queda por pasar una versión ligera con la máquina libre: un solo navegador, con `nice 19`, y como versión anterior la de `4977d05`, para comparar solo la paleta. Con ella, medir también el panel de Ajustes (5.2).
 - **Verificación de la fase 4 en la app real, pendiente** (D10): no se ha pasado. Por la regla del usuario, solo se pasa con la máquina libre o con su permiso: el 25/09/2026 se quedó sin memoria dos veces por los procesos de prueba y los navegadores. Sin comprobar en un navegador: las etiquetas del connectograma con la fuente real en todos los atlas, las filas y el alto de la leyenda, el halo, los arcos, el hueco entre la etiqueta del 3D y su marcador visto de lado, de frente y desde detrás, el clic en las etiquetas del 3D y los JPEG.
+- **Verificación del tour guiado en la app real, pendiente** (D11): no se ha pasado en un navegador. Sin comprobar: la caja en los cuatro temas y a varios tamaños, dónde la pone driver.js en cada paso, la atenuación en Claro, el foco y el lector de pantalla, la animación y el movimiento reducido, la lupa en el paso 10 y la vuelta desde otro atlas.
+- **Lo que App no guarda** (D11): si el tour se abre desde otra pestaña, pasa a Atlas y al salir vuelve, pero la pestaña se monta de nuevo, como al cambiar a mano (la cámara y los tractos de Tractografía 3D, por ejemplo). Si tiene que cambiar de atlas, la cámara y los controles del 3D vuelven a los de partida, como con cualquier cambio de atlas.
+- **driver.js 1.8.0** (D11): el tour da por hecho que la caja es un diálogo con nombre y descripción y que driver.js quita `aria-haspopup`, `aria-expanded` y `aria-controls` de lo que deja de señalar. Una prueba lee su código y falla si cambia.
+- **Los textos del tour cuentan datos** (D11): si cambian los datos de HCP-MMP1.0 y dejan de cuadrar, el tour solo explica, y la consola dice por qué.
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan: con los datos de hoy, solo los tiene HCP-MMP1.0. El orden es el de las filas de `/regions`, que el backend no fija de forma explícita: si cambiara, los arcos podrían aparecer o desaparecer (D10).
 - **Ancho estimado de las etiquetas del connectograma** (D10): el margen del anillo sale de un ancho estimado, no medido en la página. En los atlas de los datos, la etiqueta más ancha de verdad queda de un 5 a un 10 % por debajo de la estimada. En el JPEG, que usa la fuente del sistema, caben con Noto Sans, Ubuntu o Liberation; con DejaVu Sans, más ancha, una etiqueta seleccionada muy larga puede perder hasta 3 px junto a un eje.
 - **El círculo del connectograma depende de las etiquetas y de la leyenda** (D10): el del Subcórtex mide un 36 % menos que antes, por sus etiquetas de 21 letras; el radio puede cambiar al ocultar redes si el número de nodos a la vista cruza 40 o 150, porque cambia la letra; y el lado del JPEG depende de las filas de la leyenda (a 1400 × 900, de 1998 a 1845 px).

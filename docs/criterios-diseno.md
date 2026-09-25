@@ -12,7 +12,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
   Por defecto, el cerebro 3D va en grande. (D1)
 - **Miniaturas:** un clic en ellas, o su botón «Ampliar», las pasa a la grande. La capa que recibe ese clic evita seleccionar nada por accidente y queda fuera del orden del tabulador: con el teclado se usa «Ampliar». (D1, D4)
 - **Cambiar de vista no desmonta nada.** Las tres vistas se montan siempre y solo cambia su zona de la rejilla, así que se conservan la cámara, el modo de corteza y la especie de comparación. En miniatura solo se ve el dibujo. (D1)
-- **Barra superior, en una fila:** el logotipo, las pestañas de vista con icono, el contexto y el estado de los datos, «Importar» y el engranaje de Ajustes. (D1, D4)
+- **Barra superior, en una fila:** el logotipo, las pestañas de vista con icono, el contexto y el estado de los datos, «Importar», el botón «?» del tour guiado y el engranaje de Ajustes. (D1, D4, D11)
 - **Si la barra no cabe**, pliega lo secundario por este orden, y solo lo que haga falta: «Datos reales» se queda en su punto, «Importar» y las síntesis inactivas en su icono y, al final, las vistas inactivas. Lo plegado conserva su nombre en la etiqueta emergente, también con el teclado. (D4)
 - **Contexto de datos:** «Atlas» y «Redes» son listas desplegables que se manejan con el teclado, con el nombre corto en el botón y la etiqueta completa en la lista. «Redes» solo aparece si el atlas tiene más de una clasificación. (73, D4)
 - **Estado de los datos:** un punto de color con «Datos reales» o «Datos de demostración», con las cifras o el aviso en la etiqueta emergente. «Datos de demostración» nunca se pliega. (D4)
@@ -64,9 +64,9 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
   - la selección, en dos líneas, con «Limpiar», ↶ y ↷;
   - la línea de las marcas, solo si hay alguna;
   - las secciones plegables «Redes», «Tipo de conectividad» y «Peso mínimo»;
-  - en «Redes», una línea por red, con el nombre corto y el número de regiones (el completo, en la etiqueta emergente), y «Todas» y «Ninguna», que solo afectan a las redes.
+  - en «Redes», una línea por red, con el nombre corto y el número de regiones (el completo, en la etiqueta emergente), y «Todas» y «Ninguna», que solo afectan a las redes y lo dicen en su etiqueta emergente: «Mostrar todas las redes» y «Ocultar todas las redes».
 
-  (19, 61, D1, D4, D9)
+  (19, 61, D1, D4, D9, D11)
 - **Recuentos:** junto a cada tipo de conectividad, cuántas conexiones de ese tipo pasan los demás filtros; bajo el peso mínimo, «N de M conexiones pasan los filtros», porque las vistas pueden dibujar menos. La ayuda va bajo «¿Cómo funcionan los filtros?». (D1, D4)
 - **Buscador de regiones,** encima de la selección. Ctrl+K (⌘K en macOS) lleva a él, y despliega Filtros si está plegado. Busca por abreviatura y por nombre, sin distinguir mayúsculas ni tildes, e Intro añade la sugerencia activa a la selección. (D4)
 - **El buscador solo sugiere regiones de las redes visibles.** Si lo buscado está en una red oculta, lo dice y ofrece mostrarla: ninguna coincidencia se queda escondida sin decirlo. (D4)
@@ -79,7 +79,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 ## Deshacer
 
 - **Deshacer y rehacer** cubren la selección, los filtros y las marcas. Los botones ↶ y ↷ van en la fila de selección de Filtros y describen el paso en su etiqueta emergente. Los atajos son Ctrl+Z, Ctrl+Mayús+Z y Ctrl+Y (⌘ en macOS), y dentro de un campo de texto son del campo. (D4, D9)
-- **Fuera del historial:** pasar el ratón, la vista ampliada, la lupa, el tema y el plegado de paneles. Un arrastre del deslizador es un solo paso. Cambiar de atlas o de clasificación, o caer a los datos de demostración, vacía el historial. (D4)
+- **Fuera del historial:** pasar el ratón, la vista ampliada, la lupa, el tema, el plegado de paneles y las acciones del tour guiado. Un arrastre del deslizador es un solo paso. Cambiar de atlas o de clasificación, o caer a los datos de demostración, vacía el historial. (D4, D11)
 - **Aviso con «Deshacer»** cuando un solo paso quita dos o más regiones de la selección o dos o más marcas. No roba el foco, y se va solo salvo mientras tiene el ratón o el foco encima. (D4, D9)
 
 ## Marcas
@@ -89,6 +89,17 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Cómo se ven:** con el color de marca, reservado para ellas. La etiqueta va sobre una pastilla con texto de contraste, que la sigue también girada, y el nodo lleva un anillo exterior separado por un hueco del color del fondo, para distinguirse aunque la red sea azul. (D9, D10)
 - **No se guardan ni se exportan.** Se pierden al recargar y se vacían al cambiar de atlas, sin que eso sea un paso del historial; con otra clasificación se conservan. (D9)
 - **Los dibujos no seleccionan texto al arrastrar.** (D9)
+
+## Tour guiado
+
+- **Botón «?»,** en la barra, junto al engranaje: es lo único que abre el tour. Lleva su nombre en la etiqueta emergente, también con el teclado, y al salir del tour el foco vuelve a él. (D11)
+- **La caja** usa los tokens del tema, la tipografía, el anillo de foco y los patrones de botón de la app, en los cuatro temas. Lo que no señala se atenúa con el fondo del tema. (D11)
+- **Controles:** «← Anterior», «Siguiente →» («Terminar» en el último paso), «Salir», Escape y las flechas; «▶ Automático», unos 8 s por paso (más en los largos), que se pausa con cualquier otro control y no sale solo; y el paso, «3 de 13». Un clic en lo atenuado no hace nada. (D11)
+- **Accesibilidad:** la caja es un diálogo con nombre y descripción que recibe el foco; una región viva anuncia cada paso, y con movimiento reducido no hay animaciones. Mientras dura, los atajos de la app no actúan. (D11)
+- **La app hace cada paso** con sus propios stores y manejadores, y retroceder deshace el paso siguiente. Sin datos reales, o si los datos no cuentan lo que dicen los textos, solo explica y lo dice. (D11)
+- **El montaje queda intacto:** al salir, desde cualquier paso, vuelven la pestaña, el atlas y la clasificación (con sus datos ya cargados), la selección, los filtros, las marcas, la vista grande, la lupa, el buscador, las secciones de Filtros y el historial. (D11)
+- **Los cinco verbos, cada uno en su paso:** mostrar u ocultar una red, con su casilla; ◎ Resaltar, que sustituye la selección; + Añadir, que la suma; seleccionar, con un clic; y marcar, que solo señala. (D11)
+- **Anclas:** el tour señala elementos con `data-tour`, nunca uno con `aria-haspopup`, `aria-expanded` o `aria-controls`, porque driver.js se los quita al dejar de señalarlo. (D11)
 
 ## Avisos
 
