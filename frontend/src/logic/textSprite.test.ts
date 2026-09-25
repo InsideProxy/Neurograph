@@ -1,22 +1,22 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getLabelTexture, getMarkRingTexture, labelTextureKey, markRingTextureKey } from "./textSprite";
 
+// Estilos de etiqueta: la de siempre en Grafito (texto del tema sobre su
+// fondo translúcido) y la de una región marcada (docs/rediseno-interfaz-diseno.md, 5.9 y 6.3).
+const GRAFITO = { background: "rgba(22, 25, 30, 0.84)", color: "#c9ced6" };
 const PILL = { background: "#2563eb", color: "#ffffff" };
 
-// Las texturas se guardan en caché (logic/textSprite.ts). La etiqueta de
-// una región marcada (spec 5.9) lleva la pastilla del color de marca del
-// tema: su clave lleva esos colores, así que no se confunde con la etiqueta
-// de siempre ni con la de otro tema.
+// Las texturas se guardan en caché (logic/textSprite.ts), por su texto, sus
+// dos colores y la versión de fuentes (fase 4 del rediseño, spec 6.3).
 describe("claves de la caché de texturas", () => {
-  it("la etiqueta de siempre se guarda por su texto, como hasta ahora", () => {
-    expect(labelTextureKey("V1", null)).toBe("V1");
-  });
-
-  it("la de una región marcada lleva los colores de la pastilla", () => {
-    expect(labelTextureKey("V1", PILL)).not.toBe(labelTextureKey("V1", null));
-    expect(labelTextureKey("V1", PILL)).not.toBe(labelTextureKey("V1", { ...PILL, background: "#1d4ed8" }));
-    expect(labelTextureKey("V1", PILL)).not.toBe(labelTextureKey("V1", { ...PILL, color: "#000000" }));
-    expect(labelTextureKey("V1", PILL)).toBe(labelTextureKey("V1", { ...PILL }));
+  it("cambian con el texto, con cada color y con la versión de fuentes", () => {
+    const key = labelTextureKey("V1", GRAFITO, 0);
+    expect(labelTextureKey("V1", { ...GRAFITO }, 0)).toBe(key);
+    expect(labelTextureKey("V2", GRAFITO, 0)).not.toBe(key);
+    expect(labelTextureKey("V1", { ...GRAFITO, background: "rgba(255, 255, 255, 0.88)" }, 0)).not.toBe(key);
+    expect(labelTextureKey("V1", { ...GRAFITO, color: "#3a3d43" }, 0)).not.toBe(key);
+    expect(labelTextureKey("V1", GRAFITO, 1)).not.toBe(key);
+    expect(labelTextureKey("V1", PILL, 0)).not.toBe(key);
   });
 
   it("el anillo de las marcas, por el color del hueco y el del anillo", () => {
@@ -36,13 +36,12 @@ describe("caché de texturas", () => {
     vi.unstubAllGlobals();
   });
 
-  it("la etiqueta de una región marcada es otra textura por cada par de colores, y la misma con los mismos", () => {
-    const marked = getLabelTexture("V1", PILL);
-    expect(getLabelTexture("V1", { ...PILL })).toBe(marked);
-    expect(getLabelTexture("V1", { ...PILL, background: "#1d4ed8" })).not.toBe(marked);
-    expect(getLabelTexture("V1", { ...PILL, color: "#000000" })).not.toBe(marked);
-    expect(getLabelTexture("V1", null)).not.toBe(marked);
-    expect(getLabelTexture("V1")).toBe(getLabelTexture("V1", null));
+  it("la misma etiqueta es la misma textura; con otro tema, otra", () => {
+    const label = getLabelTexture("V1", GRAFITO, 0);
+    expect(getLabelTexture("V1", { ...GRAFITO }, 0)).toBe(label);
+    expect(getLabelTexture("V1", { ...GRAFITO, color: "#3a3d43" }, 0)).not.toBe(label);
+    expect(getLabelTexture("V1", PILL, 0)).not.toBe(label);
+    expect(getLabelTexture("V1", { ...PILL, background: "#1d4ed8" }, 0)).not.toBe(getLabelTexture("V1", PILL, 0));
   });
 
   it("el anillo es otra textura con otro color de hueco o de anillo, y la misma con los mismos", () => {
@@ -50,5 +49,16 @@ describe("caché de texturas", () => {
     expect(getMarkRingTexture("#16191e", "#2563eb")).toBe(ring);
     expect(getMarkRingTexture("#ffffff", "#2563eb")).not.toBe(ring);
     expect(getMarkRingTexture("#16191e", "#1d4ed8")).not.toBe(ring);
+  });
+
+  // Va la última: sube la versión de fuentes de la caché.
+  it("cuando sube la versión de fuentes, las etiquetas se vuelven a dibujar y las de antes se liberan", () => {
+    const before = getLabelTexture("V1", GRAFITO, 0);
+    const disposed = vi.fn();
+    before.texture.addEventListener("dispose", disposed);
+    const after = getLabelTexture("V1", GRAFITO, 1);
+    expect(after).not.toBe(before);
+    expect(disposed).toHaveBeenCalledTimes(1);
+    expect(getLabelTexture("V1", GRAFITO, 1)).toBe(after);
   });
 });

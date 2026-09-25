@@ -16,6 +16,12 @@
 // una región marcada va sobre una pastilla del color de marca, y su marcador
 // lleva un anillo, también en una textura. Las dos se guardan por sus
 // colores, además de por el texto.
+//
+// Fase 4 del rediseño (spec 6.3): todas las etiquetas van sobre una
+// pastilla, con la tipografía de la interfaz: las de siempre, con el texto
+// del tema sobre su fondo translúcido, y las de una región marcada, con los
+// colores de marca. La caché las guarda por su texto, sus dos colores y la
+// versión de fuentes (state/labelFont.ts).
 import * as THREE from "three";
 import { markRing3d, markerSize } from "./markerSize";
 
@@ -34,9 +40,42 @@ export interface LabelTexture {
   aspect: number;
 }
 
-const textureCache = new Map<string, LabelTexture>();
+// Tipografía de las etiquetas (spec 6.3 y 7; fase 4 del rediseño): la de la
+// interfaz, Atkinson Hyperlegible Next. El lienzo no espera a que llegue:
+// dibuja con la que haya. state/labelFont.ts la pide y, cuando llega, sube
+// la versión de fuentes, así que las etiquetas se vuelven a dibujar con ella.
+export const LABEL_FONT_SIZE = 44;
+export const LABEL_FONT = `600 ${LABEL_FONT_SIZE}px 'Atkinson Hyperlegible Next', system-ui, sans-serif`;
 
-function buildTexture(text: string): LabelTexture {
+// Cómo se ve una etiqueta: su texto sobre una pastilla. Las de siempre
+// llevan el texto del tema sobre su fondo translúcido (tokens label3dText y
+// label3dBackground de theme/themes.ts); las de una región marcada, el texto
+// de marca sobre el color de marca (5.9).
+export interface LabelStyle {
+  background: string;
+  color: string;
+}
+
+// Clave de la caché: el texto, los dos colores de la etiqueta, que salen del
+// tema (de la paleta de exportación mientras se captura el JPEG, o de las
+// marcas), y la versión de fuentes.
+export function labelTextureKey(text: string, style: LabelStyle, fontVersion: number): string {
+  return [text, style.background, style.color, String(fontVersion)].join("\u0000");
+}
+
+const textureCache = new Map<string, LabelTexture>();
+// Versión de fuentes de las texturas de la caché. Cuando sube, las de antes ya
+// no sirven: se liberan.
+let cachedFontVersion = 0;
+
+// La pastilla ocupa todo el alto de la etiqueta (84 px para un texto de 44,
+// el tamaño de siempre), así que el texto sale del mismo tamaño que antes.
+// Sus extremos son semicírculos: el margen a los lados deja el texto dentro.
+const PILL_PADDING_X = 34;
+const PILL_PADDING_Y = 20;
+const PILL_INSET = 6;
+
+function buildTexture(text: string, style: LabelStyle): LabelTexture {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -44,71 +83,20 @@ function buildTexture(text: string): LabelTexture {
     // es un resultado inofensivo si pasa, no un error visible en cascada.
     return { texture: new THREE.CanvasTexture(canvas), aspect: 1 };
   }
-  const fontSize = 44;
-  const font = `bold ${fontSize}px system-ui, sans-serif`;
   // Medir el texto real ANTES de fijar el tamaño del canvas -- es lo que
   // permite que el canvas se dimensione para el texto en vez de al revés.
-  ctx.font = font;
+  ctx.font = LABEL_FONT;
   const textWidth = ctx.measureText(text).width;
-  const paddingX = 18; // hueco para el contorno blanco (lineWidth 9) a cada lado
-  const paddingY = 20;
-  canvas.width = Math.max(1, Math.ceil(textWidth + paddingX * 2));
-  canvas.height = Math.ceil(fontSize + paddingY * 2);
+  canvas.width = Math.max(1, Math.ceil(textWidth + PILL_PADDING_X * 2));
+  canvas.height = Math.ceil(LABEL_FONT_SIZE + PILL_PADDING_Y * 2);
   // Redimensionar canvas.width/height reinicia el estado del contexto 2D
   // en cualquier navegador (se pierde el `font` fijado arriba) -- hay que
   // volver a fijar todo después de este punto, no solo una vez.
-  ctx.font = font;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  // Contorno blanco grueso: la abreviatura tiene que leerse igual sobre
-  // cualquier color de red (theme/networks.ts trae más de 25 colores
-  // distintos, algunos claros) y sobre el fondo oscuro del propio lienzo.
-  ctx.lineWidth = 9;
-  ctx.strokeStyle = "#ffffff";
-  ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
-  ctx.fillStyle = "#111111";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return { texture, aspect: canvas.width / canvas.height };
-}
-
-// Etiqueta de una región marcada (docs/rediseno-interfaz-diseno.md, 5.9): el
-// texto de contraste sobre una pastilla del color de marca del tema, como en
-// el connectograma y los hemisferios.
-export interface LabelPill {
-  background: string;
-  color: string;
-}
-
-// Clave de la caché: la etiqueta de siempre, por su texto, como hasta ahora;
-// la de una región marcada lleva además los colores de su pastilla, que
-// cambian con el tema.
-export function labelTextureKey(text: string, pill: LabelPill | null): string {
-  return pill ? `${text}\u0000${pill.background}\u0000${pill.color}` : text;
-}
-
-// La pastilla ocupa todo el alto de la etiqueta de siempre (el mismo lienzo
-// de 84 px para un texto de 44), así que el texto sale del mismo tamaño. Sus
-// extremos son semicírculos: el margen a los lados deja el texto dentro.
-const PILL_FONT_SIZE = 44;
-const PILL_PADDING_X = 34;
-const PILL_PADDING_Y = 20;
-const PILL_INSET = 6;
-
-function buildPillTexture(text: string, pill: LabelPill): LabelTexture {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return { texture: new THREE.CanvasTexture(canvas), aspect: 1 };
-  const font = `bold ${PILL_FONT_SIZE}px system-ui, sans-serif`;
-  ctx.font = font;
-  const textWidth = ctx.measureText(text).width;
-  canvas.width = Math.max(1, Math.ceil(textWidth + PILL_PADDING_X * 2));
-  canvas.height = Math.ceil(PILL_FONT_SIZE + PILL_PADDING_Y * 2);
-  // Al redimensionar el lienzo se pierde el estado del contexto: se vuelve a
-  // fijar la fuente.
-  ctx.font = font;
+  ctx.font = LABEL_FONT;
+  // Hasta la fase 4, la etiqueta de siempre era texto casi negro con un
+  // contorno blanco grueso, igual en todos los temas; ahora es el texto del
+  // tema sobre la pastilla translúcida, que lo separa de lo que haya detrás
+  // (theme/themeCss.test.ts comprueba que se lee con cualquier cosa detrás).
   const width = canvas.width - PILL_INSET * 2;
   const height = canvas.height - PILL_INSET * 2;
   const radius = height / 2;
@@ -119,11 +107,11 @@ function buildPillTexture(text: string, pill: LabelPill): LabelTexture {
   ctx.arcTo(PILL_INSET, PILL_INSET + height, PILL_INSET, PILL_INSET, radius);
   ctx.arcTo(PILL_INSET, PILL_INSET, PILL_INSET + width, PILL_INSET, radius);
   ctx.closePath();
-  ctx.fillStyle = pill.background;
+  ctx.fillStyle = style.background;
   ctx.fill();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = pill.color;
+  ctx.fillStyle = style.color;
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
   const texture = new THREE.CanvasTexture(canvas);
   // Los colores del lienzo son sRGB: así salen como en los dibujos SVG.
@@ -132,11 +120,16 @@ function buildPillTexture(text: string, pill: LabelPill): LabelTexture {
   return { texture, aspect: canvas.width / canvas.height };
 }
 
-export function getLabelTexture(text: string, pill: LabelPill | null = null): LabelTexture {
-  const key = labelTextureKey(text, pill);
+export function getLabelTexture(text: string, style: LabelStyle, fontVersion: number): LabelTexture {
+  if (fontVersion !== cachedFontVersion) {
+    for (const { texture } of textureCache.values()) texture.dispose();
+    textureCache.clear();
+    cachedFontVersion = fontVersion;
+  }
+  const key = labelTextureKey(text, style, fontVersion);
   const cached = textureCache.get(key);
   if (cached) return cached;
-  const built = pill ? buildPillTexture(text, pill) : buildTexture(text);
+  const built = buildTexture(text, style);
   textureCache.set(key, built);
   return built;
 }

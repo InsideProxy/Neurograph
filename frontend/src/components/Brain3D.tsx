@@ -49,10 +49,11 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportPixelsAsJpeg } from "../logic/exportImage";
 import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
-import { MARK_RING_SPRITE_SCALE, getLabelTexture, getMarkRingTexture, type LabelPill } from "../logic/textSprite";
+import { MARK_RING_SPRITE_SCALE, getLabelTexture, getMarkRingTexture, type LabelStyle } from "../logic/textSprite";
 import { markRing3d, markerSize } from "../logic/markerSize";
 import { isDragRelease, isMarkGesture, type ClickKeys } from "../logic/marks";
 import { useMarksStore } from "../state/marks";
+import { requestLabelFont, useLabelFontStore } from "../state/labelFont";
 import {
   OCCLUSION_PASS_PRIORITY,
   createCortexOcclusion,
@@ -476,22 +477,35 @@ function NodeLabel({
   node,
   offset,
   occlusion,
+  colors,
   overlay = false,
   pill = null,
 }: {
   node: GraphNode;
   offset: number;
   occlusion: CortexOcclusion;
+  // Etiquetas del 3D (docs/rediseno-interfaz-diseno.md, 6.3; fase 4 del
+  // rediseño): el texto del tema sobre su fondo translúcido. Mientras se
+  // captura el JPEG, los de la paleta de exportación, como lo demás.
+  colors: DrawColors;
   overlay?: boolean;
   // Región marcada (docs/rediseno-interfaz-diseno.md, 5.9): la etiqueta va
   // sobre una pastilla del color de marca (logic/textSprite.ts).
-  pill?: LabelPill | null;
+  pill?: LabelStyle | null;
 }) {
+  // La versión de fuentes (state/labelFont.ts): cuando llega la fuente, las
+  // etiquetas se vuelven a dibujar con ella.
+  const fontVersion = useLabelFontStore((state) => state.version);
+  const background = pill?.background ?? colors.label3dBackground;
+  const color = pill?.color ?? colors.label3dText;
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
   // abreviatura; getLabelTexture("") solo se pide una vez por caché.
-  const label = useMemo(() => getLabelTexture(node.abbreviation ?? "", pill), [node.abbreviation, pill]);
+  const label = useMemo(
+    () => getLabelTexture(node.abbreviation ?? "", { background, color }, fontVersion),
+    [node.abbreviation, background, color, fontVersion],
+  );
   if (!node.abbreviation) return null;
   // Separación aumentada (30/08/2026, ronda de ajustes tras revisión
   // visual: "las abreviaturas... se confunden con la esfera") de 0.15 a
@@ -519,15 +533,16 @@ function NodeLabel({
   const labelWidth = labelHeight * label.aspect;
   return (
     <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
-      {/* toneMapped: la pastilla de una región marcada sale con el color de
-          marca tal cual, sin la curva de tono del lienzo, como el anillo. */}
+      {/* Sin la curva de tono del lienzo (toneMapped): la etiqueta sale con
+          los colores del tema, o con los de marca, tal cual, como en los
+          dibujos SVG y como el anillo de las marcas (fase 4; spec 6.3). */}
       <spriteMaterial
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
-        toneMapped={pill === null}
+        toneMapped={false}
         {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
       />
     </sprite>
@@ -546,7 +561,7 @@ function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
 // 5.9): la pastilla de su etiqueta y la textura de su anillo, con los colores
 // de marca del tema.
 interface MarkLook {
-  pill: LabelPill;
+  pill: LabelStyle;
   ringTexture: THREE.Texture;
 }
 
@@ -697,7 +712,14 @@ function NodeMesh({
           />
         </sprite>
       )}
-      <NodeLabel node={node} offset={size.labelOffset} occlusion={occlusion} overlay={overlay} pill={mark?.pill ?? null} />
+      <NodeLabel
+        node={node}
+        offset={size.labelOffset}
+        occlusion={occlusion}
+        colors={colors}
+        overlay={overlay}
+        pill={mark?.pill ?? null}
+      />
     </>
   );
 }
@@ -1110,6 +1132,13 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // `occlusion` guarda el parche y los uniforms que comparten los materiales
   // de la capa de foco, uno por lienzo; CortexOcclusionPass la enciende.
   const [occlusion] = useState(createCortexOcclusion);
+
+  // Tipografía de las etiquetas (fase 4 del rediseño; spec 6.3): se pide la
+  // fuente al montar y, cuando llega, las etiquetas se vuelven a dibujar con
+  // ella (state/labelFont.ts).
+  useEffect(() => {
+    void requestLabelFont(document.fonts);
+  }, []);
 
   // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): las regiones
   // marcadas que pasan los filtros llevan su marcador, con el anillo, y su
