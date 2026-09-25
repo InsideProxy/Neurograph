@@ -21,7 +21,7 @@ Uso (desde la raíz del repositorio):
 
     python scripts/register_rsn_networks.py ^
         --hcp-dir "E:\\NeuroData\\derived\\extracted\\hcp_s1200_groupavg\\HCP_S1200_Atlas_Z4_pkXDZ" ^
-        --out data\\sql\\salida_rsn_networks.sql
+        --out init\\salida_rsn_networks.sql
 """
 from __future__ import annotations
 

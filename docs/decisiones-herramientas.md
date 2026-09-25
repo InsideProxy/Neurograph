@@ -44,10 +44,23 @@ Del zip no quedó ningún checksum en el repositorio. Para confirmar que son los
 
 **Verificación.** Los criterios se extrajeron del log completo, y los valores que cambiaron a lo largo de él se contrastaron con el código. `check_docs.py` da OK y detecta cada tipo de error en una prueba con errores inyectados. Las tres ramas del rediseño se fusionan sin conflictos (`git merge-tree`).
 
-## H3. Los `salida_*.sql` pasan de la raíz a `data/sql/` -- 25/09/2026
+## H3. Los `salida_*.sql` pasan de la raíz a `init/` -- 25/09/2026
 
-**Qué.** Los 15 `salida_*.sql` se mueven con `git mv` a `data/sql/`, con el mismo nombre. Se corrigen las rutas de `scripts/rebuild_db_from_sql.sh` (variable `SQL`, junto a `SEED`), los ejemplos de uso de `apply_sql.ps1`, `register_rsn_networks.py` y los dos `backfill_*.py`, el README de migraciones, los criterios y `scripts/CLAUDE.md`. La convención de la decisión 69 cambia solo en el lugar: siguen en git si pesan menos de 100 MB.
+**Qué.** Los 15 `salida_*.sql` se mueven a `init/`, la carga inicial de la base, con el mismo nombre. Se corrigen las rutas de `scripts/rebuild_db_from_sql.sh` (variable `INIT`, junto a `SEED`), los ejemplos de uso de `apply_sql.ps1`, `register_rsn_networks.py` y los dos `backfill_*.py`, el README de migraciones, los criterios y `scripts/CLAUDE.md`. La convención de la decisión 69 cambia solo en el lugar: siguen en git si pesan menos de 100 MB.
 
 **Por qué.** La raíz tenía 15 archivos de datos generados mezclados con la configuración del proyecto.
 
-**Verificación.** `scripts/rebuild_db_from_sql.sh` completo contra un Postgres desechable con las rutas nuevas, y `check_docs.py`. Ninguna de las tres ramas del rediseño toca ni cita estos archivos.
+**Verificación.** `scripts/rebuild_db_from_sql.sh` completo contra un Postgres desechable con las rutas nuevas, y `check_docs.py`. Ninguna de las tres ramas del rediseño toca ni cita estos archivos. `init/` no está ignorada por git; `data/`, la primera ubicación probada, sí lo está, porque `.gitignore` la reserva para datos científicos locales.
+
+## H4. Tractografía ORG: paso de instalación aparte, desde Zenodo -- 25/09/2026
+
+**Qué.** `scripts/install_tractography.sh` (solo Linux) instala la tractografía después de la carga inicial:
+- descarga de Zenodo los dos originales a la biblioteca y comprueba su md5;
+- genera el SQL en `derived/tractograms/`, con `vtk` en un entorno temporal;
+- comprueba los recuentos y lo aplica con `docker cp` + `psql -f`.
+
+Cada paso ya hecho se salta. El SQL no va a `init/` ni a git.
+
+**Por qué.** La reconstrucción de la H1 dejaba vacía la tractografía. Su SQL pesa unos 160 MB (el de nodos y aristas, 117 MB, supera el límite de 100 MB de GitHub). Subirlo habría multiplicado por siete el tamaño del repositorio. En el diseño original, el SQL de tractografía también vivía en la biblioteca y no en el repositorio.
+
+**Verificación.** Los originales descargados tienen los md5 publicados. Los generadores dan los recuentos de las decisiones 49 y 66: 41 tractos, 523 696 streamlines reales y 12 300 mostradas; 176 nodos, 5176 aristas y 30 153 bucles descartados. El script completo se probó contra un Postgres desechable tras la carga inicial; una segunda ejecución no hace nada. El sha256 del zip (en la fila `Dataset`) es `8f880d53103b2847b6610d15f94bb47cb14afe178a641dbaa5349d7d7d788a43`.

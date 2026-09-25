@@ -74,5 +74,5 @@ Se cargan siempre, con este archivo:
 ## Entorno
 
 - `docker compose up -d`: Postgres con pgvector (`neurograph-postgres`) y la API (`neurograph-api`, `http://127.0.0.1:8420`). El frontend se arranca con `npm run dev` en `frontend/` (`http://localhost:5173`).
-- Base de datos vacía: cargar un volcado o ejecutar `scripts/rebuild_db_from_sql.sh`.
+- Base de datos vacía: cargar un volcado o ejecutar `scripts/rebuild_db_from_sql.sh`. La tractografía no está en esa carga inicial: la instala `scripts/install_tractography.sh` (solo Linux).
 - Entorno virtual de Python en la raíz: `pip install -e ".[dev]"`. Los comandos de verificación de cada parte están en su CLAUDE.md.

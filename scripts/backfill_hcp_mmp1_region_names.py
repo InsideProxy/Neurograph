@@ -30,7 +30,7 @@ forma única `hcp-mmp1` + código + hemisferio, así que un `UPDATE ...
 WHERE id = ...` no puede afectar a ninguna región de otro atlas).
 
 Uso:
-    python scripts/backfill_hcp_mmp1_region_names.py > data/sql/salida_backfill_hcp_mmp1_names.sql
+    python scripts/backfill_hcp_mmp1_region_names.py > init/salida_backfill_hcp_mmp1_names.sql
 
 No requiere conexión a la base de datos: solo imprime el SQL (patrón
 `docker cp` + `psql -f` / `scripts/apply_sql.ps1`, ver

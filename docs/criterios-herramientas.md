@@ -50,7 +50,8 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   - un módulo lector puro en `backend/ingestion/`, sin base de datos ni SQL;
   - un script `scripts/register_*.py` o `generate_*.py` que genera SQL idempotente (`INSERT … ON CONFLICT (id) DO UPDATE`) sin conectarse a ninguna base.
 
-  La salida `salida_*.sql` va en `data/sql/` y se sube a git si pesa menos de 100 MB. (12, 40, 46, 69, H3)
+  La salida `salida_*.sql` va en `init/`, la carga inicial de la base, que se sube a git. Nunca en `data/`: `.gitignore` la reserva para datos científicos locales (`docs/portabilidad.md`). (12, 40, 46, 69, H3)
+- **`init/` solo lleva la carga inicial ligera.** Un SQL generado que pese más de unos 50 MB no se sube a git: se genera durante la instalación a partir de sus originales, como la tractografía. GitHub rechaza archivos de más de 100 MB y avisa a partir de 50 MB. (69, H4)
 - **El SQL de alta lo escriben funciones del proyecto** (`study_insert_sql`, `dataset_insert_sql`, `evidence_insert_sql`), nunca una persona a mano. (20, 22)
 - **Un backfill reutiliza la misma función de la ingesta real** y genera un `UPDATE` para revisar. Si una columna nueva va en una tabla con filas, se crea NULLable y se rellena con un backfill explícito, nunca con un valor por defecto silencioso. (12, 15, 51, 63)
 - **Formatos nuevos:** se siguen los pasos de `docs/protocolo-ingesta-ia.md`. (46)
@@ -75,11 +76,12 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 ## Reconstruir la base y volcados
 
 - **Con volcado,** se carga el volcado. **Sin volcado,** `scripts/rebuild_db_from_sql.sh` aplica las migraciones y los `.sql` del repositorio en orden de dependencias (ver `backend/database/migrations/README.md`). (53, H1)
-- **Lo que la reconstrucción no incluye:** los tractos ORG, sus geometrías y los nodos y aristas de tractografía. Se regeneran con `scripts/generate_org_tractography_geometry.py` y `scripts/generate_hybrid_tractography_nodes.py` a partir de los originales, publicados en Zenodo:
-  - `ORG-800FiberClusters.zip`: registro 2648292, md5 `ee5f73e15d28f177e65ba38dbb6c8a7a`;
-  - `100HCP-population-mean-wmparc.nii.gz`: registro 8082481, md5 `b8bec868a3cc878dcfc62c704ba15e4b`.
+- **Tractografía ORG:** no está en la carga inicial ni en git. La instala `scripts/install_tractography.sh` (solo Linux), después de la carga inicial:
+  - descarga de Zenodo los originales a la biblioteca y comprueba su md5: `ORG-800FiberClusters.zip` (registro 2648292, md5 `ee5f73e15d28f177e65ba38dbb6c8a7a`) y `100HCP-population-mean-wmparc.nii.gz` (registro 8082481, md5 `b8bec868a3cc878dcfc62c704ba15e4b`);
+  - genera el SQL en `derived/tractograms/` de la biblioteca, con `vtk` en un entorno temporal;
+  - no carga nada si los recuentos no son los del log: 41 tractos, 523 696 streamlines reales y 12 300 mostradas; 176 nodos y 5176 aristas.
 
-  (H1)
+  (49, 66, H1, H4)
 - **La instantánea del instalador** (`neurograph_snapshot.sql`):
   - sale solo del Postgres embebido, con `scripts/export_snapshot_embedded.ps1`;
   - excluye `alembic_version` y `mcp_call_log`;

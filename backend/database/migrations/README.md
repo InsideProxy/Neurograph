@@ -79,7 +79,7 @@ por id). El orden y su justificación están en la H1 de
 `docs/decisiones-herramientas.md` (antes decisión 75).
 
 **Orden de carga** (cada paso depende solo de los anteriores). Los
-`salida_*` están en `data/sql/` y los `seed/…`, en `backend/database/seed/`:
+`salida_*` están en `init/` y los `seed/…`, en `backend/database/seed/`:
 
 | # | Archivos | Por qué va aquí |
 |---|----------|-----------------|
@@ -101,16 +101,14 @@ nombres y coordenadas (comparado fila a fila), más `abbreviation` y
 largo en un comentario). El script lo convierte a UTF-8 en una copia
 temporal antes de aplicarlo; el archivo del repositorio no se toca.
 
-**Lo que esta reconstrucción no incluye** (no hay SQL en el repositorio):
-los 41 tractos del atlas ORG y sus geometrías (`tract_geometries`) y
-`tractography_nodes`/`tractography_edges`. Salen de
-`scripts/generate_org_tractography_geometry.py` y
-`scripts/generate_hybrid_tractography_nodes.py`, que necesitan los datos
-originales de la biblioteca (`E:\NeuroData`). Esos archivos siguen
-publicados en Zenodo: enlaces y md5 en la H1 de
-`docs/decisiones-herramientas.md`. Las tablas de genes (`genes`,
-`expressions`) y `evidence` salen vacías porque nunca tuvieron datos.
+**Tractografía.** No está en la carga inicial: su SQL pesa unos 160 MB y
+no se sube a git. Después de la carga inicial, la instala
+`scripts/install_tractography.sh` (solo Linux): descarga los originales
+de Zenodo, genera el SQL en la biblioteca y lo carga.
 
-**Al añadir un `salida_*.sql` nuevo:** guárdalo en `data/sql/` y añádelo a
+**Lo que sale vacío:** las tablas de genes (`genes`, `expressions`) y
+`evidence`, porque nunca tuvieron datos.
+
+**Al añadir un `salida_*.sql` nuevo:** guárdalo en `init/` y añádelo a
 la lista `DATOS` de `scripts/rebuild_db_from_sql.sh`, detrás de lo que
 referencia, y a esta tabla.
