@@ -689,7 +689,7 @@ Spec: `docs/rediseno-interfaz-diseno.md`, sección 6.3.
 - Deshacer, sí; guardar, no.
 - No se exportan.
 - Los dibujos dejan de seleccionar texto al arrastrar (`user-select: none`).
-- Después, también decisión suya: la línea de las marcas en Filtros solo aparece cuando hay marcas. Se está haciendo en la rama `rediseno-marcas`: en `c23aa91`, la línea está siempre y, sin marcas, dice «Sin marcas».
+- Después, también decisión suya: la línea de las marcas en Filtros solo aparece cuando hay marcas. Hecho en la rama `rediseno-marcas` (`dec7cad`, fusión `7b9e161`): sin marcas no hay línea, y una región viva oculta, siempre presente, sigue anunciando «Ninguna región marcada» al quitar la última.
 
 **Spec:** 5.9, en `5c53cdb`, y `baf8889`: el aviso con «Deshacer» sale también al quitar dos o más marcas.
 
