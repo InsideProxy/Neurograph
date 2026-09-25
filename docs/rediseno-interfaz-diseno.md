@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`.
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. La legibilidad del cerebro 3D, adelantada de la fase 4, va aparte, en la rama `rediseno-3d` (sección 11).
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -198,16 +198,40 @@ De izquierda a derecha:
 2. **Pestañas de vista:**
    - Atlas (antes «Un atlas»), Comparar especies, Tractografía 3D y Nodos de tractografía, cada una con icono. La activa lleva un subrayado del color de acento.
    - Las síntesis importadas se añaden como pestañas con icono en lugar del emoji 🧪 y con un `<button>` real para cerrarlas, en lugar del `span` con `role="button"`.
+   - Van en un `<nav aria-label="Vistas">`, con `aria-current="page"` en la activa, y no en un `tablist`. Cada pestaña cambia la pantalla entera, y un `tablist` no admite el botón de cerrar junto a cada síntesis.
+   - El nombre de una síntesis se corta a 10rem; entero queda en la etiqueta emergente.
+   - Al cerrar una síntesis, el foco pasa a la que ocupa su sitio, a la anterior si era la última, o a «Atlas».
 3. **Contexto de datos:** dos botones de lista desplegable, «ATLAS · HCP-MMP1.0» y «REDES · Cole-Anticevic», que sustituyen a los `<select>` nativos que cortaban el texto.
    - El botón muestra un nombre corto.
      - Atlas: el texto de la etiqueta de `ATLASES` antes de « — », que es único en los cuatro atlas.
      - Redes: un mapa explícito nuevo, `NETWORK_SOURCE_SHORT_LABELS`, con «Cole-Anticevic», «Gordon 333», «Yeo 7», «Yeo 17» y «Power 2011». No se recorta la etiqueta, porque Yeo 7 y Yeo 17 quedarían iguales. Una fuente que no esté en el mapa se muestra con su identificador, como hoy.
-   - La lista muestra las etiquetas completas que ya hay: la de `ATLASES`, y la fuente con «N de M regiones» y «(por defecto)», como hoy. No se añaden citas que los datos no tengan.
-   - Mientras carga, muestra el estado `networkSourcePending`.
-   - Se maneja con teclado: `role="listbox"`, flechas, Intro y Escape.
+   - El botón «Redes» solo aparece si el atlas tiene más de una clasificación cargada, como hasta ahora (decisión 73).
+   - La lista muestra las etiquetas completas que ya hay: la de `ATLASES`, y la fuente con «N de M regiones» y «(por defecto)», como hoy. No se añaden citas que los datos no tengan. La opción elegida lleva ✓.
+   - Mientras carga la clasificación (`networkSourcePending`), un indicador que gira ocupa el sitio del chevron, y «cargando…» queda para los lectores de pantalla y la etiqueta emergente: el botón no cambia de ancho. Con movimiento reducido, el indicador no gira: queda un arco quieto.
+   - Se maneja con teclado: `role="listbox"`, flechas, Inicio, Fin, Intro, espacio y Escape; Tab también la cierra.
+   - Al elegir o al cerrar con el teclado, el foco vuelve al botón, también cuando el atlas nuevo termina de cargar. Con un clic fuera, se queda donde se hizo clic.
    - El estado y los manejadores son los actuales.
-4. **Estado de los datos:** un punto de color `success` con «Datos reales», o `warning` con «Datos de demostración». La etiqueta emergente da las cifras, por ejemplo «360 regiones · 64 620 conexiones».
+4. **Estado de los datos:** un punto de color `success` con «Datos reales», o `warning` con «Datos de demostración». Es una región `role="status"`: el cambio se anuncia.
+   - La etiqueta emergente de «Datos reales» dice qué es y da las cifras: «Datos reales · 360 regiones · 64 620 conexiones».
+   - La de «Datos de demostración» conserva el aviso de siempre: datos sintéticos, solo ilustrativos, y que la API no respondió o el atlas aún no tiene datos.
+   - Mientras carga, un punto neutro con «Cargando…».
 5. **Acciones:** «Importar» (botón secundario con icono; etiqueta emergente «Importar una síntesis de IA») y el engranaje de Ajustes.
+
+**Ancho.** La barra va en una fila. Si no cabe, pliega lo secundario por este orden, y solo lo que haga falta:
+
+1. «Datos reales» se queda en su punto. «Datos de demostración» nunca se pliega: es un aviso.
+2. «Importar» se queda en su icono.
+3. Las pestañas de síntesis inactivas se quedan en su icono.
+4. Las pestañas de vista inactivas se quedan en su icono. Son la navegación principal: lo último que se pliega.
+
+- Lo plegado conserva su nombre para los lectores de pantalla y su etiqueta emergente, que aparece también con el foco del teclado. El punto de «Datos reales» no se enfoca.
+- La barra mide si cabe y elige el menor paso que basta (`logic/topBarFit.ts`, atributo `data-collapse`), en lugar de puntos de corte fijos. Lo que ocupa depende del contenido: el atlas y la clasificación, datos reales o de demostración, y cuántas síntesis hay y cómo se llaman. Si ni así cabe, pasa a dos filas.
+- Medido en la vista Atlas, con HCP-MMP1.0, Cole-Anticevic y datos reales (D4), siempre en una fila de 56 px:
+  - 1600, 1440, 1400 y 1366 px: no se pliega nada.
+  - 1280 px: solo «Datos reales».
+  - 1152 px: también «Importar». Se ven los cuatro nombres de vista.
+  - 1024 y 900 px: todo. Solo la pestaña activa conserva su nombre.
+  - 1400 px con una síntesis de nombre largo: «Datos reales» e «Importar». Con dos, también los nombres de las síntesis, y lo mismo a 1280 px; a 1024 px, todo.
 
 ### 5.2 Ajustes
 
@@ -219,26 +243,43 @@ Un panel emergente que sale del engranaje:
 
 ### 5.3 Filtros
 
-- **Cabecera:** «Filtros» y el botón de plegar.
+- **Cabecera:** «Filtros» y el botón de plegar. Al plegar o desplegar el panel, el foco pasa al botón que sustituye al pulsado.
 - **Buscador de regiones** (5.8), justo encima de la selección.
-- **Selección:** «N regiones seleccionadas» y «Limpiar».
+- **Selección:** ocupa siempre dos líneas, así que la lista de redes no salta cuando cambia el texto.
+  - En la primera, «1 región seleccionada», «N regiones seleccionadas», «1 conexión seleccionada» o «Ninguna región seleccionada».
+  - En la segunda, a la derecha, «Limpiar» y los botones de deshacer y rehacer (5.7).
+- **Secciones:** «Redes», «Tipo de conectividad» y «Peso mínimo» siguen siendo plegables, como en la D1, y empiezan abiertas.
+  - Su título es un botón con `aria-expanded` y `aria-controls`, y no un `<summary>`, porque la cabecera de «Redes» lleva «Todas» y «Ninguna», que van fuera de él.
+  - Cada sección es un grupo (`role="group"`, con el nombre de su título), no un `<section>`: tres puntos de referencia más en un panel lateral estorbarían.
 - **Redes:**
   - Cabecera con el número de redes y los botones de texto «Todas» y «Ninguna», que ya no ocupan dos líneas.
   - Cada fila lleva casilla, color, nombre y número de regiones de esa red, contado sobre los nodos cargados.
-  - Las acciones ◎ y + aparecen al pasar el ratón o al llegar a la fila con el teclado (`:focus-within`).
+  - Las acciones ◎ y + aparecen al pasar el ratón o con el foco del teclado dentro de la fila, también con Mayús+Tab. Es `:has(:focus-visible)` y no `:focus-within`: un clic en la casilla no los deja a la vista.
+    - El resto del tiempo quedan fuera de la vista, pero no del orden del tabulador ni de los lectores de pantalla.
+    - En las pantallas táctiles (`hover: none`) se ven siempre, junto al número de regiones.
     - Siguen distinguiendo las dos funciones de hoy: ◎ resalta solo esa red y sustituye la selección; + la añade a lo ya resaltado.
     - Sus etiquetas emergentes y `aria-label` lo dicen: «Resaltar solo la red Auditiva (sustituye la selección)» y «Añadir la red Auditiva a la selección».
     - Si ◎ sustituye una selección de varias regiones, sale el aviso con «Deshacer» (5.7).
 - **Tipo de conectividad:** junto a cada tipo, cuántas conexiones de ese tipo pasan los demás filtros (redes y peso mínimo), sin contar su propia casilla. Así se ve cuántas añadiría al marcarla. `App` calcula esos recuentos y se los pasa a `FilterPanel` en una prop nueva, `connectionCountsByType`.
-- **Peso mínimo:** el valor, el deslizador y «Se ven N de M conexiones». N son las conexiones visibles con todos los filtros; M, las cargadas para el atlas. Van en otra prop nueva.
-- **Ayuda:** «¿Cómo funcionan los filtros?» con el texto de ayuda actual.
+- **Peso mínimo:** el valor, el deslizador y «N de M conexiones pasan los filtros», con singular donde toca. N son las conexiones que pasan todos los filtros; M, las cargadas para el atlas. Van en otra prop nueva.
+  - Decía «Se ven N de M conexiones», pero las vistas pueden dibujar menos, como explica la ayuda.
+  - El valor no se parte: si no cabe junto al título, como «0 (sin filtro, se muestra todo)», baja entero a la línea siguiente.
+  - El deslizador dice el peso con `aria-valuetext`.
+- **Números:** los que están a la vista llevan su unidad para los lectores de pantalla («Estructural, 3 conexiones»), con los dígitos seguidos, sin el espacio de los miles.
+- **Ayuda:** «¿Cómo funcionan los filtros?», con el texto de ayuda actual y tres cosas más:
+  - la línea de ◎ y +, que ya no están siempre a la vista;
+  - qué cuenta el número junto a cada tipo de conectividad;
+  - que las vistas pueden dibujar menos conexiones de las que pasan los filtros: con dos o más regiones seleccionadas, solo las que hay entre ellas, y con más de 10 000, ninguna.
 - **Controles:** casillas y deslizador con `accent-color` del tema.
 
 ### 5.4 Vista grande y miniaturas
 
 - **Cabecera:** `WorkspaceView` sigue pintando la cabecera. En la vista grande añade una línea que explica cómo leerla: un texto fijo por vista, `WORKSPACE_VIEW_DESCRIPTIONS`.
+  - Las descripciones no prometen lo que no se ve. La del connectograma no promete grosores, que solo cambian con pesos mayores que 0.17. La del cerebro 3D dice qué muestra con una selección: una región con sus vecinas, varias con las conexiones entre ellas, o una conexión.
 - **Herramientas:** siguen dentro de cada vista, con su estado donde está hoy (lupa y exportar en el connectograma, «Ocultar no seleccionados» y exportar en los hemisferios, controles del cerebro 3D).
-  - En la vista grande se colocan por CSS a la derecha de la cabecera, con posición absoluta dentro de `.ws-view--main`. Los controles del cerebro 3D, que son más, quedan en una fila bajo ella.
+  - En la vista grande se colocan por CSS a la derecha de la cabecera, con posición absoluta dentro de `.ws-view--main`, si la vista mide al menos 40rem (una consulta de contenedor). La cabecera les deja su hueco, y la descripción se parte en dos o tres líneas.
+  - Más estrecha, se quedan en una fila bajo la cabecera, porque taparían la descripción. Medido con los filtros desplegados: a 1400 px el contenido de la vista grande mide 776 px y suben; a 1280 px mide 656 px y se quedan debajo.
+  - Del cerebro 3D solo sube «Exportar JPEG»: sus desplegables, que son más, quedan en una fila bajo la cabecera. La cabecera le reserva el hueco siempre que el botón está: con una selección, y también sin ella con la corteza pintada, que es lo de por defecto (decisión 72), porque entonces el 3D pinta el mapa entero. Sin selección y con la corteza translúcida, o mientras carga su mapa de regiones, no hay botón ni hueco.
   - No se sube estado a `App`.
 - **Lupa:** pasa de casilla a botón de alternar (`aria-pressed`).
 - **Controles del cerebro 3D:** siguen siendo `<select>` nativos, con estilo propio (`appearance: none` y chevron).
@@ -248,30 +289,51 @@ Un panel emergente que sale del engranaje:
   - «Efectiva (con dirección)», con muestra de flecha.
   - «Color del punto = red».
 - **Recuadro de lectura:** conserva su altura fija (decisión 74b) y muestra región, hemisferio y red como etiqueta de color.
-  - Con una región seleccionada, añade a la derecha cuántas de sus conexiones pasan los filtros, con el umbral, como en la maqueta: «5 conexiones pasan los filtros (peso ≥ 0,02)».
-  - Añade también la pista «pasa el ratón por otra región para verla».
-- **Miniaturas:** botón visible «Ampliar» con icono, en lugar del texto «⤢ ampliar». Se mantiene la capa que amplía al hacer clic en cualquier punto.
+  - El «(hemisferio …)» del final de los nombres de HCP-MMP1.0 no se repite si coincide con el hemisferio de la región. Un nombre de red largo acaba en «…», con el completo en la etiqueta emergente.
+  - En el del connectograma, con exactamente una región seleccionada, añade cuántas de sus conexiones pasan los filtros, con el umbral, como en la maqueta: «5 conexiones pasan los filtros (peso ≥ 0.015)». Sin umbral no hay paréntesis. Con varias regiones no hay recuento, y el recuadro de los hemisferios no lo lleva.
+  - El umbral va en la notación del valor de «Peso mínimo» en Filtros, pero truncado a dos cifras significativas, nunca redondeado hacia arriba, para no exagerarlo: un umbral de 0,0152 se escribe «0.015», no «0.02». Por eso puede quedar una cifra por debajo del valor de Filtros, que redondea: «3.9e-3» frente a «4.0e-3» (12).
+  - Si las conexiones que pasan los filtros superan el tope de dibujo (10 000), las vistas no dibujan ninguna, y el recuento lo dice: «359 conexiones pasan los filtros (no se dibujan)». Con umbral, en un solo paréntesis: «(peso ≥ 0.015; no se dibujan)».
+  - Añade también la pista «pasa el ratón por otra región para verla». Si la región y el recuento caben en una línea, la pista va debajo; si el recuento baja a la segunda, como a 1280 px, la pista va con él. Con la vista grande de menos de 30rem (a 1024 px con los filtros desplegados), la pista no se muestra.
+  - Una conexión, aquí y en la lista de conectividad inducida, lleva «→» solo si es efectiva, y «↔» si no, como el título del detalle (5.5).
+- **Miniaturas:** botón visible «Ampliar» con icono, en lugar del texto «⤢ ampliar». Se mantiene la capa que amplía al hacer clic en cualquier punto, pero fuera del orden del tabulador: con el teclado se usa «Ampliar», que deja el foco en el título de la vista ampliada.
 
 ### 5.5 Panel de detalle de una región
 
 De más a menos importante:
 
-1. La etiqueta «REGIÓN SELECCIONADA», la abreviatura en grande y el nombre.
-2. Dos etiquetas: la red, con su color, y el hemisferio.
+1. La etiqueta «REGIÓN SELECCIONADA», la abreviatura en grande y el nombre. El nombre va sin el «(hemisferio …)» final si coincide con el de la región, y si solo repite la abreviatura, no se muestra.
+2. Dos etiquetas: la red, con su color, y el hemisferio. Un nombre de red largo acaba en «…», con el completo en la etiqueta emergente.
 3. Cómo se asignó la red: el texto actual de `membershipDescription`, con un icono de información.
 4. **Conexiones (N):**
-   - Ordenadas por peso, de mayor a menor. Se ven las cinco primeras y «Ver las N» despliega la lista completa.
-   - Cada fila conserva la información de hoy (`ConnectionRow`): la otra región, el tipo, el peso con el mismo formato y el nivel de evidencia. Añade el color de la red de la otra región y una barra de peso.
+   - Ordenadas por peso, de mayor a menor. Se ven las cinco primeras; «Ver las N» despliega la lista completa, y «Ver solo las 5 primeras» la vuelve a plegar.
+   - N cuenta todas las conexiones cargadas de la región, sin filtros, y la pista lo dice: «todas las cargadas · más fuertes primero · barra logarítmica», o «la única cargada · barra logarítmica». El recuadro de lectura cuenta, en cambio, las que pasan los filtros (5.4).
+   - Cada fila conserva la información de hoy (`ConnectionRow`): la otra región, el tipo, el peso con el mismo formato y el nivel de evidencia. Añade el color de la red de la otra región y una barra de peso. El peso va en su propia fila, con la barra.
+   - En las conexiones efectivas, la fila dice «hacia» o «desde» la otra región.
    - La barra usa la escala logarítmica que ya existe en `logic/weightScale.ts`, porque los pesos abarcan varios órdenes de magnitud.
 5. **ID científico:** al pie, en letra monoespaciada, con un botón para copiarlo (`navigator.clipboard`; si falla, se selecciona el texto).
+   - El pie queda pegado abajo del panel.
+   - Al copiarlo, el botón pasa a ✓ y se anuncia «Identificador copiado».
+   - Si el portapapeles falla, el ID queda seleccionado y se lee a la vista «No se pudo copiar: el identificador queda seleccionado (Ctrl+C)», con «⌘C» en macOS. Cada intento fallido se vuelve a anunciar.
 
 Las vistas de una conexión y de varias regiones conservan su contenido y reciben la misma jerarquía de títulos, etiquetas y listas.
+
+- **Una conexión:** lleva el mismo pie con el ID. Su título es «A ↔ B», o «A → B» si es efectiva: la flecha es la conectividad efectiva (principio 1).
+  - Si las dos regiones se llaman igual o están en hemisferios distintos, cada una lleva «(izq.)» o «(der.)», salvo si su abreviatura ya dice el lado, como en Brainnetome («L_SFG_7_1») o Gordon («l_default_12»).
+  - Sus datos dicen «Región A» y «Región B», u «Origen» y «Destino» si es efectiva.
+- **Varias regiones:** la leyenda de la selección múltiple mide su texto en pantalla y ensancha su SVG, así que no corta las etiquetas largas. Si no cabe en el panel, su recuadro se desplaza en horizontal (12).
 
 ### 5.6 Avisos
 
 - Los errores de importar una síntesis y de cambiar la clasificación de redes pasan a un aviso flotante que se puede cerrar. Sustituyen a las franjas rojas fijas de `App.tsx` (`synthesis-import-error`).
-- El aviso lleva `role="alert"` y un mensaje comprensible, con el texto técnico completo en «Detalles».
-- Los errores se quedan hasta que se cierran.
+- El aviso lleva `role="alert"` y un mensaje comprensible, con el texto técnico completo en «Detalles», que se puede desplazar con el teclado.
+  - Los mensajes de importar separan el texto comprensible del técnico: «No se pudo abrir o leer el archivo.», «El archivo elegido no contiene un JSON válido.» y «La síntesis no se ha importado: tiene N problemas.».
+- Los errores se quedan hasta que se cierran, con «Entendido», que va bajo el mensaje. El foco pasa entonces al aviso siguiente o, si era el último, a «Importar».
+- Cada aviso tiene un origen: importar una síntesis, cambiar la clasificación o deshacer (5.7). Uno nuevo sustituye al anterior del mismo origen, como las franjas de antes.
+- **Dónde:** abajo a la derecha, sobre la columna derecha y con su ancho (300 px, a 12 px del borde derecho y del de abajo), apilados hacia arriba: el más reciente queda abajo.
+  - No tapan la vista grande ni su recuadro de lectura, Filtros, la barra ni la primera miniatura. Arriba a la derecha, bajo la barra, que era lo previsto, tapaban el «Ampliar» de la primera miniatura (D4).
+  - Sí tapan el pie del panel de detalle, con el ID y su botón de copiar, mientras se ven: es el precio aceptado. Con dos avisos y «Detalles» abierto, tapan también parte de la segunda miniatura.
+  - Quedan por debajo del panel de Ajustes y de las listas desplegables. Escala de `z-index`: las vistas, 1 como mucho; los avisos, 10; Ajustes y las listas, de 20 a 25; las etiquetas emergentes, 30.
+  - Si no caben en la ventana, se desplazan por dentro, también con la rueda del ratón. La región sube como mucho hasta 8 px bajo la barra de una fila.
 - Si `isTauri()` (de `@tauri-apps/api/core`, presente en la versión instalada, 2.11.1) indica que la aplicación corre en un navegador, «Importar» no intenta abrir el diálogo. Muestra el aviso «“Importar síntesis” solo funciona en la aplicación de escritorio». Nunca se compara el texto del error, porque cambia según el navegador.
 
 ### 5.7 Deshacer y rehacer
@@ -280,27 +342,38 @@ Petición del usuario (24/09/2026): con un clic de más se pierde un montaje. Un
 
 Se valoró una barra de estado fija al pie. El usuario la descartó el mismo día: la maqueta ya da ese feedback donde se usa, y el pie lo repetiría. Ese feedback está en la selección y el recuento de Filtros (5.3), el recuadro de lectura (5.4) y el panel de detalle (5.5).
 
-- **Qué se guarda:** cada cambio de la selección (regiones y conexión) y de los filtros (redes y tipos ocultos, peso mínimo). Cada paso es una instantánea de las dos cosas, no una acción.
+- **Qué se guarda:** cada cambio de la selección (regiones y conexión) y de los filtros (redes y tipos ocultos, peso mínimo). Cada paso es una instantánea de las dos cosas, no una acción. Los cambios que llegan juntos, en la misma tarea del navegador, son un solo paso: «Resaltar» una red oculta la muestra y la selecciona.
 - **Qué no se guarda:** el paso del ratón, la vista ampliada, la lupa, el tema y el plegado de paneles o secciones.
 - **Cambio de atlas o de clasificación:** el historial se vacía, porque las regiones y las redes guardadas dejan de valer. El atlas nuevo empieza con el historial vacío.
+  - Con otra clasificación, se vacía cuando llegan sus datos, no al elegirla: mientras carga se sigue viendo y usando la anterior, y si falla, no cambia nada.
+  - También se vacía al caer a los datos de demostración, que son otras regiones.
 - **Deslizador de peso:** un arrastre cuenta como un solo paso. Los cambios seguidos con el teclado se agrupan si llegan con menos de 500 ms de diferencia.
+  - El arrastre se da por terminado al soltar el puntero, aunque el valor se quede quieto a medio arrastre. Solo cuenta el puntero pulsado sobre el deslizador.
+  - Un arrastre que acaba donde empezó no es un paso, y lo que se podía rehacer se conserva.
 - **Profundidad:** los 50 últimos pasos.
 - **Controles:**
-  - **Botones de icono ↶ «Deshacer» y ↷ «Rehacer»:** van en la fila de selección de Filtros, junto a «N regiones seleccionadas · Limpiar» (5.3), que es donde se arma el montaje.
+  - **Botones de icono ↶ «Deshacer» y ↷ «Rehacer»:** van en la fila de selección de Filtros, junto a «N regiones seleccionadas · Limpiar» (5.3), que es donde se arma el montaje. Los recibe `FilterPanel` en una prop nueva, `historyControls`: el panel no sabe nada del historial.
     - Llevan `aria-disabled` cuando no hay paso.
     - Su etiqueta emergente describe el paso, por ejemplo «Deshacer: quitar R_SFG_7_2 de la selección». Aparece también al llegar con el teclado.
   - **Teclado:** Ctrl+Z (⌘Z en macOS) deshace; Ctrl+Mayús+Z y Ctrl+Y rehacen.
     - Los botones lo declaran con `aria-keyshortcuts`.
-    - No se interceptan dentro de un campo de texto.
-    - Funcionan aunque el panel de Filtros esté plegado.
+    - No se interceptan dentro de un campo de texto: con el foco en el buscador (5.8), Ctrl+Z es del campo.
+    - Funcionan en la vista Atlas, aunque el panel de Filtros esté plegado.
+    - No actúan con la tecla repetida por mantenerla pulsada, si otro ya atendió el evento, ni mientras está abierta una lista desplegable o el panel de Ajustes. Con un teclado sin letras latinas, miran la tecla física (`event.code`).
   - **Aviso con «Deshacer»:** aparece cuando un solo paso quita dos o más regiones de la selección, por un clic en una línea, «Resaltar» otra red o «Limpiar». Dice «Se sustituyó la selección de N regiones» o «Se vació la selección de N regiones», con un botón «Deshacer».
-    - Usa la cola de avisos (5.6), pero con `role="status"` y sin robar el foco.
-    - Se va solo a los 8 s o con el siguiente cambio.
+    - Usa la cola de avisos (5.6) y no roba el foco.
+    - No lleva `role="status"`: su texto lo anuncia una región viva oculta (`aria-live="polite"`) que está siempre en la página, porque una región viva que aparece con el texto ya dentro no siempre se anuncia. El aviso visible no lleva rol, para que no se lea dos veces. Los demás avisos, como los errores, siguen con `role="alert"`.
+    - Se va solo a los 8 s, pero el tiempo se para mientras tiene el ratón encima o el foco. Se va también con cualquier otro cambio del historial, también cuando se vacía, y al salir de la vista Atlas.
+    - Su «Deshacer» deshace el último paso, que siempre es el suyo. Tras usarlo, o al cerrarlo, el foco va al botón ↶ si se ve, y si no (con Filtros plegado), al título de la vista grande; nunca a «Importar».
+    - N cuenta solo las regiones del atlas que se está viendo: los ids de un atlas anterior se quedan en el store y no se ven.
 - **Arquitectura:**
   - Un store nuevo, `state/history.ts`, se suscribe a `useSelectionStore` y `useFiltersStore` y guarda instantáneas. Deshacer y rehacer las restauran con `setState`.
   - No cambia la API ni el código de esos dos stores, que son del desarrollador principal.
   - Ignora los cambios que provoca él mismo.
-- **Descripción de un paso:** una función pura (`logic/historyStep.ts`) compara dos instantáneas. Ejemplos: «añadir R_SFG_7_2 a la selección», «quitar 3 regiones», «seleccionar la conexión A ↔ B», «limpiar la selección», «ocultar la red Visual», «peso mínimo de 0,001 a 0,004» o, si cambian varias cosas, «varios cambios».
+- **Descripción de un paso:** una función pura (`logic/historyStep.ts`) compara dos instantáneas. Ejemplos: «añadir R_SFG_7_2 a la selección», «añadir IFJa (der.) a la selección», «quitar 3 regiones», «seleccionar la conexión A ↔ B», «limpiar la selección», «ocultar la red Visual», «peso mínimo de 1.0e-3 a 4.0e-3» o, si cambian varias cosas, «varios cambios».
+  - Las regiones llevan su lado, «IFJa (der.)», porque las abreviaturas de HCP-MMP1.0 no lo llevan; no se añade si la abreviatura ya lo dice. Un id de otro atlas, que el store conserva, es «una región de otro atlas».
+  - Quitar la única región seleccionada es «quitar IFJa (der.) de la selección», no «limpiar la selección».
+  - El peso se escribe como el umbral del recuadro de lectura (5.4): en la notación de Filtros, truncado a dos cifras significativas.
 
 ### 5.8 Buscador de regiones
 
@@ -308,14 +381,23 @@ Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy dif�
 
 - **Dónde:** en Filtros, justo encima de la selección (5.3), porque ahí se arma el montaje (decisión del usuario). Vale para las tres vistas, que comparten la selección.
 - **Autocompletado:** al escribir aparece una lista de sugerencias bajo el campo (patrón *combobox*, `aria-autocomplete="list"`).
-  - La primera ya está activa, así que Intro la elige.
-  - Las flechas se mueven por la lista.
-  - Escape cierra la lista; un segundo Escape vacía el campo.
+  - Queda activa la primera sugerencia que no está ya seleccionada (si todas lo están, la primera), así que Intro la elige: «te1m» e Intro dos veces añade las dos TE1m.
+  - La activa lleva el contorno del color de acento, porque el foco se queda en el campo, y sus textos grises pasan al color del texto. Se desplaza a la vista al abrir la lista, al escribir y con el teclado.
+  - El ratón también la cambia, pero solo si se mueve de verdad: no cuentan los mousemove que WebKit envía cuando la lista se desplaza bajo el ratón quieto, ni el primero tras abrirse la lista. Lo mismo en la lista del contexto de datos (5.1).
+  - Las flechas se mueven por la lista, con las teclas de la lista del contexto de datos, salvo espacio, Inicio y Fin, que son del campo: escriben o mueven el cursor. Con la lista cerrada, la flecha abajo la vuelve a abrir.
+  - Escape cierra la lista; un segundo Escape vacía el campo. Sin lista, el primer Escape ya lo vacía.
+  - Los avisos van en una línea bajo el campo, y la lista, que flota, bajo ella: una lista (`listbox`) no puede llevar botones. Sin ninguna coincidencia, dice «Ninguna región coincide.».
+  - La lista solo está en la página mientras está abierta, y el campo apunta a ella con `aria-controls` solo entonces: la guarda de los atajos de deshacer busca listas abiertas.
 - **Qué busca:** la abreviatura y el nombre completo, sin distinguir mayúsculas ni tildes.
   - Orden: abreviatura exacta; abreviatura que empieza por lo escrito; abreviatura que lo contiene; nombre que lo contiene.
-  - A igualdad, por abreviatura y por lado (izquierdo antes que derecho).
+  - Las abreviaturas que llevan el lado (Brainnetome, Gordon) se buscan y se ordenan sin él, con los números en su orden: «sfg» da `L_SFG_7_1`, `R_SFG_7_1`, `L_SFG_7_2`… Escrita entera, con el lado, también se encuentra.
+  - A igualdad de nivel y de abreviatura, por lado: izquierdo, derecho y sin hemisferio.
   - Como máximo, 8 sugerencias.
-- **Solo redes visibles** (decisión del usuario): se sugieren las regiones de las redes que no están ocultas en Filtros, porque las demás no se ven en las vistas. Si lo escrito solo aparece en redes ocultas, la lista lo dice, por ejemplo «TE1m está en la red Auditiva, que está oculta», con un botón «Mostrar la red».
+- **Solo redes visibles** (decisión del usuario): se sugieren las regiones de las redes que no están ocultas en Filtros, porque las demás no se ven en las vistas. Si lo escrito solo aparece en redes ocultas, lo dice, con un botón que las muestra. Por ejemplo, con Cole-Anticevic: «TE1m está en las redes Por defecto y Frontoparietal, que están ocultas.», con «Mostrar las redes».
+  - El aviso sale también si la abreviatura exacta está en una red oculta, aunque haya otras sugerencias: «pf», con Cíngulo-opercular oculta, dice «PF está en la red Cíngulo-opercular, que está oculta.» junto a PFm y PFt.
+  - Si solo está oculta una parte de las coincidencias exactas, nombra la región con su lado. En Cole-Anticevic, la TE1m izquierda está en Por defecto y la derecha en Frontoparietal: con Por defecto oculta, «te1m» dice «TE1m (izq.) está en la red Por defecto, que está oculta.», con la derecha en la lista.
+  - Nombra la región, si todas las coincidencias ocultas son la misma, o «Lo escrito», y sus redes, hasta tres, o cuántas son. Ante el sonido /i/, «y» pasa a «e»: «Visual e Hipocampo».
+  - «Mostrar la red», o «Mostrar las redes», las muestra todas a la vez, vuelve a abrir la lista y devuelve el foco al campo. Ninguna coincidencia se queda escondida sin decirlo.
 - **Cada sugerencia** lleva:
   - el color de su red, con el anillo neutro;
   - la abreviatura, con su lado cuando la abreviatura no lo lleva («TE1m (izq.)»);
@@ -324,7 +406,11 @@ Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy dif�
 - **Elegir una región:** se añade a la selección con `addNodes`, que nunca quita regiones, así que es un paso que se puede deshacer (5.7).
   - El campo se vacía y conserva el foco, para seguir añadiendo regiones.
   - Si la región ya estaba seleccionada, no cambia nada.
-- **Atajo:** Ctrl+K (⌘K en macOS) lleva el foco al buscador desde cualquier sitio. Si Filtros está plegado, lo despliega. No actúa dentro de otro campo de texto.
+- **Atajo:** Ctrl+K (⌘K en macOS) lleva el foco al buscador. Si Filtros está plegado, lo despliega.
+  - Funciona en la vista Atlas, como los atajos de deshacer: en las demás pestañas no hay buscador. En el propio buscador, selecciona lo escrito.
+  - No actúa dentro de otro campo de texto, con Mayús, ni mientras está abierta otra lista desplegable o el panel de Ajustes.
+  - El marcador de posición lo dice: «Buscar región (Ctrl+K)», o «(⌘K)» en macOS.
+- **Deshacer:** con el foco en el buscador, Ctrl+Z es del campo, como en cualquier campo de texto (5.7). La región añadida se deshace con ↶, o con Ctrl+Z fuera del campo.
 - **Arquitectura:**
   - `logic/regionSearch.ts`: función pura que normaliza, busca, ordena y detecta coincidencias en redes ocultas.
   - `RegionSearch`: componente que reutiliza la lógica de teclado de `logic/listbox.ts`.
@@ -375,7 +461,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Contraste:** el texto supera 4,5:1 y los controles y gráficos de interfaz 3:1 (medido en 4.1 y 4.2). La excepción son los colores de red suaves en Claro (4.3), que cuentan con el anillo neutro.
 - **Foco visible:** contorno de 2 px del color de acento en todos los controles.
 - **Teclado:** los paneles emergentes y las listas se cierran con Escape y devuelven el foco. Todo lo que aparece al pasar el ratón aparece también al llegar con el teclado.
-- **Nombres y estados:** los botones que solo tienen icono llevan `aria-label`, los de alternar `aria-pressed`, y los avisos `role="alert"`.
+- **Nombres y estados:** los botones que solo tienen icono llevan `aria-label`, los de alternar `aria-pressed`, y los avisos `role="alert"`, salvo el de deshacer, que anuncia una región viva (5.7).
 
 ## 9. Arquitectura
 
@@ -407,6 +493,19 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Nombres en inglés,** como el resto del código: `theme`, `paletteMode` y `forExport`. El hook es `useDrawColors(forExport)` y el panel de Ajustes, `SettingsMenu`.
 - **Token nuevo:** `nodeGap` (4.2), para que el diagrama de síntesis no conserve ningún color fijo.
 - **Añadido:** `exportResolverFor(theme)` y los ayudantes tipados `ngFill`, `ngStroke` y `ngStrokeOpacity` (`theme/colors.ts`). Con ellos, una referencia `data-ng-*` mal escrita es un error de compilación.
+
+**Fase 3.** Lo construido añade unidades que el spec no nombraba (D4 de `docs/decisiones-diseno.md`):
+
+- **Componentes:**
+  - `NetworkTag.tsx`: `NetworkTag` y `RegionSummary`, que comparten los recuadros de lectura y el detalle.
+  - `DataStatus`, en `TopBar.tsx`.
+  - `HistoryButtons.tsx`, con `HistoryButtonsView`, que pinta los botones sin el historial, para probarlos con cualquier estado.
+  - `RegionSearchView`, en `RegionSearch.tsx`: el buscador sin estado, para probar su marcado con cualquier resultado.
+- **Hooks:** `useHistoryShortcuts.ts` (los atajos de deshacer), `useRegionSearchShortcut.ts` (Ctrl+K) y `useMouseMoved.ts`, que dice si un mousemove mueve el ratón de verdad (5.8).
+- **Nueve módulos de lógica pura en `logic/`,** para probarla sin DOM (10): `topBarFit`, `listbox`, `dataContext`, `displayText`, `toastQueue`, `desktopOnly`, `filterCounts`, `regionConnections` y `clipboard`.
+- **Piezas compartidas:** `isTextEntry`, en `logic/historyStep.ts`, la guarda de los campos de texto que comparten los dos atajos; `shortcutLabel`, en `logic/clipboard.ts`, que escribe un atajo como en cada sistema; y `formatWeightAtMost`, en `logic/displayText.ts`, el umbral truncado (5.4).
+- `SettingsPopover` es el `SettingsMenu` de la fase 1.
+- `ATLASES` sigue en `App.tsx`.
 
 ### Archivos que cambian
 
@@ -448,7 +547,7 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
   - no registra lo que él mismo restaura;
   - respeta el límite de 50 pasos.
 - **`historyStep`:** descripciones sobre casos conocidos (una región, varias, una conexión, filtros y varios cambios a la vez) y la regla del aviso: el paso quita dos o más regiones.
-- **Recuadro de lectura:** el texto «N conexiones pasan los filtros (peso ≥ X)», con el singular donde toca.
+- **Recuadro de lectura:** el texto «N conexiones pasan los filtros (peso ≥ X)», con el singular donde toca, el umbral truncado y «(no se dibujan)».
 - **`regionSearch`:**
   - sin distinguir mayúsculas ni tildes;
   - el orden de 5.8 y el límite de 8;
@@ -458,9 +557,14 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
 
 El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
 
+**Fase 3.** 156 pruebas nuevas en 20 archivos, de 115 a 271 (D4):
+
+- **Lógica pura:** los nueve módulos de la sección 9 (`topBarFit`, `listbox`, `dataContext`, `displayText`, `toastQueue`, `desktopOnly`, `filterCounts`, `regionConnections` y `clipboard`), `historyStep`, `regionSearch` y el store `history`.
+- **Marcado,** con `renderToStaticMarkup` de `react-dom/server`, que funciona en node sin dependencias nuevas: `TopBar`, `DataContextMenu`, `Toast`, `FilterPanel`, `Connectogram`, `DetailPanel`, `HistoryButtons` y `RegionSearch`. Solo donde hay un requisito de marcado: roles, `aria-*` y botones sin anidar.
+
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D; la primera libre es la D3), con su propio commit. Todas dejan la aplicación correcta.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3 y la fase 3, la D4), con su propio commit. Todas dejan la aplicación correcta.
 
 1. **Base de temas.**
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
@@ -473,12 +577,17 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
 
-Orden de implementación: 1, 3, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo.
+Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4, adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y tendrá su propia decisión al fusionarla.
 
 ## 12. Riesgos y puntos abiertos
 
 - **Tema por defecto:** Grafito, elegido con la delegación del usuario; se le confirma al pedirle permiso para fusionar.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
-- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla. En pantalla sigue cortando las etiquetas largas, como en master; queda para la fase 3 (D3 de `docs/decisiones-diseno.md`).
+- **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla (D3 de `docs/decisiones-diseno.md`).
+  - Desde la fase 3 (D4), la leyenda mide también su texto en pantalla y ensancha su `<svg>`, así que ya no corta las etiquetas largas. Si no cabe en el panel, su recuadro se desplaza en horizontal.
+  - En la exportación, con etiquetas cortas el JPEG sale igual que antes. Con largas, sale del ancho mayor de los dos, el de la pantalla o el de la fuente de la exportación: puede salir algo más ancho que antes, pero nunca cortado.
+  - Medido con TPOJ1, 3b y SCEF: la leyenda mide 402 px en pantalla, y su JPEG, 1224 px (408 × 3), igual byte a byte que antes de la fase, porque manda el ancho de la fuente de la exportación. Con etiquetas cortas, 780 px, también igual byte a byte.
+- **Formato del peso en el detalle** (pregunta abierta para el usuario, D4): la lista de conexiones conserva el formato de siempre, con todas sus cifras («0.07035581528181838»). ¿Redondearlo, con el valor exacto en la etiqueta emergente?
+- **Umbral en Filtros** (pregunta abierta para el usuario, D4): el recuadro de lectura y el historial truncan el umbral para no exagerarlo («3.9e-3»), y Filtros lo redondea al más cercano («4.0e-3», con `formatMinWeight`, que es del desarrollador principal). ¿Debe Filtros truncarlo también, para que los dos digan lo mismo?
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.

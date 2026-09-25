@@ -620,9 +620,13 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .ws-view[data-view="brain3d"] { --ws-tools-width: 7rem; }
 @container (min-width: 40rem) {
   .ws-view--main .ws-view__header { padding-right: var(--ws-tools-width); }
-  /* El cerebro 3D sin nada seleccionado no tiene botón de exportar: no
-     se reserva su hueco. Sin :has(), la regla no se aplica y el hueco
-     se queda, que no tapa nada. */
+  /* El cerebro 3D solo tiene botón de exportar si pinta algo: con una
+     selección, o sin ella con la corteza pintada, que es lo de por
+     defecto (decisión 72: pinta el mapa entero de regiones), y entonces
+     se reserva su hueco. Sin selección y con la corteza translúcida, o
+     mientras carga su mapa de regiones, no hay botón y no se reserva.
+     Sin :has(), la regla no se aplica y el hueco se queda, que no tapa
+     nada. */
   .ws-view--main[data-view="brain3d"]:not(:has(.brain3d-toolbar > .export-btn)) .ws-view__header { padding-right: 0; }
   .ws-view--main .viz-panel__toolbar,
   .ws-view--main .brain3d-toolbar > .export-btn { position: absolute; top: 10px; right: 12px; margin: 0; }
