@@ -78,7 +78,8 @@ archivos de datos son idempotentes (`ON CONFLICT DO UPDATE` o `UPDATE`
 por id). El orden y su justificación están en la H1 de
 `docs/decisiones-herramientas.md` (antes decisión 75).
 
-**Orden de carga** (cada paso depende solo de los anteriores):
+**Orden de carga** (cada paso depende solo de los anteriores). Los
+`salida_*` están en `data/sql/` y los `seed/…`, en `backend/database/seed/`:
 
 | # | Archivos | Por qué va aquí |
 |---|----------|-----------------|
@@ -110,6 +111,6 @@ publicados en Zenodo: enlaces y md5 en la H1 de
 `docs/decisiones-herramientas.md`. Las tablas de genes (`genes`,
 `expressions`) y `evidence` salen vacías porque nunca tuvieron datos.
 
-**Al añadir un `salida_*.sql` nuevo:** añádelo a la lista `DATOS` de
-`scripts/rebuild_db_from_sql.sh`, detrás de lo que referencia, y a esta
-tabla.
+**Al añadir un `salida_*.sql` nuevo:** guárdalo en `data/sql/` y añádelo a
+la lista `DATOS` de `scripts/rebuild_db_from_sql.sh`, detrás de lo que
+referencia, y a esta tabla.

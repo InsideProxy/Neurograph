@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reconstruye la base de datos de NeuroGraph desde cero a partir de los
-# archivos .sql del repositorio (migraciones + seeds + salida_*.sql), en
+# archivos .sql del repositorio (migraciones + seeds + data/sql/salida_*.sql), en
 # el orden de dependencias establecido en la H1 (antes decision 75)
 # de docs/decisiones-herramientas.md y documentado en
 # backend/database/migrations/README.md.
@@ -28,6 +28,7 @@ USUARIO=neurograph
 BASE=neurograph
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 SEED=backend/database/seed
+SQL=data/sql
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"; docker exec "$CONTENEDOR" rm -f /tmp/neurograph_rebuild.sql >/dev/null 2>&1 || true' EXIT
 
@@ -60,33 +61,33 @@ DATOS=(
   $SEED/register_dataset_hcp_s1200_groupavg.sql
   $SEED/register_dataset_hcp_s1200_groupavg_extracted.sql
   $SEED/register_dataset_brainnetome.sql
-  salida_mni152_meshes.sql
+  $SQL/salida_mni152_meshes.sql
   # 2. Atlas, regiones y coordenadas (mmp1 da de alta la especie humana)
-  salida_mmp1.sql
-  salida_subcortex.sql
-  salida_gordon333.sql
-  salida_brainnetome.sql
-  salida_macaque_wang2017.sql
-  salida_cheng2021_ipl.sql
+  $SQL/salida_mmp1.sql
+  $SQL/salida_subcortex.sql
+  $SQL/salida_gordon333.sql
+  $SQL/salida_brainnetome.sql
+  $SQL/salida_macaque_wang2017.sql
+  $SQL/salida_cheng2021_ipl.sql
   # 3. Estudios: register_atlas_studies ANTES de los backfills (si no,
   #    su ON CONFLICT volveria a escribir name/doi/year)
   $SEED/register_atlas_studies.sql
-  salida_backfill_atlas_study_metadata.sql
-  salida_backfill_zhang2018_study_metadata.sql
-  salida_zotero_kerezoudis_2026.sql
+  $SQL/salida_backfill_atlas_study_metadata.sql
+  $SQL/salida_backfill_zhang2018_study_metadata.sql
+  $SQL/salida_zotero_kerezoudis_2026.sql
   # 4. Nombres largos de HCP-MMP1.0: despues de todo lo que escribe esas regiones
-  salida_backfill_hcp_mmp1_names.sql
+  $SQL/salida_backfill_hcp_mmp1_names.sql
   # 5. Redes y pertenencias
   $SEED/register_cole_anticevic_networks.sql
   $SEED/register_cerebellum_network_distribution.sql
-  salida_rsn_networks.sql
+  $SQL/salida_rsn_networks.sql
   # 6. Conexiones
   $SEED/register_connections_brainnetome.sql
   $SEED/register_yeh2022_tract_region.sql
-  salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
-  salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
+  $SQL/salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
+  $SQL/salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
   # 7. Homologias (necesitan regiones humanas y de macaco)
-  salida_motor_sma_synthesis.sql
+  $SQL/salida_motor_sma_synthesis.sql
 )
 
 psql_c() { docker exec "$CONTENEDOR" psql -U "$USUARIO" -d "$BASE" -Atc "$1"; }
@@ -103,7 +104,7 @@ aplicar() {
   fi
   # Los archivos con su propio BEGIN/COMMIT no se envuelven en otra transaccion.
   grep -qx 'BEGIN;' "$archivo" && transaccion=
-  printf '  %-58s ' "$1"
+  printf '  %-64s ' "$1"
   docker cp "$fuente" "$CONTENEDOR:/tmp/neurograph_rebuild.sql"
   if docker exec "$CONTENEDOR" psql $transaccion -v ON_ERROR_STOP=1 -q \
        -U "$USUARIO" -d "$BASE" -f /tmp/neurograph_rebuild.sql >/dev/null 2>"$TMP/err"; then

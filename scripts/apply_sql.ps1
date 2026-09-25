@@ -36,8 +36,8 @@
     Base de datos de PostgreSQL. Por defecto "neurograph".
 
 .EJEMPLO
-    .\scripts\apply_sql.ps1 -Archivo .\salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
-    .\scripts\apply_sql.ps1 -Archivo .\salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
+    .\scripts\apply_sql.ps1 -Archivo .\data\sql\salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
+    .\scripts\apply_sql.ps1 -Archivo .\data\sql\salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
 #>
 
 param(

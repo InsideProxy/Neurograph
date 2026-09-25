@@ -43,3 +43,11 @@ Del zip no quedó ningún checksum en el repositorio. Para confirmar que son los
 **Por qué.** El log general mezclaba en ~400 KB criterios, historia y conversación: para conocer una regla vigente había que leerlo entero y averiguar qué decisión corregía a cuál. Los criterios suman ~40 KB y cada agente carga solo los de su área.
 
 **Verificación.** Los criterios se extrajeron del log completo, y los valores que cambiaron a lo largo de él se contrastaron con el código. `check_docs.py` da OK y detecta cada tipo de error en una prueba con errores inyectados. Las tres ramas del rediseño se fusionan sin conflictos (`git merge-tree`).
+
+## H3. Los `salida_*.sql` pasan de la raíz a `data/sql/` -- 25/09/2026
+
+**Qué.** Los 15 `salida_*.sql` se mueven con `git mv` a `data/sql/`, con el mismo nombre. Se corrigen las rutas de `scripts/rebuild_db_from_sql.sh` (variable `SQL`, junto a `SEED`), los ejemplos de uso de `apply_sql.ps1`, `register_rsn_networks.py` y los dos `backfill_*.py`, el README de migraciones, los criterios y `scripts/CLAUDE.md`. La convención de la decisión 69 cambia solo en el lugar: siguen en git si pesan menos de 100 MB.
+
+**Por qué.** La raíz tenía 15 archivos de datos generados mezclados con la configuración del proyecto.
+
+**Verificación.** `scripts/rebuild_db_from_sql.sh` completo contra un Postgres desechable con las rutas nuevas, y `check_docs.py`. Ninguna de las tres ramas del rediseño toca ni cita estos archivos.

@@ -10,7 +10,7 @@ Reglas para trabajar en `scripts/`. Las generales están en el CLAUDE.md de la r
   - escrito directamente en un archivo con `encoding="utf-8"`.
 - **Idempotencia.** El SQL es `INSERT … ON CONFLICT (id) DO UPDATE`, o `UPDATE` por id en los backfills.
 - **Reutilización.** La lectura de los datos se toma de `backend/ingestion/`; no se reescribe.
-- **Salida.** Un `salida_*.sql` en la raíz del repositorio:
+- **Salida.** Un `salida_*.sql` en `data/sql/`:
   - se prueba en un Postgres desechable, aplicándolo dos veces;
   - aplicarlo a una base real lo decide el usuario tras revisarlo;
   - si es nuevo, se añade a la lista de `rebuild_db_from_sql.sh` y a la tabla de `backend/database/migrations/README.md`, detrás de lo que referencia.

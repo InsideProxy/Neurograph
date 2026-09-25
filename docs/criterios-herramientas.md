@@ -50,7 +50,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   - un módulo lector puro en `backend/ingestion/`, sin base de datos ni SQL;
   - un script `scripts/register_*.py` o `generate_*.py` que genera SQL idempotente (`INSERT … ON CONFLICT (id) DO UPDATE`) sin conectarse a ninguna base.
 
-  La salida `salida_*.sql` va en la raíz y se sube a git si pesa menos de 100 MB. (12, 40, 46, 69)
+  La salida `salida_*.sql` va en `data/sql/` y se sube a git si pesa menos de 100 MB. (12, 40, 46, 69, H3)
 - **El SQL de alta lo escriben funciones del proyecto** (`study_insert_sql`, `dataset_insert_sql`, `evidence_insert_sql`), nunca una persona a mano. (20, 22)
 - **Un backfill reutiliza la misma función de la ingesta real** y genera un `UPDATE` para revisar. Si una columna nueva va en una tabla con filas, se crea NULLable y se rellena con un backfill explícito, nunca con un valor por defecto silencioso. (12, 15, 51, 63)
 - **Formatos nuevos:** se siguen los pasos de `docs/protocolo-ingesta-ia.md`. (46)
