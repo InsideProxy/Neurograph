@@ -106,8 +106,7 @@ function barBottom(bar: HTMLElement): number {
 // antes de medir el alto, porque su relleno lo aumenta. Por último se
 // publica dónde acaba la barra en --topbar-bottom, para colocar algo justo
 // debajo y no a una distancia fija: la altura cambia con el tema, el zoom
-// o una segunda fila plegada. Hoy no la lee nadie: los avisos flotantes,
-// que la usaban, pasaron abajo a la derecha (D4 de
+// o una segunda fila plegada. La leen los avisos flotantes (App.css; D6 de
 // docs/decisiones-diseno.md).
 function refit(bar: HTMLElement | null, force = false) {
   if (!bar) return;

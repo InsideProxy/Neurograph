@@ -488,3 +488,9 @@ El spec queda al día con estas diferencias y con lo que queda abierto:
 - 12: la dependencia de `isXRRenderTarget`, con las pruebas que la vigilan, y lo que tiene que decidir el usuario.
 
 Spec: `docs/rediseno-interfaz-diseno.md`, sección 6.3. Plan: `docs/rediseno-interfaz-plan-3d.md`.
+
+## D6. Avisos arriba a la derecha, bajo la barra -- 25/09/2026
+
+**Qué.** Los avisos flotantes pasan de abajo a la derecha (D4) a arriba a la derecha, justo bajo la barra superior, sobre la columna derecha y apilados hacia abajo. `top` sale de `--topbar-bottom`, así que bajan con la barra cuando ocupa dos filas. Mientras se ven tapan la cabecera de la primera miniatura, con su «Ampliar».
+**Por qué.** Abajo, el aviso de «Importar» salía lejos del botón y el usuario no lo encontraba. Eligió esta posición sabiendo que tapa el «Ampliar», el motivo por el que la D4 los había bajado. Deja de quedar tapado el pie del panel de detalle, con el ID y su botón de copiar.
+**Verificación.** Chromium headless con datos reales, a 1440, 1024 y 700 px: el aviso queda 12 px bajo la barra, también con la barra en dos filas (700 px, 89 px de alto), y no tapa ningún botón de la barra. 411 pruebas, lint sin errores y build correcta.
