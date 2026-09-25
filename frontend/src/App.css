@@ -481,22 +481,26 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .data-status--real .data-status__dot { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); }
 .data-status--demo .data-status__dot { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-bg); }
 
-/* Avisos flotantes (spec 5.6): arriba a la derecha, bajo la barra y sobre
-   la columna derecha, con su ancho. Así no tapan la vista grande ni su
-   recuadro de lectura. Escala de z-index: las vistas, 1 como mucho; los
-   avisos, 10; lo que se abre encima (el panel de Ajustes, 20, y las listas
-   del buscador, 20, y del contexto de datos, 25), por encima de ellos, y
-   las etiquetas emergentes, 30. top usa --topbar-bottom (la publica TopBar
-   tras medirse, ver refit en components/TopBar.tsx) y no un valor fijo,
-   porque la barra puede ocupar dos filas si no cabe en una (data-wrapped):
-   con un valor fijo el aviso quedaría encima de la segunda fila.
-   Si no caben en la ventana, se desplazan por dentro. overflow recorta en
-   el borde del relleno, así que el relleno deja sitio a las sombras (hasta
-   22 px por debajo y 12 a los lados, --shadow), y top, right y width lo
-   compensan: los avisos quedan donde estaban, a 12 px de la barra y del
-   borde. La región no recoge el ratón, solo los avisos: su relleno, que no
+/* Avisos flotantes (spec 5.6): abajo a la derecha, sobre la columna
+   derecha y con su ancho, apilados hacia arriba: el más reciente queda
+   abajo del todo. Arriba a la derecha tapaban el «Ampliar» de la primera
+   miniatura (verificación de la fase 3). Aquí no tapan la vista grande ni
+   su recuadro de lectura, ni las miniaturas, ni Filtros. Sí tapan el pie
+   del panel de detalle (el ID y su botón de copiar) mientras se ven: es el
+   precio aceptado (D4 de docs/decisiones-diseno.md).
+   Escala de z-index: las vistas, 1 como mucho; los avisos, 10; lo que se
+   abre encima (el panel de Ajustes, 20, y las listas del buscador, 20, y
+   del contexto de datos, 25), por encima de ellos, y las etiquetas
+   emergentes, 30.
+   Si no caben en la ventana, se desplazan por dentro: la región sube como
+   mucho hasta 8 px bajo la barra de una fila (56 px). overflow recorta en
+   el borde del relleno, así que el relleno deja sitio a las sombras
+   (--shadow: 2 px por encima y 12 a los lados; los 22 px de debajo pasan
+   del borde de la ventana, que los corta igual), y right, bottom y width
+   lo compensan: los avisos quedan a 12 px del borde derecho y del de
+   abajo. La región no recoge el ratón, solo los avisos: su relleno, que no
    se ve, no tapa lo que hay debajo. */
-.toast-region { position: fixed; top: calc(var(--topbar-bottom, 56px) + 8px); right: 0; z-index: 10; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; width: min(324px, 100vw); max-height: calc(100svh - var(--topbar-bottom, 56px) - 8px); overflow-y: auto; padding: 4px 12px 22px; pointer-events: none; }
+.toast-region { position: fixed; right: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; width: min(324px, 100vw); max-height: calc(100svh - 64px); overflow-y: auto; padding: 4px 12px 12px; pointer-events: none; }
 .toast { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel-bg); box-shadow: var(--shadow); text-align: left; pointer-events: auto; }
 .toast__icon { margin-top: 1px; color: var(--text-h); }
 .toast--error .toast__icon { color: var(--error); }

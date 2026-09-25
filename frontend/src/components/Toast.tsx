@@ -1,11 +1,12 @@
 // Avisos flotantes (D4 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md,
-// 5.6). Sustituyen a las franjas rojas fijas de App.tsx. Van arriba a la
-// derecha, bajo la barra y sobre la columna derecha, sin tapar la vista
-// grande. Cada aviso es role="alert", con un mensaje comprensible y, si lo
-// hay, el texto técnico completo en «Detalles», y se queda hasta que se
-// cierra. Los discretos (polite), como el aviso con «Deshacer» (5.7), no
-// llevan rol: su texto lo anuncia una región viva siempre presente. Pueden
-// llevar un botón de acción e irse solos.
+// 5.6). Sustituyen a las franjas rojas fijas de App.tsx. Van abajo a la
+// derecha, sobre la columna derecha, y se apilan hacia arriba, sin tapar la
+// vista grande ni las miniaturas (App.css). Cada aviso es role="alert", con
+// un mensaje comprensible y, si lo hay, el texto técnico completo en
+// «Detalles», y se queda hasta que se cierra. Los discretos (polite), como
+// el aviso con «Deshacer» (5.7), no llevan rol: su texto lo anuncia una
+// región viva siempre presente. Pueden llevar un botón de acción e irse
+// solos.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toastAfterDismiss, type ToastEntry } from "../logic/toastQueue";
 import { Icon } from "./Icon";

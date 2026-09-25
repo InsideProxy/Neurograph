@@ -80,8 +80,8 @@ function rowHeight(bar: HTMLElement): number {
   return Number.parseFloat(getComputedStyle(bar).minHeight);
 }
 
-// Dónde acaba la barra, relativo al documento (revisión de la Task 2): el
-// aviso flotante que lee --topbar-bottom es position: fixed, y la barra
+// Dónde acaba la barra, relativo al documento (revisión de la Task 2), para
+// lo que se coloque con position: fixed justo debajo de ella. La barra
 // está arriba del todo, así que su sitio es el de la página sin desplazar.
 // getBoundingClientRect() lo da respecto a la ventana visible, que cambia
 // al hacer scroll, y window.scrollY lo pasa al documento. Es la forma
@@ -104,9 +104,11 @@ function barBottom(bar: HTMLElement): number {
 // plegar y data-wrapped para el aire vertical entre filas -- no son lo
 // mismo: a veces todo plegado sigue cabiendo en una fila), y se quita
 // antes de medir el alto, porque su relleno lo aumenta. Por último se
-// publica dónde acaba la barra en --topbar-bottom: el aviso flotante se
-// coloca justo debajo en vez de a una distancia fija, porque la altura
-// cambia con el tema, el zoom o una segunda fila plegada.
+// publica dónde acaba la barra en --topbar-bottom, para colocar algo justo
+// debajo y no a una distancia fija: la altura cambia con el tema, el zoom
+// o una segunda fila plegada. Hoy no la lee nadie: los avisos flotantes,
+// que la usaban, pasaron abajo a la derecha (D4 de
+// docs/decisiones-diseno.md).
 function refit(bar: HTMLElement | null, force = false) {
   if (!bar) return;
   if (!force && lastFit.get(bar) === fitSignature(bar)) return;

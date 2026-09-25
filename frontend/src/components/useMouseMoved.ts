@@ -9,16 +9,14 @@
 // no solo de la lista: así tampoco cuenta como movimiento una lista que se
 // abre bajo el ratón quieto. document lo apunta en la fase de burbuja,
 // después de que el manejador de la opción (React escucha en la raíz, más
-// abajo que document) lo haya comparado.
+// abajo que document) lo haya comparado. Sin ninguno anterior (la lista
+// se acaba de montar), no cuenta como movimiento (logic/listbox.ts,
+// pointerMoved).
 import { useEffect, useRef } from "react";
+import { pointerMoved, type PointerPosition } from "../logic/listbox";
 
-interface MousePoint {
-  clientX: number;
-  clientY: number;
-}
-
-export function useMouseMoved(): (event: MousePoint) => boolean {
-  const last = useRef<MousePoint | null>(null);
+export function useMouseMoved(): (event: PointerPosition) => boolean {
+  const last = useRef<PointerPosition | null>(null);
   useEffect(() => {
     const remember = (event: MouseEvent) => {
       last.current = { clientX: event.clientX, clientY: event.clientY };
@@ -26,8 +24,5 @@ export function useMouseMoved(): (event: MousePoint) => boolean {
     document.addEventListener("mousemove", remember, { passive: true });
     return () => document.removeEventListener("mousemove", remember);
   }, []);
-  return (event) => {
-    const previous = last.current;
-    return previous === null || previous.clientX !== event.clientX || previous.clientY !== event.clientY;
-  };
+  return (event) => pointerMoved(last.current, event);
 }

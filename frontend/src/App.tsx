@@ -266,11 +266,14 @@ export default function App() {
 
   // Con otra clasificación de redes, las redes guardadas en el historial
   // dejan de valer (spec 5.7). Se vacía cuando llega, no al elegirla:
-  // mientras carga se sigue viendo la anterior, y si falla, se queda.
-  const loadedNetworkSource = source.kind === "real" ? source.networkSource : null;
+  // mientras carga se sigue viendo la anterior, y si falla, se queda. Lo
+  // mismo al caer a los datos de demostración, que son otras regiones: la
+  // clave lleva el tipo de datos, porque desde la clasificación por defecto
+  // la clasificación sola no cambia (null antes y después).
+  const loadedDataKey = source.kind === "real" ? `real:${source.networkSource ?? ""}` : source.kind;
   useEffect(() => {
     resetHistory();
-  }, [loadedNetworkSource]);
+  }, [loadedDataKey]);
 
   // Aviso con «Deshacer» (spec 5.7): sale cuando un paso quita dos o más
   // regiones de la selección (logic/historyStep.ts, stepNotice). Su texto lo
@@ -278,7 +281,8 @@ export default function App() {
   // los 8 s, salvo mientras tiene el ratón encima o el foco, y con el
   // siguiente cambio del historial, también cuando se vacía (resetHistory)
   // al cambiar de atlas o de clasificación, o al caer de los datos reales a
-  // los de demostración: su «Deshacer» ya no tendría nada que deshacer.
+  // los de demostración, también desde la clasificación por defecto
+  // (loadedDataKey): su «Deshacer» ya no tendría nada que deshacer.
   // Por eso la suscripción es una sola, desde el montaje, y no una por cada
   // `source`: en React 19 las bajas de los efectos corren antes que las
   // altas, así que el efecto de arriba vaciaría el historial entre la baja

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialActiveIndex, listboxKey } from "./listbox";
+import { initialActiveIndex, listboxKey, pointerMoved } from "./listbox";
 
 describe("listboxKey", () => {
   it("las flechas mueven la opción activa sin salirse de la lista", () => {
@@ -43,5 +43,17 @@ describe("initialActiveIndex", () => {
     expect(initialActiveIndex(-1, 4)).toBe(0);
     expect(initialActiveIndex(9, 4)).toBe(0);
     expect(initialActiveIndex(-1, 0)).toBe(0);
+  });
+});
+
+describe("pointerMoved", () => {
+  it("en otro punto es un movimiento; en el mismo, un mousemove repetido", () => {
+    expect(pointerMoved({ clientX: 10, clientY: 20 }, { clientX: 11, clientY: 20 })).toBe(true);
+    expect(pointerMoved({ clientX: 10, clientY: 20 }, { clientX: 10, clientY: 19 })).toBe(true);
+    expect(pointerMoved({ clientX: 10, clientY: 20 }, { clientX: 10, clientY: 20 })).toBe(false);
+  });
+
+  it("sin posición anterior no cuenta: tras montar la lista puede ser un repetido", () => {
+    expect(pointerMoved(null, { clientX: 10, clientY: 20 })).toBe(false);
   });
 });

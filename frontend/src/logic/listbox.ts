@@ -1,6 +1,8 @@
 // Teclado de la lista desplegable del contexto de datos (D4 de
-// docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.1 y 8).
-// Función pura: dice qué hacer con cada tecla; DataContextMenu.tsx lo hace.
+// docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.1 y 8), que
+// usa también la del buscador de regiones, y si un mousemove sobre una de
+// ellas es un movimiento de verdad. Funciones puras: dicen qué hacer con
+// cada tecla y con el ratón; DataContextMenu.tsx y RegionSearch.tsx lo hacen.
 
 export type ListboxKeyResult =
   | { kind: "move"; index: number }
@@ -36,4 +38,19 @@ export function listboxKey(key: string, active: number, count: number): ListboxK
 // Opción activa al abrir: la elegida, o la primera si no hay ninguna.
 export function initialActiveIndex(selectedIndex: number, count: number): number {
   return selectedIndex >= 0 && selectedIndex < count ? selectedIndex : 0;
+}
+
+export interface PointerPosition {
+  clientX: number;
+  clientY: number;
+}
+
+// Si un mousemove sobre una opción es un movimiento de verdad, y no uno de
+// los que WebKit repite con las mismas coordenadas cuando la lista se
+// mueve bajo el ratón quieto (components/useMouseMoved.ts, que lo usa en
+// esta lista y en la del buscador de regiones). Sin posición anterior
+// tampoco cuenta: justo tras montarse la lista, el primero puede ser uno
+// de esos repetidos, y el siguiente movimiento real ya cuenta.
+export function pointerMoved(previous: PointerPosition | null, current: PointerPosition): boolean {
+  return previous !== null && (previous.clientX !== current.clientX || previous.clientY !== current.clientY);
 }
