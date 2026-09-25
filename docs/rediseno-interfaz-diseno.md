@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí, así que 5.6 describe todavía los avisos abajo a la derecha (sección 11).
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí, así que 5.6 describe todavía los avisos abajo a la derecha (sección 11).
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -107,10 +107,14 @@ Lo que hoy son constantes en `theme/networks.ts` y valores sueltos en los compon
 | `sceneBg` fondo 3D | `#1d1e26` | `#16191e` | `#111726` | `#ffffff` |
 | `cortexSulcus` / `cortexGyrus` | sRGB 0,35 / 0,72 | `#565c66` / `#e3e5e9` | `#4f5869` / `#dfe4ee` | `#6f7680` / `#dcdfe4` |
 | `cortexMedialWall` / `cortexNoData` | sRGB 0,25 / 0,55 | `#2a2e35` / `#7d838c` | `#262d3b` / `#7a8396` | `#a3a8b0` / `#b9bdc4` |
+| `label3dText` texto de las etiquetas 3D | `#c7c5d0` | `#c9ced6` | `#cbd5e6` | `#3a3d43` |
+| `label3dStrong` el de la región seleccionada | `#f3f2f7` | `#f1f3f6` | `#f2f5fb` | `#14161a` |
+| `label3dBackground` su pastilla | `rgba(29, 30, 38, 0.84)` | `rgba(22, 25, 30, 0.84)` | `rgba(17, 23, 38, 0.84)` | `rgba(255, 255, 255, 0.88)` |
 
 Otros detalles del dibujo:
 
 - **Contraste:** `label` y `nodeRing` superan 4,7:1 sobre su panel en los temas nuevos. En Original quedan en 4,27:1, como hoy.
+- **Etiquetas del 3D** (6.3; D10): el texto es el `--text` de cada tema, y el de la región seleccionada, su `--text-h`. La pastilla es su `sceneBg` con transparencia: 0,84, y 0,88 en Claro, como el `scrim` de la maqueta en los temas nuevos (en Original, la maqueta usaba su `--bg` al 82 %). Con cualquier cosa detrás (el fondo compuesto sobre negro y sobre blanco), el texto supera 4,5:1, y `theme/themeCss.test.ts` lo comprueba: de 5,9:1 a 12,5:1, y el de la seleccionada, de 9,0:1 a 18,1:1, calculado. En Original no conservan el aspecto de antes: hasta la fase 4, las etiquetas del 3D eran texto casi negro con un contorno blanco, igual en todos los temas.
 - **Grosor:** el `dash` cambia solo el patrón del discontinuo; el grosor sigue siendo el peso. Hoy, el grosor al seleccionar y las flechas de conectividad efectiva siguen su regla actual.
 - **Clave desconocida:** si una clave de red no está en la tabla, se usa el color de «sin clasificar» de la paleta activa. Hoy son `"#888"` y `NEUTRAL_COLOR`: se unifica.
 
@@ -196,7 +200,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 
 - Los tokens de dibujo y los colores de red del lienzo 3D son los de exportación.
 - La corteza pintada recalcula sus colores, que es rápido.
-- Los materiales de la selección, los marcadores, las líneas, los conos de dirección y la malla de referencia de `ReferenceMesh` usan los tokens de exportación.
+- Los materiales de la selección, los marcadores, las líneas, los conos de dirección, las etiquetas con su pastilla (6.3) y la malla de referencia de `ReferenceMesh` usan los tokens de exportación.
 
 `ExportBridge` espera un fotograma dibujado con esos colores, lo captura y restaura el modo normal. Así la selección no desaparece sobre el blanco.
 
@@ -309,11 +313,17 @@ Un panel emergente que sale del engranaje:
   - No se sube estado a `App`.
 - **Lupa:** pasa de casilla a botón de alternar (`aria-pressed`).
 - **Controles del cerebro 3D:** siguen siendo `<select>` nativos, con estilo propio (`appearance: none` y chevron).
-- **Leyenda del connectograma:** fija abajo a la izquierda, fuera del SVG, así que no se exporta. Tiene cuatro entradas:
+- **Leyenda del connectograma:** abajo a la izquierda, bajo el dibujo y fuera del SVG, así que no se exporta. Solo en la vista grande. Tiene cuatro entradas:
   - «Evidencia no directa (indirecta o hipótesis)», con muestra discontinua.
   - «Evidencia directa», con muestra continua.
   - «Efectiva (con dirección)», con muestra de flecha.
   - «Color del punto = red».
+
+  Cómo quedó (D10):
+  - **Bajo el dibujo, no encima** (decisión del usuario, 25/09/2026). En la maqueta iba encima, en la esquina: allí el radio del círculo es 0,39 del lado, y en la app, de 0,43 a 0,47. Encima habría tapado, calculado, una docena de nodos a 1400 × 900, con sus etiquetas, y la lupa en esa esquina. Ocupa su propia fila en la vista, y el hueco del dibujo se queda con el alto que sobra: el círculo se ajusta a él. A 1400 × 900, el lado del dibujo baja de 666 a unos 615 px, calculado.
+  - **Aspecto:** una lista con nombre («Leyenda del connectograma», `role="list"`), sobre el panel, con su mismo fondo y un borde `--border`. Letra de 0,7rem en `--text-muted`, que supera 4,5:1 sobre el panel (4.1), y sin selección de texto al arrastrar (5.9).
+  - **Muestras:** un `<svg>` decorativo del color del texto (`--text`). Las de las dos líneas son de 1 px y con extremos rectos, como las líneas del dibujo, y la discontinua lleva el `dash` del tema.
+  - **Filas:** las entradas van en una fila, y en dos o tres si no caben, con 8 px entre entradas y 6 entre la muestra y su texto. A 1400 × 900 caben en una: unos 771 px de 776, calculado y sin medir en un navegador.
 - **Recuadro de lectura:** conserva su altura fija (decisión 74b) y muestra región, hemisferio y red como etiqueta de color.
   - El «(hemisferio …)» del final de los nombres de HCP-MMP1.0 no se repite si coincide con el hemisferio de la región. Un nombre de red largo acaba en «…», con el completo en la etiqueta emergente.
   - En el del connectograma, con exactamente una región seleccionada, añade cuántas de sus conexiones pasan los filtros, con el umbral, como en la maqueta: «5 conexiones pasan los filtros (peso ≥ 0.015)». Sin umbral no hay paréntesis. Con varias regiones no hay recuento, y el recuadro de los hemisferios no lo lleva.
@@ -446,13 +456,15 @@ Petición del usuario (24/09/2026): con 360 regiones en el círculo, es muy dif�
 Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el navegador seleccionaba las etiquetas como texto y las pintaba de azul, y él propuso convertirlo en función: «una cosa es activar red y otra seleccionar». Las marcas son una capa aparte de la selección. Seleccionar sigue activando la red de la región, con sus conexiones y el foco del 3D. Marcar solo resalta, para localizar regiones de un vistazo en todas las vistas, sin cambiar lo que se dibuja. Diseño aprobado por el usuario el mismo día.
 
 - **Gesto:**
-  - Ctrl+clic en un nodo marca o desmarca la región, en el connectograma (también en la lupa), en los hemisferios y en el 3D. En el 3D vale sobre el marcador y, con la corteza pintada, sobre la región.
+  - Ctrl+clic en un nodo marca o desmarca la región, en el connectograma (también en la lupa), en los hemisferios y en el 3D. En el 3D vale sobre el marcador, sobre su etiqueta (6.3; D10) y, con la corteza pintada, sobre la región.
   - En macOS, Cmd+clic, porque allí Ctrl+clic abre el menú contextual.
   - El clic normal sigue seleccionando, como hasta ahora.
 - **Teclado:** en el buscador de regiones (5.8), Ctrl+Intro marca o desmarca la sugerencia activa, en lugar de seleccionarla. La línea de avisos del buscador lo recuerda.
 - **Cómo se ven,** con un color de marca nuevo por tema, un azul como el de la selección de texto que vio el usuario:
   - En el connectograma y los hemisferios, la etiqueta de la región va sobre una pastilla del color de marca, con texto de contraste, y el nodo lleva un anillo exterior del mismo color, separado del nodo por un hueco del color del fondo. Así se distingue aunque la red sea azul.
-  - En el 3D, marcador y etiqueta con ese anillo y esa pastilla, también fuera de la selección y también con el mapa entero pintado. Con la oclusión (6.3), una marca que queda detrás de la corteza se ve tenue, como lo demás.
+    - En el connectograma, la pastilla gira con la etiqueta radial: sale de la misma función (6.1; D10).
+    - Si la región está seleccionada, el anillo de la marca se queda donde estaba y va encima del halo de selección, que asoma por fuera (6.1).
+  - En el 3D, marcador y etiqueta con ese anillo y esa pastilla, también fuera de la selección y también con el mapa entero pintado. La etiqueta empieza pasado el anillo (6.3). Con la oclusión (6.3), una marca que queda detrás de la corteza se ve tenue, como lo demás.
   - La pastilla y el anillo pasan 3:1 sobre el fondo de los cuatro temas, y el texto de la pastilla 4,5:1.
 - **Filtros:** una línea bajo la selección (5.3), solo cuando hay alguna marca (decisión del usuario, 25/09/2026; D9). Sin marcas no hay línea; queda solo una región viva oculta, que anuncia «Ninguna región marcada» al quitar la última (`dec7cad`, fusión `7b9e161`). Lleva «Marcadas: N» con sus nombres (los primeros, y «y N más») y un botón «Quitar marcas». Si una región marcada queda oculta por los filtros, no se dibuja, y la línea lo dice («1 oculta por los filtros»).
 - **Deshacer y rehacer** (5.7): marcar, desmarcar y «Quitar marcas» son pasos del historial, con su descripción («marcar IFJa (der.)», «quitar las marcas (5)»). «Quitar marcas» con dos o más marcas da además el aviso con «Deshacer» (5.6): es el mismo caso que quitar dos o más regiones de la selección de un golpe, que es lo que llevó al usuario a pedir el deshacer.
@@ -465,11 +477,26 @@ Petición del usuario (25/09/2026). Al arrastrar sobre el connectograma, el nave
 ### 6.1 Connectograma
 
 - **Etiquetas:** van por fuera del anillo, en dirección radial y giradas con el ángulo del nodo. En la mitad izquierda se giran 180° y se alinean al final, para leerse de izquierda a derecha. Es lo contrario de la lupa, que las pone hacia dentro. El tamaño sigue la regla actual según el número de nodos.
+  - **La regla exacta** (D10): la mitad izquierda es `ux < 0`, el mismo criterio que la lupa, y arriba y abajo del todo van en vertical. La separación es la de siempre, el radio del nodo + 7 px, en la dirección que va del centro al nodo. La regla de tamaño tampoco cambia: 5,5 px con más de 150 nodos, 7 con más de 40 y 9 con 40 o menos; la seleccionada o la que tiene el ratón encima, 1,5 px mayor y en negrita. La pastilla de una región marcada (5.9) sale de la misma función, `radialLabel`, y gira con la etiqueta.
+  - **Sitio para la más larga** (decisión del usuario, 25/09/2026; D10): el anillo deja entre él y el borde del dibujo lo que ocupa la etiqueta más larga, para que ninguna se corte. Cuenta la etiqueta ampliada, la de una región seleccionada o con el ratón encima (negrita, letra 1,5 px mayor y nodo 3 px mayor), con la pastilla de una marca alrededor. Antes, el margen era siempre de 40 px (radio = lado / 2 − 40), y las etiquetas largas se cortaban por los lados.
+    - El ancho se estima sin DOM (`estimatedLabelWidth`). Las letras cuentan por grupos, con el avance medio de cada grupo medido en el archivo de Atkinson Hyperlegible Next de peso 700: las estrechas, 0,36 em; las anchas, 0,68; las demás, 0,57. Se suma un 10 % de seguridad y el espaciado entre letras de la página, 0,18 px, el de `:root` en `index.css`.
+    - Los 40 px son el mínimo, y el radio no baja de la mitad del de siempre: en un dibujo muy pequeño con etiquetas muy largas, las más largas se cortan antes de que el círculo quede en un punto. La miniatura conserva los 40 px: a ese tamaño, las etiquetas no se leen.
+    - **Un radio por atlas** (decisión del usuario, tras la revisión): el margen cuenta las etiquetas de todas las regiones del atlas, también las que ocultan los filtros, así que el círculo no cambia al mostrar u ocultar redes. La letra sigue contando los nodos que se ven: si su número cruza 40 o 150, la letra cambia, y el radio con ella.
+    - Radios, calculados con un lado de 666 px, donde antes eran 293: HCP-MMP1.0, 291,0; Brainnetome, 264,6; Gordon 333, 246,6; Subcórtex, 187,7, un 36 % menos por sus etiquetas de 21 letras (12). A 1400 × 900, con la leyenda debajo (5.4), el lado baja a unos 615 px y cada radio, unos 25,5 px: HCP-MMP1.0 queda en unos 265,5 px, un 9,4 % menos que antes.
 - **Arcos de hemisferio:** dos arcos finos por fuera, rotulados IZQUIERDO y DERECHO. Solo se dibujan si, en el orden actual, los nodos de cada hemisferio forman un único bloque seguido y ninguno tiene `hemisphere` nulo. El orden de los nodos no se toca.
+  - **Cuándo** (D10): con los dos hemisferios presentes, cada uno en un solo bloque seguido, contando que el círculo se cierra (un bloque puede pasar por el principio del orden). Se mira sobre los nodos que pasan los filtros. Con un solo hemisferio no hay arcos. Con los datos de hoy, HCP-MMP1.0 los tiene (180 regiones del derecho y luego 180 del izquierdo); Brainnetome, Gordon 333 y el Subcórtex no, porque alternan, y el Subcórtex tiene además una región sin hemisferio.
+  - **Dónde:** a 34 px del anillo como poco, o más lejos, para quedar 3 px por fuera de la etiqueta más larga en reposo; el margen del anillo les deja sitio. En HCP-MMP1.0 quedan a 34 px, y una etiqueta larga ampliada los cruza por encima. Cada uno va del borde de su primer nodo al de su último, menos 4° a cada lado; con un bloque muy corto, menos.
+  - **Cómo:** 1,5 px, extremos redondos y el token `edge` opaco, el del contorno de las elipses de los hemisferios (6.2). La maqueta usaba `faint`, que queda por debajo de 3:1 (8).
+  - **Rótulos:** en las esquinas de arriba, a 10 px del borde, cada uno del lado en que queda el punto medio de su arco; si los dos quedan igual de centrados, el izquierdo a la izquierda. Letra de 10 px, peso 600 y 1 px de espaciado, con el token `label`, como los rótulos de los hemisferios.
+  - **En la miniatura,** sin rótulos, como en la maqueta, y a 34 px del anillo. Si la etiqueta más larga en reposo llegara a menos de 3 px de ellos, no se dibujan: pasa con abreviaturas largas y letra grande, como las del IPL, y con HCP-MMP1.0 cuando se ven 150 regiones o menos, con su letra de 7 px.
+  - Se exportan: son parte del dibujo.
 - **Líneas:** la misma geometría (curva por el centro), la misma regla de grosor y los tokens de color, opacidad por estado y `dash` de 4.2.
 - **Nodos:**
   - Relleno con el color de red del modo activo y anillo `nodeRing` de 1 px.
   - El seleccionado lleva anillo `selected` de 2,5 px, como hoy, más un halo del mismo color al 35 %, en todos los temas.
+    - **El halo** (D10): un anillo de 2 px, a 2 px del contorno, como en la maqueta, con `stroke-opacity` fija de 0,35. Se exporta con el `selected` de la exportación (`data-ng-stroke`); su opacidad no lleva referencia. Va en un grupo propio encima de los nodos: tiñe un poco a las vecinas y queda encima de sus etiquetas, que en la maqueta quedaban encima de él (12).
+    - **Con una marca** (5.9), el anillo de la marca se queda donde estaba, justo por fuera del contorno, y va encima del halo, que asoma por fuera: en HCP-MMP1.0, el halo va de 9,25 a 11,25 px del centro de la región, y el anillo, de 8,75 a 10,25. La punta de la pastilla de la etiqueta tapa cerca de 1 px del halo.
+    - **En la lupa,** la región seleccionada lleva también su halo, debajo del anillo de su marca. Va con su nodo, así que las vecinas que se dibujan después pueden taparlo, y llega hasta el principio de su etiqueta, que allí va hacia dentro.
   - El resaltado al pasar el ratón usa `hoverHighlight` (decisión 76c).
 
 ### 6.2 Hemisferios
@@ -481,13 +508,23 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Surcos más visibles:** `sulcRange` pasa a devolver los percentiles 5 y 95 en lugar del mínimo y el máximo. `fillVertexColorsByIndex` aplica un suavizado (smoothstep) al valor normalizado.
   - Los percentiles se calculan una vez por archivo de surcos.
   - Se aplica en todos los temas; Original conserva sus grises de 0,35 y 0,72.
+  - **Cómo** (D10): los percentiles interpolan entre los dos valores más cercanos, el método por defecto de numpy, sin contar los vértices sin dato. Se guardan en un `WeakMap` con el propio vector del archivo: se calculan una vez por cada carga, no en cada repintado (al cambiar de atlas, el archivo se vuelve a leer). En el archivo de `fsLR 32k`, el rango pasa de −1,69…1,16 a −0,85…0,56. El valor normalizado se recorta a 0-1, porque fuera de los percentiles queda por debajo de 0 o por encima de 1, y pasa por el smoothstep (`sulcShade`).
+  - **También en las regiones con color** (decisión del usuario, 25/09/2026): el mismo valor suavizado oscurece en los surcos las regiones pintadas con el color de su red, también con el mapa entero pintado. El factor sigue entre 0,7 y 1, pero más vértices llegan a los extremos.
 - **Marcadores de región:** el radio base se reduce a la mitad, de 0,06 a 0,03, y el de la región seleccionada queda un 40 % mayor que el resto (0,042). Así no tapan la región pintada. Lo que dependía del radio se ajusta con él (D5):
   - El contorno neutro del marcador tiene que seguir viéndose en nodos `#000000`. Pasa de escala 1,18 a 1,36, y así conserva el grosor absoluto de antes (0,0108).
   - La zona de clic conserva el radio de antes (0,06, y 0,09 en la región seleccionada), en una esfera invisible: seleccionar con un clic no cuesta más.
-  - La etiqueta queda a 0,18 del borde del marcador, como antes en uno normal.
+  - La etiqueta quedaba a 0,18 del borde del marcador, en +Y de los datos, como antes en uno normal. Desde la fase 4 va a su lado, en pantalla (Etiquetas 3D, abajo).
 - **Etiquetas 3D** (`logic/textSprite.ts`):
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
+  - **Pastilla** (D10): todas van sobre una pastilla, como ya iban las de una región marcada (5.9), y una sola función dibuja las dos. Las de siempre llevan el texto del tema, `label3dText`, sobre su fondo translúcido, `label3dBackground` (4.2); las marcadas, los colores de marca. Van también en las vecinas de una región con muchas conexiones (decisión del usuario, 25/09/2026), aunque tapen más corteza que el texto con contorno de antes. El lienzo mide 84 px de alto para una letra de 44, así que el texto sale del tamaño de antes, con 34 px de margen a cada lado.
+  - **Letra:** `600 44px 'Atkinson Hyperlegible Next', system-ui, sans-serif`, el peso de las etiquetas del connectograma. La textura va en sRGB, y el material, sin curva de tono (`toneMapped={false}`), como la pastilla y el anillo de las marcas: los colores salen como en los SVG.
+  - **La de la región seleccionada destaca,** como en la maqueta: el texto fuerte del tema (`label3dStrong`, el `--text-h`), peso 700 y 13/12 más alta. Los colores de marca, si los hay, ganan.
+  - **Caché:** la clave es el texto, los dos colores, el peso y la versión de fuentes. Los colores representan el tema y cubren también la exportación (mientras se captura, los de exportación) y las marcas. Cuando la versión sube, las texturas de la anterior se liberan (`dispose`).
+  - **Versión de fuentes:** `state/labelFont.ts`, un store de zustand. `Brain3D` pide la fuente al montar, una sola vez; cuando `document.fonts.load(...)` termina, la versión sube y las etiquetas se vuelven a dibujar. Si no llega, o si `load` lanza una excepción, se quedan con la de respaldo, sin error.
+  - **Al lado del marcador** (decisión del usuario, 25/09/2026): a la derecha de su marcador en pantalla y centrada en vertical, como en la maqueta. Con la pastilla en el sitio de antes, 0,21 más arriba en +Y de los datos, tapaba su propio marcador y los de las vecinas, porque con la corteza pintada se dibuja encima de todo. El sprite está en el centro del marcador, a su misma profundidad, y su ancla (`Sprite.center` = [−inicio / ancho, 0,5]) lo lleva hasta el inicio: el contorno (radio × 1,36) más 0,015, o el borde del anillo de la marca en una región marcada. Con el margen transparente de la textura, el hueco que se ve es de unas 0,024 unidades, unos 3 px en la vista de partida.
+  - **Clic** (decisión del usuario, 25/09/2026): un clic en la etiqueta selecciona su región, o la deselecciona, y Ctrl+clic (Cmd+clic en macOS) la marca o la desmarca, como en el marcador, también con la corteza pintada. La etiqueta recibe el rayo antes que lo demás (`raycastLabelFirst`, que adelanta sus impactos), corta el clic (`stopPropagation`) y no hace nada al soltar un arrastre. Así evita tres conductas del código del desarrollador principal, que no cambian (12).
+  - **Exportación:** mientras se captura, los colores son los de exportación (4.4). Con los temas 2 a 4, el texto de Claro sobre blanco al 88 %; con Original, los de Original, texto claro sobre una pastilla oscura, sobre el blanco del JPEG. Salen con la fuente de la interfaz, porque son texturas que la aplicación dibuja con ella (7).
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
 - **Oclusión por la corteza** (petición del usuario, 25/09/2026). Sustituye a «Atenuar lo que queda detrás» (D5), que el usuario descartó: dependía de la distancia a la cámara y no de lo que tapa la corteza, así que en un primer plano no cambiaba nada.
   - **Qué se ve.** Con la corteza pintada, lo que ella tapa se ve tenue, y más cuanto más hondo queda. Lo que está delante, o en la misma superficie, se ve entero. Vale para las líneas, los marcadores con su contorno, los conos de dirección y las etiquetas. En la vista lateral, lo que queda detrás de la corteza que se ve, como las regiones del otro hemisferio, se ve tenue. En la prueba de humo (D8), con la vista lateral de partida, 5m, OP4 y V1 izquierdas se ven tenues, y 4, 3b y 6mp derechas, enteras. No hay interruptor: es como se dibuja.
@@ -495,7 +532,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
     - La pasada es un `useFrame` de prioridad 0,5, entre los controles (0) y `ExportBridge` (1), que dibuja el lienzo.
     - La corteza va en la capa 1, y las luces también, aunque en la pasada no alumbran nada: si el número de luces cambiara entre la pasada y el lienzo, three.js revisaría en cada fotograma el programa de cada material con luces (D8).
     - Solo con la corteza pintada llevan los materiales el parche, y solo entonces pasan los marcadores y los conos a `transparent`.
-  - **Valores:** inicio 0,25 (10 mm), fin 0,75 (30 mm) y mínimo 0,2. La verificación con capturas que debía ajustarlos se interrumpió; el usuario los vio en la app y los aprobó tal cual (D8). El inicio cubre la etiqueta: queda a 0,21 del centro de su marcador en +Y de los datos (0,222 en la seleccionada), así que, vista desde detrás, queda detrás de él.
+  - **Valores:** inicio 0,25 (10 mm), fin 0,75 (30 mm) y mínimo 0,2. La verificación con capturas que debía ajustarlos se interrumpió; el usuario los vio en la app y los aprobó tal cual (D8). El inicio cubre la mitad del marcador que queda bajo la superficie, con su contorno (0,057 en la región seleccionada). La etiqueta va a la profundidad del centro de su marcador desde la fase 4 (Etiquetas 3D, arriba); antes iba 0,21 más arriba en +Y de los datos, y el inicio la cubría también, vista desde detrás. El valor se deja como estaba (D10).
   - **Sin prueba de profundidad contra la corteza,** como hasta ahora. La opacidad hace la oclusión, y lo que queda un poco por debajo de la superficie, como la mitad de un marcador en su vértice ancla, no se corta de golpe.
   - **Líneas.** Van en recta entre dos puntos de la corteza y pasan por dentro de ella.
     - Una línea entre regiones cercanas apenas se hunde y se ve entera.
@@ -514,7 +551,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Instalación:** como archivos `woff2` en `frontend/src/assets/fonts/`, con su licencia (SIL OFL 1.1) y `@font-face` en `index.css`. Son fuentes variables: un archivo por subconjunto (latin y latin-ext) cubre todos los pesos. No se piden a internet: la aplicación de escritorio tiene que funcionar sin conexión.
 - **Cursivas:** también se instalan las cursivas de Next (latin y latin-ext). Con `font-synthesis: none`, sin ellas los textos en cursiva saldrían rectos.
 - **Licencia:** `frontend/src/assets/fonts/LEEME.md` deja claro que las fuentes siguen bajo la OFL y no bajo la licencia general del repositorio. El texto de la licencia está en `frontend/public/licenses/`, que la compilación copia a `dist/licenses/`.
-- **JPEG:** las etiquetas del JPEG usan la pila de fuentes del sistema declarada en el SVG (ver 4.4), no la fuente nueva.
+- **JPEG:** las etiquetas del JPEG usan la pila de fuentes del sistema declarada en el SVG (ver 4.4), no la fuente nueva. Las del JPEG del 3D, en cambio, llevan la fuente nueva: son texturas que la aplicación dibuja con ella (6.3; D10).
 
 ## 8. Accesibilidad
 
@@ -593,6 +630,17 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - Los tokens `mark` y `markText`, en `DRAW_TOKENS`, y `--mark` y `--mark-text`, en `index.css`.
 - En módulos que ya existían: `markRing3d`, en `logic/markerSize.ts`; la pastilla y el anillo del 3D, en `logic/textSprite.ts`; `searchKey`, en `logic/regionSearch.ts`, para Ctrl+Intro; y `joinNames`, que pasa a `logic/displayText.ts`.
 
+**Fase 4 (gráficos).** Lo construido añade estas unidades (D10 de `docs/decisiones-diseno.md`):
+
+- `logic/connectogramLayout.ts`: la geometría del connectograma, en funciones puras. La etiqueta radial (`radialLabel` y `labelTransform`), el ancho estimado de una etiqueta y lo que ocupa la más larga (`estimatedLabelWidth` y `labelReach`), el radio del anillo (`ringLayout`), el halo (`selectionHalo`) y los arcos de hemisferio (`hemisphereBlocks`, `hemisphereArcs`, `arcPath`, `arcLabelSides` y `thumbnailArcsFit`).
+- `components/ConnectogramLegend.tsx`: la leyenda del connectograma (5.4).
+- `state/labelFont.ts`: la versión de fuentes de las etiquetas del 3D, con `requestLabelFont` (6.3).
+- Los tokens `label3dText`, `label3dStrong` y `label3dBackground`, en `DRAW_TOKENS` (4.2).
+- En módulos que ya existían:
+  - `percentile`, `SULC_PERCENTILES` y `sulcShade`, en `logic/surfaceParcels.ts`;
+  - `labelStart`, `labelAnchor` y `LABEL_CLEARANCE`, en `logic/markerSize.ts`, que pierde `labelOffset` y `LABEL_GAP`;
+  - la letra (`labelFont` y `LABEL_FONT`), la clave de la caché (`labelTextureKey`) y `raycastLabelFirst`, en `logic/textSprite.ts`, donde `LabelPill` pasa a llamarse `LabelColors`.
+
 ### Archivos que cambian
 
 - **Estilos:** `index.css` (tokens por `data-theme` y `@font-face`) y `App.css` (colores fijos pasados a tokens y estilos nuevos).
@@ -668,9 +716,20 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 - **Nuevas:** `state/marks.test.ts`, `logic/marks.test.ts`, `MarkedLabel.test.tsx`, `marksViews.test.tsx`, `MarksLine.test.tsx`, `marksWiring.test.ts` y `Brain3D.marksWiring.test.ts`.
 - **Ampliadas:** `historyStep`, `history`, `themeCss` (el contraste del color de marca), `markerSize`, `textSprite`, `regionSearch`, `RegionSearch` y `FilterPanel`.
 
+**Fase 4 (gráficos).** 83 pruebas más, de 517 (las 516 de las marcas y una de su línea contextual) a 600 (D10):
+
+- **Nuevas:**
+  - `connectogramLayout.test.ts`: la geometría del connectograma. La etiqueta radial; el ancho estimado, contra el medido en la fuente para la etiqueta más ancha de cada atlas y con el espaciado de `index.css`; el radio del anillo; el halo; los bloques de hemisferio, los arcos y el lado de sus rótulos; y la regla de la miniatura.
+  - `connectogramGraphics.test.tsx`: el marcado del connectograma. Las etiquetas y las marcas que las siguen, el radio (también estable al ocultar redes), el halo, los arcos y la leyenda, con sus estilos.
+  - `sulcShading.test.ts`: los percentiles y el suavizado sobre un vector conocido, también en las regiones con color.
+  - `labelFont.test.ts`: la versión de fuentes.
+  - `Brain3D.labelsWiring.test.ts`: las líneas de `Brain3D.tsx` que conectan las etiquetas: sus colores, la versión de fuentes, su sitio, la de la región seleccionada y el clic.
+- **Ampliadas:** `themeCss.test.ts` (los tokens de las etiquetas del 3D y su contraste con cualquier cosa detrás), `textSprite.test.ts` (la clave, la caché y su liberación, la letra y `raycastLabelFirst`, con el raycaster de three.js) y `markerSize.test.ts` (dónde empieza la etiqueta y su ancla, también con el raycaster de three.js; sustituyen a las dos pruebas de la separación de 0,18).
+- **Cambiadas:** dos pruebas de `Brain3D.marksWiring.test.ts` fijaban líneas de la etiqueta que cambian: ahora todas llevan pastilla, y ninguna, la curva de tono. Y se quita la prueba de `cortexOcclusion.test.ts` que ataba el inicio de la oclusión a la separación de la etiqueta, que ya no existe.
+
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5 y la fase 2 la D7), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5, la fase 2 la D7 y el resto de la fase 4 la D10), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí.
 
 1. **Base de temas.** Hecha (D3).
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
@@ -681,11 +740,13 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
    - Al terminar, los cuatro temas funcionan con los colores de red originales. El tema Original tiene los mismos colores que hoy. Cambian la tipografía y el acento de las casillas y los deslizadores, que pasa del color por defecto del navegador al morado del tema.
 2. **Paleta suave.** Hecha (D7), con la verificación en la app real pendiente (12). Script y tabla, `resolveNetworkColor` en todos los consumidores, y la opción «Colores de las redes» (Automática, Suaves y Originales del atlas) en Ajustes. La exportación ya la sigue.
 3. **Estructura.** Hecha (D4). Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
-4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo). Hechos: los marcadores y la captura sin parpadeo del 3D (D5), y la oclusión por la corteza (D8). El resto, pendiente; se trabaja en la rama `rediseno-fase4`.
+4. **Gráficos.** Hecha: los marcadores y la captura sin parpadeo del 3D (D5), la oclusión por la corteza (D8) y el resto (D10), este con la verificación en la app real pendiente (12). Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, oclusión por la corteza y captura sin parpadeo). Los hemisferios ya estaban al día desde la fase 1.
 
 Orden de implementación: 1, 3, 3D, 2 y el resto de la 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`).
 
 Después vino la fase 2 (D7), en `rediseno-interfaz`. A la vez, en la rama `rediseno-oclusion`, la oclusión por la corteza sustituyó a la atenuación de la D5, a petición del usuario (D8, 6.3; fusión `0e2ff8b`). Luego, también a petición suya, llegaron las marcas de regiones (D9, 5.9), con las correcciones de su revisión y la línea contextual de Filtros en la rama `rediseno-marcas` (fusiones `c23aa91` y `7b9e161`).
+
+Por último, el resto de la fase 4 (D10), en la rama `rediseno-fase4`, que salió de `c23aa91`. Antes de empezar se le fusionó `rediseno-interfaz` (`604c27a`), y volvió a ella con la fusión `dc4c666`.
 
 ## 12. Riesgos y puntos abiertos
 
@@ -704,6 +765,12 @@ Después vino la fase 2 (D7), en `rediseno-interfaz`. A la vez, en la rama `redi
 - **Original con «Suaves», justo por encima de 3:1** (D7): su mínimo es 3,02:1, con «Visual central» de Yeo 17 (`#9849a3`) sobre `#1d1e26`. Con una red nueva podría bajar de 3:1, y el generador se negaría a escribir la tabla hasta que se ajuste el método.
 - **«Color real» en el código del desarrollador principal** (D7): la línea de estado del 3D dice «Cada región con el color real de su red» (`Brain3D.tsx`), y varios comentarios suyos hablan del «color real». Con «Suaves» no es literal. No se ha cambiado, porque es su código: queda anotado para él.
 - **Verificación de la fase 2 en la app real, pendiente** (D7): la del plan se paró porque sus navegadores sobrecargaban la máquina del usuario. Queda por pasar una versión ligera con la máquina libre: un solo navegador, con `nice 19`, y como versión anterior la de `4977d05`, para comparar solo la paleta. Con ella, medir también el panel de Ajustes (5.2).
-- **Las marcas de la lupa repiten la geometría de sus etiquetas** (D9): las etiquetas radiales de la fase 4 (6.1) tendrán que ponerla al día también ahí.
-- **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
+- **Verificación de la fase 4 en la app real, pendiente** (D10): no se ha pasado. Por la regla del usuario, solo se pasa con la máquina libre o con su permiso: el 25/09/2026 se quedó sin memoria dos veces por los procesos de prueba y los navegadores. Sin comprobar en un navegador: las etiquetas del connectograma con la fuente real en todos los atlas, las filas y el alto de la leyenda, el halo, los arcos, el hueco entre la etiqueta del 3D y su marcador visto de lado, de frente y desde detrás, el clic en las etiquetas del 3D y los JPEG.
+- **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan: con los datos de hoy, solo los tiene HCP-MMP1.0. El orden es el de las filas de `/regions`, que el backend no fija de forma explícita: si cambiara, los arcos podrían aparecer o desaparecer (D10).
+- **Ancho estimado de las etiquetas del connectograma** (D10): el margen del anillo sale de un ancho estimado, no medido en la página. En los atlas de los datos, la etiqueta más ancha de verdad queda de un 5 a un 10 % por debajo de la estimada. En el JPEG, que usa la fuente del sistema, caben con Noto Sans, Ubuntu o Liberation; con DejaVu Sans, más ancha, una etiqueta seleccionada muy larga puede perder hasta 3 px junto a un eje.
+- **El círculo del connectograma depende de las etiquetas y de la leyenda** (D10): el del Subcórtex mide un 36 % menos que antes, por sus etiquetas de 21 letras; el radio puede cambiar al ocultar redes si el número de nodos a la vista cruza 40 o 150, porque cambia la letra; y el lado del JPEG depende de las filas de la leyenda (a 1400 × 900, de 1998 a 1845 px).
+- **El halo, encima de las etiquetas de las vecinas** (D10): en la maqueta queda debajo, y cambiarlo obligaría a reorganizar el grupo de las etiquetas, que es del desarrollador principal. Con una región seleccionada y marcada, la punta de la pastilla tapa cerca de 1 px del halo. En la lupa, el halo llega a su etiqueta, que va hacia dentro, y algunas vecinas lo tapan.
+- **Clics en el 3D, en el código del desarrollador principal** (D10): un clic normal en zonas de clic de marcadores que se solapan alterna las dos; las líneas se alcanzan desde 1 unidad (40 mm); y un arrastre para girar que acaba sobre la corteza pintada selecciona una región. No se han cambiado, porque es su código. El clic en las etiquetas evita los tres.
+- **Pastillas de las etiquetas del 3D** (D10): tapan más corteza que el texto con contorno de antes, sobre todo con una región de muchas conexiones. En Claro, queda por mirar si el texto se ve demasiado fino con el zoom de partida.
+- **Anillo de los nodos del diagrama de síntesis en Claro** (D3): la D3 lo dejó para la fase 4, pero está fuera de la sección 6, y queda para más adelante (D10).
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
