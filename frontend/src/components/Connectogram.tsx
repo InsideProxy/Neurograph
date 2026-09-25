@@ -29,6 +29,7 @@ import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks
 import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { useAppearanceStore } from "../state/appearance";
+import { Icon } from "./Icon";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
 // por la usuaria): antes siempre se mostraba "abreviatura — nombre",
@@ -176,7 +177,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   // Lupa (decisión 76, 24/09/2026, propuesta de la usuaria): en las zonas
   // densas del círculo los nodos y sus abreviaturas quedan diminutos. Con
-  // la casilla "Lupa" activada, un círculo sigue al ratón y dibuja
+  // el botón «Lupa» activado, un círculo sigue al ratón y dibuja
   // ampliados los nodos que hay debajo (ver <ConnectogramLens>). Con la
   // lupa activa, pasar/clicar actúa sobre el nodo más cercano al puntero
   // (logic/magnifier.ts): no hace falta acertar con el círculo de 3 px.
@@ -289,17 +290,21 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     <div className="viz-panel">
     {!compact && (
       <div className="viz-panel__toolbar">
-        <label className="connectogram-lens-toggle" title="Amplía la zona bajo el ratón (útil en zonas con muchos nodos)">
-          <input
-            type="checkbox"
-            checked={lensEnabled}
-            onChange={(e) => {
-              setLensEnabled(e.target.checked);
-              setHoveredNodeId(null);
-            }}
-          />
+        {/* Botón de alternar (D4 de docs/decisiones-diseno.md; spec 5.4):
+            antes era una casilla. Mismo estado. */}
+        <button
+          type="button"
+          className="export-btn"
+          aria-pressed={lensEnabled}
+          title="Amplía la zona bajo el ratón (útil en zonas con muchos nodos)"
+          onClick={() => {
+            setLensEnabled((enabled) => !enabled);
+            setHoveredNodeId(null);
+          }}
+        >
+          <Icon name="search" size={15} />
           Lupa
-        </label>
+        </button>
         <button type="button" className="export-btn" onClick={handleExport}>
           Exportar JPEG
         </button>

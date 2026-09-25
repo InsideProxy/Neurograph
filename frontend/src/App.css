@@ -27,7 +27,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    select, para que los dos selectores de especie de la app (este y el
    de SpeciesComparisonPanel.tsx) se vean consistentes entre sí. */
 .brain3d-homology { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.82rem; }
-.brain3d-homology select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 .brain3d-homology__status { color: var(--text-muted); font-style: italic; }
 .brain3d-homology__status--error { color: var(--error); font-style: normal; }
 /* Corteza pintada (decisión 72, 23/09/2026): barra de controles encima
@@ -37,20 +36,22 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    del botón de exportar, con los mismos valores. */
 .brain3d-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
 .brain3d-surface-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.82rem; }
-.brain3d-surface-controls select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 .brain3d-surface-controls select:disabled { opacity: 0.5; }
 .brain3d-surface-status { margin: 0 0 4px; flex: 0 0 auto; font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; }
 .brain3d-surface-status--error { color: var(--error); }
 /* display:flex column (30/08/2026): el botón "Exportar JPEG" de Brain3D.tsx vive dentro de este contenedor de altura fija, por encima del lienzo -- sin flex, el <Canvas> (que ocupa 100% de alto) se sale del contenedor en vez de compartir el espacio con el botón. */
-.export-btn { font-size: 0.78rem; padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
-.export-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
+/* Botón de herramienta de las vistas (D4; spec 5.4): 30 px de alto,
+   esquinas de 8 px y fondo elevado, como en la maqueta. */
+.export-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--code-bg); color: var(--text); font: inherit; font-size: 0.7rem; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.export-btn:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
 .export-btn:disabled, .export-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
-.export-btn:disabled:hover, .export-btn[aria-disabled="true"]:hover { border-color: var(--border); background: var(--panel-bg); }
-/* Botón "Ocultar no seleccionados" del esquema de hemisferios (02/09/2026,
-   petición de la usuaria): mismo tratamiento de estado activo que
-   .view-toggle__btn--active, reutilizado aquí en vez de un tercer patrón
-   de botón nuevo. */
-.export-btn--active { border-color: var(--accent-border); background: var(--accent-bg); color: var(--text-h); font-weight: 600; }
+.export-btn:disabled:hover, .export-btn[aria-disabled="true"]:hover { border-color: var(--border); background: var(--code-bg); color: var(--text); }
+/* Estado activo: "Ocultar no seleccionados" de los hemisferios
+   (02/09/2026, petición de la usuaria) y la lupa del connectograma
+   (aria-pressed, D4). El borde usa --accent para que el estado se
+   distinga con al menos 3:1 (WCAG 1.4.11), como la tarjeta del tema
+   elegido en Ajustes. */
+.export-btn--active, .export-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); color: var(--text-h); font-weight: 600; }
 .canvas-error { padding: 1rem; color: var(--error); background: var(--error-bg); border-radius: 8px; font-size: 0.9rem; }
 
 /* Aviso de "demasiadas conexiones para dibujar" (01/09/2026, ver
@@ -164,7 +165,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .species-panel__help { margin: 0 0 1rem; padding: 0.75rem 1rem; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; }
 .species-panel__help strong { color: var(--text); }
 .species-panel__selectors { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.9rem; }
-.species-panel__selectors select { margin-left: 4px; padding: 2px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 .species-panel__status { color: var(--text-muted); font-style: italic; padding: 0.5rem 0; }
 .species-panel__status--error { color: var(--error); font-style: normal; }
 .species-panel__images { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -218,7 +218,7 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
     "filters main thumb1"
     "filters main thumb2"
     "filters main detail";
-  gap: 10px;
+  gap: 12px;
 }
 .workspace--filters-collapsed { grid-template-columns: 34px minmax(0, 1fr) 300px; }
 .ws-filters { grid-area: filters; min-height: 0; display: flex; }
@@ -229,16 +229,20 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .ws-detail { grid-area: detail; min-height: 0; display: flex; }
 .ws-detail .detail-panel { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 
-.ws-view { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px 8px; box-sizing: border-box; overflow: hidden; }
-.ws-view__header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex: 0 0 auto; }
-.ws-view__header h2 { font-size: 0.95rem; margin: 0 0 4px; font-weight: 600; }
-.ws-view--thumb .ws-view__header h2 { font-size: 0.8rem; color: var(--text); }
-.ws-view__enlarge-hint { font-size: 0.72rem; color: var(--text-muted); }
+.ws-view { position: relative; container-type: inline-size; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px 12px; box-sizing: border-box; overflow: hidden; }
+.ws-view__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: 0 0 auto; margin-bottom: 6px; }
+.ws-view__heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ws-view__header h2 { margin: 0; font-size: 0.89rem; font-weight: 600; color: var(--text-h); }
+.ws-view__description { margin: 0; font-size: 0.7rem; line-height: 1.4; color: var(--text-muted); }
+.ws-view--thumb .ws-view__header { align-items: center; margin-bottom: 2px; }
+.ws-view--thumb .ws-view__header h2 { font-size: 0.72rem; }
+.ws-view__enlarge { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px; border: none; border-radius: 7px; background: transparent; color: var(--text-muted); font: inherit; font-size: 0.7rem; cursor: pointer; }
 .ws-view--thumb:hover { border-color: var(--accent-border); }
-.ws-view--thumb:hover .ws-view__enlarge-hint { color: var(--text-h); }
+.ws-view--thumb:hover .ws-view__enlarge, .ws-view__enlarge:focus-visible { background: var(--hover); color: var(--text-h); }
 .ws-view__body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.ws-view__overlay { position: absolute; inset: 0; background: transparent; border: none; cursor: zoom-in; border-radius: 8px; }
-.ws-view__overlay:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Capa que amplía la miniatura con un clic en cualquier punto (decisión
+   74). Fuera del orden del tabulador: con el teclado se usa «Ampliar». */
+.ws-view__overlay { position: absolute; inset: 0; background: transparent; border: none; cursor: zoom-in; border-radius: 12px; }
 
 /* Connectograma y Hemisferios: el dibujo llena el hueco disponible y se
    ajusta a su lado menor (ver el ResizeObserver de cada componente). */
@@ -274,9 +278,8 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    trabajo (antes ocupaba cuatro filas a 800 px de ancho). */
 .ws-view .brain3d-toolbar { gap: 6px 12px; font-size: 0.76rem; }
 .ws-view .brain3d-homology, .ws-view .brain3d-surface-controls { font-size: 0.76rem; gap: 6px 10px; }
-.ws-view .brain3d-homology select, .ws-view .brain3d-surface-controls select { font-size: 0.74rem; padding: 1px 4px; max-width: 16rem; }
+.ws-view .brain3d-homology select, .ws-view .brain3d-surface-controls select { font-size: 0.7rem; max-width: 16rem; }
 .ws-view .brain3d-surface-status { font-size: 0.74rem; }
-.ws-view .export-btn { font-size: 0.72rem; padding: 2px 8px; }
 .ws-detail code { font-size: 0.72rem; padding: 2px 6px; word-break: break-all; }
 
 /* Corrección del temblor al pasar el ratón (decisión 74b, 24/09/2026,
@@ -296,7 +299,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 /* Lupa del connectograma (decisión 76, 24/09/2026). El fondo de la lupa
    tapa el dibujo sin ampliar que queda debajo; el borde la separa de él. */
-.connectogram-lens-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text); cursor: pointer; user-select: none; margin-right: auto; }
 .connectogram-lens__bg { fill: var(--panel-bg); }
 .connectogram-lens__border { fill: none; stroke: var(--accent); stroke-width: 2; }
 .connectogram-lens__label { paint-order: stroke; stroke: var(--panel-bg); stroke-width: 3px; stroke-linejoin: round; }
@@ -579,3 +581,48 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    siguen con .legend-swatch: en Claro, los amarillos casi no se veían
    sobre el blanco (D3, «Limitaciones conocidas»). */
 .legend-swatch { box-shadow: 0 0 0 1px var(--text-faint); }
+
+/* Herramientas de cada vista (spec 5.4): lupa, exportar y «Ocultar no
+   seleccionados» siguen dentro de su vista, con su estado. Si el
+   contenido de la vista grande mide al menos 40rem, van a la derecha de
+   la cabecera, que les deja su hueco (--ws-tools-width) y parte la
+   descripción en dos o tres líneas. Con los filtros desplegados, eso
+   pasa desde unos 1340 px de ventana: a 1400 px el contenido mide
+   776 px. Si es más estrecha, como a 1280 px (656 px), se quedan en una
+   fila bajo la cabecera, porque taparían la descripción. Del cerebro 3D
+   solo sube el botón de exportar: sus desplegables, que son más, quedan
+   en una fila bajo la cabecera.
+   Cada hueco es el ancho de las herramientas a 0,7rem más 12 px de
+   separación, redondeado hacia arriba: lupa y exportar, 184 px, algo
+   más con la lupa activa (en negrita); «Ocultar no seleccionados» y
+   exportar, 286 px; exportar, 107 px (con la raíz de 18 px). */
+.ws-view[data-view="connectogram"] { --ws-tools-width: 11.5rem; }
+.ws-view[data-view="hemispheres"] { --ws-tools-width: 17rem; }
+.ws-view[data-view="brain3d"] { --ws-tools-width: 7rem; }
+@container (min-width: 40rem) {
+  .ws-view--main .ws-view__header { padding-right: var(--ws-tools-width); }
+  /* El cerebro 3D sin nada seleccionado no tiene botón de exportar: no
+     se reserva su hueco. Sin :has(), la regla no se aplica y el hueco
+     se queda, que no tapa nada. */
+  .ws-view--main[data-view="brain3d"]:not(:has(.brain3d-toolbar > .export-btn)) .ws-view__header { padding-right: 0; }
+  .ws-view--main .viz-panel__toolbar,
+  .ws-view--main .brain3d-toolbar > .export-btn { position: absolute; top: 10px; right: 12px; margin: 0; }
+}
+
+/* Desplegables nativos con estilo propio (spec 5.4): sin la flecha del
+   sistema y con un chevron hecho con dos degradados del color del texto
+   secundario, así que sigue al tema. Los del cerebro 3D y, por herencia
+   de controles (sección 2), los de Comparar especies. */
+.brain3d-homology select,
+.brain3d-surface-controls select,
+.species-panel__selectors select { appearance: none; height: 30px; margin-left: 4px; padding: 0 28px 0 10px; border: 1px solid var(--border); border-radius: 8px; background-color: var(--code-bg); background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px; background-repeat: no-repeat; color: var(--text-h); font: inherit; font-weight: 500; cursor: pointer; }
+.brain3d-homology select:hover,
+.brain3d-surface-controls select:hover,
+.species-panel__selectors select:hover { border-color: var(--border-strong); }
+/* Desactivados, atenuados como los botones desactivados. */
+.brain3d-homology select:disabled,
+.brain3d-surface-controls select:disabled,
+.species-panel__selectors select:disabled { opacity: 0.5; cursor: not-allowed; }
+.brain3d-homology select:disabled:hover,
+.brain3d-surface-controls select:disabled:hover,
+.species-panel__selectors select:disabled:hover { border-color: var(--border); }

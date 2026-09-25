@@ -598,10 +598,32 @@ const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewId, string> = {
   brain3d: "Cerebro 3D",
 };
 
-// Marco de cada vista del espacio de trabajo (decisión 74). En miniatura,
-// una capa transparente encima recoge el clic para ampliarla -- así un
-// clic en la miniatura nunca selecciona por accidente una región que
-// apenas se ve; seleccionar se hace en la vista grande.
+// Una línea bajo el título de la vista grande que explica cómo leerla (D4
+// de docs/decisiones-diseno.md; spec 5.4). Es un texto fijo: vale con
+// cualquier atlas y cualquier selección. El grosor de las líneas del
+// connectograma es max(1, peso × 6) px, y en HCP-MMP1.0 ningún peso pasa
+// de 0,144: la frase no promete diferencias que no se ven.
+const WORKSPACE_VIEW_DESCRIPTIONS: Record<WorkspaceViewId, string> = {
+  connectogram:
+    "Cada punto del círculo es una región, con el color de su red, y cada línea, una conexión. El grosor solo cambia con pesos mayores que 0,17: por debajo, todas las líneas miden lo mismo.",
+  hemispheres:
+    "Vista desde arriba: la parte anterior arriba y el hemisferio izquierdo a la izquierda. Verde: conexiones dentro de un hemisferio; rosa: entre los dos.",
+  brain3d:
+    "Cada región en su posición real y con el color de su red. Con una selección, muestra lo seleccionado y sus conexiones: una región con sus vecinas, varias con las conexiones entre ellas, o una conexión. Arrastra para girar y usa la rueda para acercarte.",
+};
+
+// Marco de cada vista del espacio de trabajo (decisión 74, D1). En
+// miniatura, una capa transparente encima recoge el clic para ampliarla:
+// así un clic en la miniatura nunca selecciona por accidente una región
+// que apenas se ve, y seleccionar se hace en la vista grande.
+//
+// D4 (spec 5.4): la vista grande lleva una línea que explica cómo leerla.
+// Las miniaturas llevan un botón visible «Ampliar», que es también el
+// camino con el teclado: la capa sale del orden del tabulador. Al
+// ampliar con el botón, el foco pasa al título de la vista ampliada, que
+// es el mismo componente (las tres vistas nunca se desmontan). Las
+// herramientas de cada vista siguen dentro de ella; App.css las coloca a
+// la derecha de la cabecera cuando caben.
 function WorkspaceView({
   id,
   area,
@@ -616,19 +638,55 @@ function WorkspaceView({
   children: ReactNode;
 }) {
   const title = WORKSPACE_VIEW_TITLES[id];
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeadingWhenMain = useRef(false);
+
+  useEffect(() => {
+    if (isMain && focusHeadingWhenMain.current) {
+      focusHeadingWhenMain.current = false;
+      headingRef.current?.focus();
+    }
+  }, [isMain]);
+
+  const enlarge = () => {
+    focusHeadingWhenMain.current = true;
+    onEnlarge(id);
+  };
+
   return (
-    <section className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`} style={{ gridArea: area }}>
+    <section
+      className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`}
+      data-view={id}
+      style={{ gridArea: area }}
+      aria-label={title}
+    >
       <div className="ws-view__header">
-        <h2>{title}</h2>
-        {!isMain && <span className="ws-view__enlarge-hint">⤢ ampliar</span>}
+        <div className="ws-view__heading">
+          <h2 ref={headingRef} tabIndex={-1}>
+            {title}
+          </h2>
+          {isMain && <p className="ws-view__description">{WORKSPACE_VIEW_DESCRIPTIONS[id]}</p>}
+        </div>
+        {!isMain && (
+          <button
+            type="button"
+            className="ws-view__enlarge"
+            aria-label={`Ampliar ${title}`}
+            title={`Ver ${title} en grande`}
+            onClick={enlarge}
+          >
+            <Icon name="expand" size={14} />
+            Ampliar
+          </button>
+        )}
       </div>
       <div className="ws-view__body">{children}</div>
       {!isMain && (
         <button
           type="button"
           className="ws-view__overlay"
-          title={`Ver ${title} en grande`}
-          aria-label={`Ver ${title} en grande`}
+          tabIndex={-1}
+          aria-hidden="true"
           onClick={() => onEnlarge(id)}
         />
       )}
