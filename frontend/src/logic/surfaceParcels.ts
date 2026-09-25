@@ -193,16 +193,45 @@ export function srgbToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
+// Surcos más visibles (docs/rediseno-interfaz-diseno.md, 6.3; fase 4 del
+// rediseño). El degradado surco -> giro va de los percentiles 5 y 95 del
+// archivo, no de su mínimo y su máximo: unos pocos vértices extremos
+// estiraban el rango y casi toda la corteza quedaba en grises medios. En el
+// archivo del HCP, el rango pasa de -1,69 a 1,16 a de -0,85 a 0,56.
+export const SULC_PERCENTILES: readonly [number, number] = [5, 95];
+
+// Percentil p (de 0 a 100) de unos valores ya ordenados, interpolando entre
+// los dos más cercanos (el método por defecto de numpy).
+export function percentile(sorted: ArrayLike<number>, p: number): number {
+  const position = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(position);
+  const upper = Math.min(lower + 1, sorted.length - 1);
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
+// Los percentiles se calculan una vez por archivo de surcos: se guardan con
+// el propio vector, que es el mismo mientras no se cargue otro archivo.
+const sulcRangeCache = new WeakMap<Float32Array, [number, number] | null>();
+
 export function sulcRange(sulc: Float32Array | null): [number, number] | null {
   if (!sulc) return null;
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
-  for (const v of sulc) {
-    if (Number.isNaN(v)) continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  return Number.isFinite(min) && max > min ? [min, max] : null;
+  const cached = sulcRangeCache.get(sulc);
+  if (cached !== undefined) return cached;
+  const values = sulc.filter((v) => !Number.isNaN(v)).sort();
+  const low = values.length > 0 ? percentile(values, SULC_PERCENTILES[0]) : Number.NaN;
+  const high = values.length > 0 ? percentile(values, SULC_PERCENTILES[1]) : Number.NaN;
+  const range: [number, number] | null = high > low ? [low, high] : null;
+  sulcRangeCache.set(sulc, range);
+  return range;
+}
+
+// Suavizado del valor normalizado del surco (6.3): se recorta a 0-1, porque
+// fuera de los percentiles quedan valores por debajo de 0 y por encima de 1,
+// y pasa por un smoothstep, que lleva más vértices hacia el gris del surco y
+// el del giro sin saltos.
+export function sulcShade(t: number): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  return clamped * clamped * (3 - 2 * clamped);
 }
 
 // Rellena `out` (RGB lineal 0-1, 3 valores por vértice) con el color de
@@ -248,7 +277,7 @@ export function fillVertexColorsByIndex(
   for (let v = 0; v < n; v++) {
     const category = vertexIndex[v];
     const s = sulc ? sulc[v] : Number.NaN;
-    const t = range && !Number.isNaN(s) ? (s - range[0]) / (range[1] - range[0]) : null;
+    const t = range && !Number.isNaN(s) ? sulcShade((s - range[0]) / (range[1] - range[0])) : null;
     let r: number;
     let g: number;
     let b: number;
