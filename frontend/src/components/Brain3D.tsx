@@ -49,6 +49,7 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { getLabelTexture } from "../logic/textSprite";
+import { markerSize } from "../logic/markerSize";
 import { NETWORK_LABELS } from "../theme/networks";
 import { hasNetworkColor } from "../theme/colors";
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
@@ -427,7 +428,7 @@ function ExportBridge({
 // Se omite por completo cuando la región no tiene abreviatura registrada
 // todavía (atlas sin backfill de la migración 0007): nunca se inventa
 // una a partir de `label`.
-function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boolean }) {
+function NodeLabel({ node, offset, overlay = false }: { node: GraphNode; offset: number; overlay?: boolean }) {
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
@@ -439,9 +440,12 @@ function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boole
   // 0.24 -- junto con el radio de nodo reducido en NodeMesh (baseRadius,
   // más abajo), deja un hueco visible entre la esfera y su etiqueta en
   // vez de que la etiqueta arranque casi pegada al borde superior.
+  // Legibilidad del 3D: el marcador es más pequeño y la separación
+  // (`offset`, de logic/markerSize.ts) se mide desde su borde: 0,18, la
+  // que dejaba 0.24 con el radio normal de antes.
   const position: [number, number, number] = [
     node.position3d[0],
-    node.position3d[1] + 0.24,
+    node.position3d[1] + offset,
     node.position3d[2],
   ];
   // Ancho del sprite proporcional al aspecto real de la textura (corregido
@@ -505,7 +509,11 @@ function NodeMesh({
   // pequeños" -- a 0.09/0.06) -- deja más espacio real alrededor de cada
   // nodo, tanto para distinguir nodos vecinos entre sí como para separar
   // visualmente la esfera de su etiqueta (ver NodeLabel).
-  const baseRadius = isSelected ? 0.09 : 0.06;
+  // Legibilidad del 3D (spec 6.3): otra vez a la mitad, 0,03, para no tapar
+  // la región pintada, con la región seleccionada un 40 % mayor. El
+  // contorno, la zona de clic y la etiqueta se ajustan con el radio
+  // (logic/markerSize.ts).
+  const size = markerSize(isSelected);
   // Vista en dos colores por homología real (02/09/2026, petición de la
   // usuaria tras cerrar el resto del inventario pendiente): el color de
   // red real (NETWORK_COLORS) es la codificación por defecto de SIEMPRE,
@@ -532,23 +540,19 @@ function NodeMesh({
           docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a
           dibujar con los de la paleta de exportación, así que el
           contorno también se ve en la figura exportada. */}
-      <mesh position={node.position3d} scale={1.18} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+      <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
           color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
         />
       </mesh>
-      <mesh
-        position={node.position3d}
-        renderOrder={overlay ? 2 : 0}
-        {...(overlay ? overlayNoRaycast(true) : { onClick: () => toggleNode(node.id) })}
-      >
+      <mesh position={node.position3d} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
             segmento de más cuesta 360 veces más caro que en la demo de 8
             nodos. Sigue viéndose redondo a esta escala. */}
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshStandardMaterial
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
@@ -556,7 +560,19 @@ function NodeMesh({
           depthTest={!overlay}
         />
       </mesh>
-      <NodeLabel node={node} overlay={overlay} />
+      {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
+          three.js no dibuja un material con visible={false}, pero el
+          raycast de react-three-fiber sí la encuentra: el marcador encogió,
+          y seleccionarlo con un clic cuesta lo mismo que antes. Con la
+          corteza pintada no hay, como antes: se selecciona pulsando la
+          propia región. */}
+      {!overlay && (
+        <mesh position={node.position3d} onClick={() => toggleNode(node.id)}>
+          <sphereGeometry args={[size.hitRadius, 14, 14]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+      )}
+      <NodeLabel node={node} offset={size.labelOffset} overlay={overlay} />
     </>
   );
 }
