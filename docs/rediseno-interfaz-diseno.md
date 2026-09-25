@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí, así que 5.6 describe todavía los avisos abajo a la derecha (sección 11).
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6 lleva los avisos arriba a la derecha, bajo la barra (5.6).
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -367,11 +367,12 @@ Las vistas de una conexión y de varias regiones conservan su contenido y recibe
   - Los mensajes de importar separan el texto comprensible del técnico: «No se pudo abrir o leer el archivo.», «El archivo elegido no contiene un JSON válido.» y «La síntesis no se ha importado: tiene N problemas.».
 - Los errores se quedan hasta que se cierran, con «Entendido», que va bajo el mensaje. El foco pasa entonces al aviso siguiente o, si era el último, a «Importar».
 - Cada aviso tiene un origen: importar una síntesis, cambiar la clasificación o deshacer (5.7). Uno nuevo sustituye al anterior del mismo origen, como las franjas de antes.
-- **Dónde:** abajo a la derecha, sobre la columna derecha y con su ancho (300 px, a 12 px del borde derecho y del de abajo), apilados hacia arriba: el más reciente queda abajo.
-  - No tapan la vista grande ni su recuadro de lectura, Filtros, la barra ni la primera miniatura. Arriba a la derecha, bajo la barra, que era lo previsto, tapaban el «Ampliar» de la primera miniatura (D4).
-  - Sí tapan el pie del panel de detalle, con el ID y su botón de copiar, mientras se ven: es el precio aceptado. Con dos avisos y «Detalles» abierto, tapan también parte de la segunda miniatura.
+- **Dónde:** arriba a la derecha, bajo la barra y sobre la columna derecha, con su ancho (300 px, a 12 px de la barra y del borde derecho), apilados hacia abajo: el más reciente queda abajo (D6).
+  - Su altura sale de `--topbar-bottom`, que publica la barra al medirse: si la barra ocupa dos filas, los avisos bajan con ella.
+  - No tapan la vista grande ni su recuadro de lectura, Filtros, la barra ni el pie del panel de detalle.
+  - Mientras se ven, tapan la cabecera de la primera miniatura, con su «Ampliar»: es el precio aceptado (D6). La D4 los había puesto abajo a la derecha por eso, pero allí el aviso de «Importar» salía lejos del botón y tapaba el pie del panel de detalle.
   - Quedan por debajo del panel de Ajustes y de las listas desplegables. Escala de `z-index`: las vistas, 1 como mucho; los avisos, 10; Ajustes y las listas, de 20 a 25; las etiquetas emergentes, 30.
-  - Si no caben en la ventana, se desplazan por dentro, también con la rueda del ratón. La región sube como mucho hasta 8 px bajo la barra de una fila.
+  - Si no caben en la ventana, se desplazan por dentro, también con la rueda del ratón.
 - Si `isTauri()` (de `@tauri-apps/api/core`, presente en la versión instalada, 2.11.1) indica que la aplicación corre en un navegador, «Importar» no intenta abrir el diálogo. Muestra el aviso «“Importar síntesis” solo funciona en la aplicación de escritorio». Nunca se compara el texto del error, porque cambia según el navegador.
 
 ### 5.7 Deshacer y rehacer
@@ -731,7 +732,7 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5, la fase 2 la D7 y el resto de la fase 4 la D10), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, está en la rama `rediseno-avisos`, sin fusionar aquí.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4, la parte 3D de la fase 4 la D5, la fase 2 la D7 y el resto de la fase 4 la D10), con su propio commit. Todas dejan la aplicación correcta. Lo que el usuario pidió por el camino tiene también su decisión: la oclusión por la corteza, la D8, y las marcas de regiones, la D9. La D6, los avisos arriba a la derecha, se hizo en la rama `rediseno-avisos` y se fusionó después de la D10.
 
 1. **Base de temas.** Hecha (D3).
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
