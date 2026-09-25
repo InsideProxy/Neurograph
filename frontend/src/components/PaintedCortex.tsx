@@ -24,6 +24,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useLoader, type ThreeEvent } from "@react-three/fiber";
 import { DISPLAY_SCALE } from "../data/api";
+import { depthBounds, type DepthBounds } from "../logic/depthFade";
 import {
   fillVertexColors,
   fillVertexColorsByIndex,
@@ -48,6 +49,10 @@ export interface VertexPaint {
 export interface SurfaceOverlayHelpers {
   positionOfVertex: (vertex: number) => [number, number, number];
   isVertexVisible: (vertex: number) => boolean;
+  // Caja de la parte de la superficie que se ve (los dos hemisferios o uno),
+  // en coordenadas de la escena. La atenuación por profundidad de
+  // Brain3D.tsx (Legibilidad del 3D) se mide con ella.
+  visibleBounds: DepthBounds | null;
 }
 
 interface Props {
@@ -148,6 +153,9 @@ export function PaintedCortex({
 
   const helpers = useMemo<SurfaceOverlayHelpers>(() => {
     const position = geometry.getAttribute("position");
+    // Los vértices del hemisferio izquierdo van primero.
+    const firstVisible = effectiveHemisphere === "R" ? map.nVerticesLeft : 0;
+    const endVisible = effectiveHemisphere === "L" ? map.nVerticesLeft : position.count;
     return {
       positionOfVertex: (vertex) => [
         position.getX(vertex) * DISPLAY_SCALE,
@@ -157,6 +165,7 @@ export function PaintedCortex({
       isVertexVisible: (vertex) =>
         effectiveHemisphere === "both" ||
         (effectiveHemisphere === "L" ? vertex < map.nVerticesLeft : vertex >= map.nVerticesLeft),
+      visibleBounds: depthBounds(position, firstVisible, endVisible, DISPLAY_SCALE),
     };
   }, [geometry, effectiveHemisphere, map]);
 

@@ -50,6 +50,18 @@ import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportCanvasAsJpeg } from "../logic/exportImage";
 import { getLabelTexture } from "../logic/textSprite";
 import { markerSize } from "../logic/markerSize";
+import {
+  createDepthFade,
+  depthBounds,
+  fadeKey,
+  fadeMaterialProps,
+  tuplePoints,
+  updateDepthFadeUniforms,
+  type DepthBounds,
+  type DepthFade,
+} from "../logic/depthFade";
+import { readDepthFadePreference, writeDepthFadePreference } from "../logic/depthFadePreference";
+import { browserStorage } from "../state/appearance";
 import { NETWORK_LABELS } from "../theme/networks";
 import { hasNetworkColor } from "../theme/colors";
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
@@ -57,6 +69,7 @@ import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
+import { DepthFadeToggle } from "./DepthFadeToggle";
 import {
   PaintedCortex,
   type HemisphereVisibility,
@@ -334,6 +347,15 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
   return null;
 }
 
+// Tramo de la atenuación por profundidad (Legibilidad del 3D;
+// logic/depthFade.ts), en cada fotograma: después de que los controles
+// coloquen la cámara, que se suscribieron antes, y antes de dibujar.
+// `bounds` es la caja del cerebro que se ve.
+function DepthFadeUpdater({ fade, bounds }: { fade: DepthFade; bounds: DepthBounds | null }) {
+  useFrame(({ camera }) => updateDepthFadeUniforms(fade.uniforms, camera, bounds));
+  return null;
+}
+
 // Puente para exportar el frame actual del canvas WebGL a JPEG en color
 // sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
 // react-three-fiber no expone gl, scene ni camera fuera del árbol de
@@ -428,7 +450,17 @@ function ExportBridge({
 // Se omite por completo cuando la región no tiene abreviatura registrada
 // todavía (atlas sin backfill de la migración 0007): nunca se inventa
 // una a partir de `label`.
-function NodeLabel({ node, offset, overlay = false }: { node: GraphNode; offset: number; overlay?: boolean }) {
+function NodeLabel({
+  node,
+  offset,
+  fade,
+  overlay = false,
+}: {
+  node: GraphNode;
+  offset: number;
+  fade: DepthFade | null;
+  overlay?: boolean;
+}) {
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
@@ -462,11 +494,13 @@ function NodeLabel({ node, offset, overlay = false }: { node: GraphNode; offset:
   return (
     <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
       <spriteMaterial
+        key={fadeKey(fade)}
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
+        {...fadeMaterialProps(fade, false)}
       />
     </sprite>
   );
@@ -484,6 +518,7 @@ function NodeMesh({
   node,
   isHomologyHighlighted,
   colors,
+  fade,
   overlay = false,
 }: {
   node: GraphNode;
@@ -501,6 +536,8 @@ function NodeMesh({
   // concreto no tiene ninguna fila de homología real hacia ella).
   isHomologyHighlighted: boolean;
   colors: DrawColors;
+  // Atenuación por profundidad (Legibilidad del 3D); null, desactivada.
+  fade: DepthFade | null;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
   const isSelected = selectedNodeIds.has(node.id);
@@ -543,9 +580,11 @@ function NodeMesh({
       <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
+          key={fadeKey(fade)}
           color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
+          {...fadeMaterialProps(fade, true)}
         />
       </mesh>
       <mesh position={node.position3d} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
@@ -554,10 +593,12 @@ function NodeMesh({
             nodos. Sigue viéndose redondo a esta escala. */}
         <sphereGeometry args={[size.radius, 14, 14]} />
         <meshStandardMaterial
+          key={fadeKey(fade)}
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
           depthTest={!overlay}
+          {...fadeMaterialProps(fade, true)}
         />
       </mesh>
       {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
@@ -572,7 +613,7 @@ function NodeMesh({
           <meshBasicMaterial visible={false} />
         </mesh>
       )}
-      <NodeLabel node={node} offset={size.labelOffset} overlay={overlay} />
+      <NodeLabel node={node} offset={size.labelOffset} fade={fade} overlay={overlay} />
     </>
   );
 }
@@ -581,11 +622,13 @@ function DirectionArrow({
   from,
   to,
   color,
+  fade,
   overlay = false,
 }: {
   from: THREE.Vector3;
   to: THREE.Vector3;
   color: string;
+  fade: DepthFade | null;
   overlay?: boolean;
 }) {
   // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
@@ -604,7 +647,7 @@ function DirectionArrow({
   return (
     <mesh position={position} quaternion={quaternion} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
       <coneGeometry args={[0.035, 0.09, 12]} />
-      <meshBasicMaterial color={color} depthTest={!overlay} />
+      <meshBasicMaterial key={fadeKey(fade)} color={color} depthTest={!overlay} {...fadeMaterialProps(fade, true)} />
     </mesh>
   );
 }
@@ -617,6 +660,7 @@ function ConnectionLine({
   isDirected,
   onClick,
   colors,
+  fade,
   overlay = false,
 }: {
   a: [number, number, number];
@@ -626,6 +670,7 @@ function ConnectionLine({
   isDirected: boolean;
   onClick: () => void;
   colors: DrawColors;
+  fade: DepthFade | null;
   overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
@@ -661,23 +706,27 @@ function ConnectionLine({
       >
         {isDashed ? (
           <lineDashedMaterial
+            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             dashSize={0.08}
             gapSize={0.06}
             depthTest={!overlay}
+            {...fadeMaterialProps(fade, false)}
           />
         ) : (
           <lineBasicMaterial
+            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             depthTest={!overlay}
+            {...fadeMaterialProps(fade, false)}
           />
         )}
       </threeLine>
-      {isDirected && <DirectionArrow from={from} to={to} color={color} overlay={overlay} />}
+      {isDirected && <DirectionArrow from={from} to={to} color={color} fade={fade} overlay={overlay} />}
     </>
   );
 }
@@ -961,6 +1010,25 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   const screenColors = useDrawColors();
   const colors = useDrawColors(exporting);
   const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
+
+  // «Atenuar lo que queda detrás» (Legibilidad del 3D; spec 6.3): activado
+  // por defecto y guardado en este navegador. `depthFade` guarda el parche y
+  // los uniforms que comparten los materiales de la capa de foco, uno por
+  // lienzo; `activeFade` es null con el interruptor desactivado.
+  const [depthFadeOn, setDepthFadeOn] = useState(() => readDepthFadePreference(browserStorage()));
+  const [depthFade] = useState(createDepthFade);
+  const activeFade = depthFadeOn ? depthFade : null;
+  const toggleDepthFade = () => {
+    const next = !depthFadeOn;
+    setDepthFadeOn(next);
+    writeDepthFadePreference(browserStorage(), next);
+  };
+  // Caja de todos los nodos del atlas: con ella se mide la atenuación cuando
+  // los marcadores van en su posición real (sin corteza pintada).
+  const nodeBounds = useMemo(
+    () => depthBounds(tuplePoints(allNodes.map((n) => n.position3d)), 0, allNodes.length),
+    [allNodes],
+  );
 
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
@@ -1292,12 +1360,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     const overlay = helpers !== null;
     return (
       <>
+        {activeFade && <DepthFadeUpdater fade={activeFade} bounds={helpers ? helpers.visibleBounds : nodeBounds} />}
         {[...placed.values()].map((node) => (
           <NodeMesh
             key={node.id}
             node={node}
             isHomologyHighlighted={homologyNodeIds.has(node.id)}
             colors={colors}
+            fade={activeFade}
             overlay={overlay}
           />
         ))}
@@ -1325,6 +1395,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               isDirected={conn.type === "effective"}
               onClick={() => selectConnection(conn.id)}
               colors={colors}
+              fade={activeFade}
               overlay={overlay}
             />
           );
@@ -1366,6 +1437,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
+        <DepthFadeToggle enabled={depthFadeOn} onToggle={toggleDepthFade} />
         {/* Desactivado mientras se exporta (ver handleExport y
             ExportBridge): un segundo clic antes de que acabe la exportación
             dejaría el modo «exportando» atascado. aria-disabled y no
