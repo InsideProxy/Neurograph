@@ -22,12 +22,16 @@ const requested = new WeakSet<FontLoader>();
 
 // Pide la fuente de las etiquetas una sola vez por cada FontFaceSet (en la
 // página hay uno, document.fonts) y, cuando llega, sube la versión. Si no
-// llega, las etiquetas se quedan con la fuente de respaldo, sin error.
+// llega, las etiquetas se quedan con la fuente de respaldo, sin error: también
+// si load lanza la excepción en vez de devolver una promesa rechazada, porque
+// se llama dentro de la cadena de promesas.
 export function requestLabelFont(fonts: FontLoader | undefined): Promise<void> {
   if (!fonts || requested.has(fonts)) return Promise.resolve();
   requested.add(fonts);
-  return fonts.load(LABEL_FONT).then(
-    () => useLabelFontStore.setState((state) => ({ version: state.version + 1 })),
-    () => undefined,
-  );
+  return Promise.resolve()
+    .then(() => fonts.load(LABEL_FONT))
+    .then(
+      () => useLabelFontStore.setState((state) => ({ version: state.version + 1 })),
+      () => undefined,
+    );
 }

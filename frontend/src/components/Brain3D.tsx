@@ -49,8 +49,17 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportPixelsAsJpeg } from "../logic/exportImage";
 import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
-import { MARK_RING_SPRITE_SCALE, getLabelTexture, getMarkRingTexture, type LabelStyle } from "../logic/textSprite";
-import { markRing3d, markerSize } from "../logic/markerSize";
+import {
+  LABEL_WEIGHT,
+  MARK_RING_SPRITE_SCALE,
+  STRONG_LABEL_SCALE,
+  STRONG_LABEL_WEIGHT,
+  getLabelTexture,
+  getMarkRingTexture,
+  raycastLabelFirst,
+  type LabelColors,
+} from "../logic/textSprite";
+import { labelAnchor, labelStart, markRing3d, markerSize } from "../logic/markerSize";
 import { isDragRelease, isMarkGesture, type ClickKeys } from "../logic/marks";
 import { useMarksStore } from "../state/marks";
 import { requestLabelFont, useLabelFontStore } from "../state/labelFont";
@@ -475,14 +484,21 @@ function ExportBridge({
 // una a partir de `label`.
 function NodeLabel({
   node,
-  offset,
+  start,
+  selected,
   occlusion,
   colors,
   overlay = false,
   pill = null,
+  onClick,
 }: {
   node: GraphNode;
-  offset: number;
+  // Dónde empieza la etiqueta, a la derecha de su marcador en pantalla
+  // (labelStart, en logic/markerSize.ts).
+  start: number;
+  // La de la región seleccionada destaca, como en la maqueta: el texto
+  // fuerte del tema, en negrita y algo mayor (fase 4 del rediseño).
+  selected: boolean;
   occlusion: CortexOcclusion;
   // Etiquetas del 3D (docs/rediseno-interfaz-diseno.md, 6.3; fase 4 del
   // rediseño): el texto del tema sobre su fondo translúcido. Mientras se
@@ -491,20 +507,25 @@ function NodeLabel({
   overlay?: boolean;
   // Región marcada (docs/rediseno-interfaz-diseno.md, 5.9): la etiqueta va
   // sobre una pastilla del color de marca (logic/textSprite.ts).
-  pill?: LabelStyle | null;
+  pill?: LabelColors | null;
+  // El clic en la etiqueta selecciona o marca su región (NodeMesh).
+  onClick: (event: ThreeEvent<MouseEvent>) => void;
 }) {
   // La versión de fuentes (state/labelFont.ts): cuando llega la fuente, las
   // etiquetas se vuelven a dibujar con ella.
   const fontVersion = useLabelFontStore((state) => state.version);
   const background = pill?.background ?? colors.label3dBackground;
-  const color = pill?.color ?? colors.label3dText;
+  // Los colores de marca ganan; sin ellos, la de la región seleccionada lleva
+  // el texto fuerte del tema.
+  const color = pill?.color ?? (selected ? colors.label3dStrong : colors.label3dText);
+  const weight = selected ? STRONG_LABEL_WEIGHT : LABEL_WEIGHT;
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
   // abreviatura; getLabelTexture("") solo se pide una vez por caché.
   const label = useMemo(
-    () => getLabelTexture(node.abbreviation ?? "", { background, color }, fontVersion),
-    [node.abbreviation, background, color, fontVersion],
+    () => getLabelTexture(node.abbreviation ?? "", { background, color, weight }, fontVersion),
+    [node.abbreviation, background, color, weight, fontVersion],
   );
   if (!node.abbreviation) return null;
   // Separación aumentada (30/08/2026, ronda de ajustes tras revisión
@@ -512,14 +533,14 @@ function NodeLabel({
   // 0.24 -- junto con el radio de nodo reducido en NodeMesh (baseRadius,
   // más abajo), deja un hueco visible entre la esfera y su etiqueta en
   // vez de que la etiqueta arranque casi pegada al borde superior.
-  // Legibilidad del 3D: el marcador es más pequeño y la separación
-  // (`offset`, de logic/markerSize.ts) se mide desde su borde: 0,18, la
-  // que dejaba 0.24 con el radio normal de antes.
-  const position: [number, number, number] = [
-    node.position3d[0],
-    node.position3d[1] + offset,
-    node.position3d[2],
-  ];
+  // Fase 4 del rediseño (decisión del usuario del 25/09/2026): la etiqueta ya
+  // no va encima del marcador, sino a su lado, a la derecha en pantalla y
+  // centrada en vertical, como en la maqueta. Sobre su pastilla, que con la
+  // corteza pintada se dibuja encima de todo, tapaba su propio marcador: las
+  // largas en la vista lateral de partida, y todas desde delante o desde
+  // detrás. El sprite va en el centro del marcador, a su misma profundidad,
+  // y su ancla (Sprite.center) lo desplaza en pantalla hasta `start`, pasado
+  // el contorno, o el anillo de una región marcada (logic/markerSize.ts).
   // Ancho del sprite proporcional al aspecto real de la textura (corregido
   // 30/08/2026: "los nombres... se ven cortados"). Antes el sprite usaba
   // una escala fija [0.32, 0.13, 1] emparejada con un canvas de ancho
@@ -529,10 +550,20 @@ function NodeLabel({
   // texto real y expone su proporción (`aspect`); aquí se mantiene la
   // altura fija y se calcula el ancho a partir de esa proporción, así el
   // texto nunca sale cortado ni deformado sea cual sea su longitud.
-  const labelHeight = 0.13;
+  // Fase 4 del rediseño: la de la región seleccionada, 13/12 más alta, como
+  // en la maqueta (13 px frente a 12). El clic, primero para la etiqueta
+  // (raycastLabelFirst, en logic/textSprite.ts).
+  const labelHeight = 0.13 * (selected ? STRONG_LABEL_SCALE : 1);
   const labelWidth = labelHeight * label.aspect;
   return (
-    <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
+    <sprite
+      position={node.position3d}
+      center={labelAnchor(start, labelWidth)}
+      scale={[labelWidth, labelHeight, 1]}
+      renderOrder={overlay ? 3 : 0}
+      raycast={raycastLabelFirst}
+      onClick={onClick}
+    >
       {/* Sin la curva de tono del lienzo (toneMapped): la etiqueta sale con
           los colores del tema, o con los de marca, tal cual, como en los
           dibujos SVG y como el anillo de las marcas (fase 4; spec 6.3). */}
@@ -561,7 +592,7 @@ function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
 // 5.9): la pastilla de su etiqueta y la textura de su anillo, con los colores
 // de marca del tema.
 interface MarkLook {
-  pill: LabelStyle;
+  pill: LabelColors;
   ringTexture: THREE.Texture;
 }
 
@@ -619,6 +650,20 @@ function NodeMesh({
   const fillColor = isHomologyHighlighted ? colors.homology : colors.networkColor(node.network);
   // Tamaño del sprite del anillo de una región marcada (logic/markerSize.ts).
   const ringSize = 2 * markRing3d(size).outerRadius * MARK_RING_SPRITE_SCALE;
+  // Clic en la etiqueta (fase 4 del rediseño; decisión del usuario del
+  // 25/09/2026): el clic normal selecciona la región, o la deselecciona, y
+  // Ctrl+clic (⌘+clic en macOS) la marca o la desmarca, como en el marcador.
+  // También con la corteza pintada, donde los marcadores no reciben clics.
+  // La etiqueta recibe el clic antes que lo que tenga detrás
+  // (raycastLabelFirst, en logic/textSprite.ts), y aquí se corta: ni la
+  // corteza, ni la zona de clic de su marcador, ni una línea lo reciben
+  // también. El clic que llega al soltar un arrastre no hace nada.
+  const handleLabelClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    if (isDragRelease(event.delta)) return;
+    if (isMarkGesture(event.nativeEvent)) toggleMark(node.id);
+    else toggleNode(node.id);
+  };
   return (
     <>
       {/* Halo de contorno neutro (decisión 18, 30/08/2026) -- equivalente
@@ -714,11 +759,13 @@ function NodeMesh({
       )}
       <NodeLabel
         node={node}
-        offset={size.labelOffset}
+        start={labelStart(size, mark !== null)}
+        selected={isSelected}
         occlusion={occlusion}
         colors={colors}
         overlay={overlay}
         pill={mark?.pill ?? null}
+        onClick={handleLabelClick}
       />
     </>
   );

@@ -9,14 +9,12 @@
 //   viéndose alrededor de los nodos #000000.
 // - La zona de clic es la esfera de antes (0,06 y 0,09), invisible: el
 //   marcador encoge, pero seleccionarlo con un clic no cuesta más.
-// - La etiqueta queda a 0,18 del borde del marcador, como antes en un
-//   marcador normal (0,24 desde el centro con el radio de 0,06). En la
-//   región seleccionada quedaba a 0,15 (radio 0,09), y ahora también a 0,18.
+// - La etiqueta va al lado del marcador, pasado su contorno (labelStart, al
+//   final).
 
 export const MARKER_RADIUS = 0.03;
 export const SELECTED_MARKER_SCALE = 1.4;
 export const MARKER_OUTLINE_SCALE = 1.36;
-export const LABEL_GAP = 0.18;
 const HIT_RADIUS = 0.06;
 const SELECTED_HIT_RADIUS = 0.09;
 
@@ -24,7 +22,6 @@ export interface MarkerSize {
   radius: number;
   outlineScale: number;
   hitRadius: number;
-  labelOffset: number;
 }
 
 export function markerSize(isSelected: boolean): MarkerSize {
@@ -33,7 +30,6 @@ export function markerSize(isSelected: boolean): MarkerSize {
     radius,
     outlineScale: MARKER_OUTLINE_SCALE,
     hitRadius: isSelected ? SELECTED_HIT_RADIUS : HIT_RADIUS,
-    labelOffset: radius + LABEL_GAP,
   };
 }
 
@@ -60,4 +56,36 @@ export function markRing3d(size: MarkerSize): MarkRing3d {
   const gapInner = size.radius * size.outlineScale;
   const ringInner = gapInner + size.radius * MARK_RING_GAP_RATIO;
   return { gapInner, ringInner, outerRadius: ringInner + size.radius * MARK_RING_WIDTH_RATIO };
+}
+
+// --- La etiqueta (fase 4 del rediseño) ---
+//
+// Decisión del usuario del 25/09/2026: la etiqueta va al lado de su marcador,
+// a la derecha en pantalla y centrada en vertical, como en la maqueta, y no
+// encima. Antes iba 0,21 más arriba en el eje +Y de los datos (0,222 en la
+// región seleccionada), y sobre su pastilla, que con la corteza pintada se
+// dibuja encima de todo, tapaba su propio marcador: las largas en la vista
+// lateral de partida, y todas desde delante o desde detrás.
+//
+// Ahora el sprite de la etiqueta está en el centro del marcador, a su misma
+// profundidad, y su ancla (Sprite.center de three.js) lo desplaza en
+// pantalla: empieza a labelStart del centro, LABEL_CLEARANCE más allá del
+// contorno o, en una región marcada, del anillo de la marca, que así se ve
+// entero. El margen transparente de la textura (logic/textSprite.ts, 6 de sus
+// 84 px de alto) aleja algo más la pastilla: el hueco que se ve es de unas
+// 0,024 unidades, unos 3 px en la vista de partida, parecido, en proporción
+// al marcador, al de la maqueta (4 px junto a un marcador de 6 de radio).
+export const LABEL_CLEARANCE = 0.015;
+
+export function labelStart(size: MarkerSize, marked: boolean): number {
+  const edge = marked ? markRing3d(size).outerRadius : size.radius * size.outlineScale;
+  return edge + LABEL_CLEARANCE;
+}
+
+// El ancla del sprite de la etiqueta, en fracciones de su tamaño: con (0,5,
+// 0,5), la de three.js por defecto, el sprite queda centrado en su posición.
+// x = −start / ancho lo lleva `start` a la derecha en pantalla, e y = 0,5 lo
+// deja centrado en vertical.
+export function labelAnchor(start: number, width: number): [number, number] {
+  return [-start / width, 0.5];
 }

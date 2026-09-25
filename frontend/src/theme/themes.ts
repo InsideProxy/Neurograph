@@ -94,6 +94,10 @@ export interface DrawTokens {
   // exportación, como los demás tokens.
   label3dText: string;
   label3dBackground: string;
+  // La de la región seleccionada destaca, como en la maqueta: el texto
+  // fuerte del tema, el --text-h de index.css (strong en el spec), sobre el
+  // mismo fondo. theme/themeCss.test.ts comprueba las dos cosas.
+  label3dStrong: string;
 }
 
 type KeysOfType<T, V> = { [K in keyof T]-?: T[K] extends V ? K : never }[keyof T];
@@ -143,6 +147,7 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     markText: "#ffffff",
     label3dText: "#c7c5d0",
     label3dBackground: "rgba(29, 30, 38, 0.84)",
+    label3dStrong: "#f3f2f7",
   },
   grafito: {
     edge: "#8b93a0",
@@ -171,6 +176,7 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     markText: "#ffffff",
     label3dText: "#c9ced6",
     label3dBackground: "rgba(22, 25, 30, 0.84)",
+    label3dStrong: "#f1f3f6",
   },
   noche: {
     edge: "#8a98b6",
@@ -199,6 +205,7 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     markText: "#ffffff",
     label3dText: "#cbd5e6",
     label3dBackground: "rgba(17, 23, 38, 0.84)",
+    label3dStrong: "#f2f5fb",
   },
   claro: {
     edge: "#6f737c",
@@ -227,6 +234,7 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     markText: "#ffffff",
     label3dText: "#3a3d43",
     label3dBackground: "rgba(255, 255, 255, 0.88)",
+    label3dStrong: "#14161a",
   },
 };
 

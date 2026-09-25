@@ -61,10 +61,11 @@ describe("fillVertexColorsByIndex, con los percentiles y el suavizado", () => {
     noData: [0.4, 0.4, 0.4],
     medialWall: [0.2, 0.2, 0.2],
   };
-  // Todos los vértices en la categoría 0, en gris, salvo el 50, que está en
-  // la 1 y tiene color.
+  // Todos los vértices en la categoría 0, en gris, salvo el 50 y el 80, que
+  // están en la 1 y tienen color.
   const vertexIndex = new Int32Array(101);
   vertexIndex[50] = 1;
+  vertexIndex[80] = 1;
   const out = new Float32Array(101 * 3);
   fillVertexColorsByIndex(out, vertexIndex, 2, ramp(101), (category) => (category === 1 ? [1, 0.5, 0] : null), grays);
 
@@ -81,5 +82,10 @@ describe("fillVertexColorsByIndex, con los percentiles y el suavizado", () => {
     // 50 queda en medio: 0,7 + 0,3 × 0,5.
     const colored = Array.from(out.slice(50 * 3, 50 * 3 + 3));
     [0.85, 0.425, 0].forEach((value, i) => expect(colored[i]).toBeCloseTo(value, 5));
+    // 80 queda a 5/6 del rango: el smoothstep da 25/27 y el factor,
+    // 0,7 + 0,3 × 25/27 (sin suavizar, 0,95; con el mínimo y el máximo, 0,94).
+    const shade = 0.7 + (0.3 * 25) / 27;
+    const colored80 = Array.from(out.slice(80 * 3, 80 * 3 + 3));
+    [shade, shade / 2, 0].forEach((value, i) => expect(colored80[i]).toBeCloseTo(value, 5));
   });
 });

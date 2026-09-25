@@ -27,6 +27,16 @@ describe("requestLabelFont", () => {
     await requestLabelFont(undefined);
     expect(useLabelFontStore.getState().version).toBe(before);
   });
+
+  it("si load lanza la excepción en vez de rechazar la promesa, tampoco hay error", async () => {
+    const before = useLabelFontStore.getState().version;
+    const load = vi.fn((): Promise<unknown> => {
+      throw new SyntaxError("fuente no válida");
+    });
+    await expect(requestLabelFont({ load })).resolves.toBeUndefined();
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(useLabelFontStore.getState().version).toBe(before);
+  });
 });
 
 describe("tipografía de las etiquetas", () => {

@@ -69,9 +69,10 @@ describe("marcas en el 3D: conexión en Brain3D.tsx y PaintedCortex.tsx", () => 
     );
     expect(BRAIN).toContain("pill={mark?.pill ?? null}");
     // Desde la fase 4 (spec 6.3), la etiqueta de siempre también va sobre una
-    // pastilla, con los colores del tema: los de marca, si los hay, ganan.
+    // pastilla, con los colores del tema: los de marca, si los hay, ganan,
+    // también al texto fuerte de la región seleccionada.
     expect(BRAIN).toContain("const background = pill?.background ?? colors.label3dBackground;");
-    expect(BRAIN).toContain("const color = pill?.color ?? colors.label3dText;");
+    expect(BRAIN).toContain("const color = pill?.color ?? (selected ? colors.label3dStrong : colors.label3dText);");
   });
 
   // Con la curva de tono del lienzo, el azul de marca salía apagado. Desde la

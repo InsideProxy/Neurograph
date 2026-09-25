@@ -214,4 +214,18 @@ describe("etiquetas del cerebro 3D", () => {
       expect(contrast(parseColor(label3dText).rgb, over(label3dBackground, behind)), `detrás ${behind}`).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  // La de la región seleccionada destaca, como en la maqueta: el texto
+  // fuerte del tema (--text-h, strong en el spec), sobre el mismo fondo.
+  it.each(THEME_IDS)("tema %s: la de la región seleccionada, con el texto fuerte del tema, legible con cualquier cosa detrás", (id) => {
+    const vars = variables(THEME_BLOCKS.get(id)!.body);
+    const { label3dStrong, label3dBackground } = DRAW_TOKENS[id];
+    expect(label3dStrong).toBe(vars.get("--text-h"));
+    for (const behind of [
+      [0, 0, 0],
+      [255, 255, 255],
+    ] as const) {
+      expect(contrast(parseColor(label3dStrong).rgb, over(label3dBackground, behind)), `detrás ${behind}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

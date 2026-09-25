@@ -20,8 +20,10 @@
 // Fase 4 del rediseño (spec 6.3): todas las etiquetas van sobre una
 // pastilla, con la tipografía de la interfaz: las de siempre, con el texto
 // del tema sobre su fondo translúcido, y las de una región marcada, con los
-// colores de marca. La caché las guarda por su texto, sus dos colores y la
-// versión de fuentes (state/labelFont.ts).
+// colores de marca. La de la región seleccionada destaca, en negrita. La
+// caché las guarda por su texto, sus dos colores, su peso y la versión de
+// fuentes (state/labelFont.ts). Y la etiqueta recibe el clic antes que lo
+// demás (raycastLabelFirst, al final).
 import * as THREE from "three";
 import { markRing3d, markerSize } from "./markerSize";
 
@@ -44,23 +46,44 @@ export interface LabelTexture {
 // interfaz, Atkinson Hyperlegible Next. El lienzo no espera a que llegue:
 // dibuja con la que haya. state/labelFont.ts la pide y, cuando llega, sube
 // la versión de fuentes, así que las etiquetas se vuelven a dibujar con ella.
+// Es una fuente variable: un solo archivo trae los dos pesos que se usan, así
+// que al llegar la de 600 llega también la negrita.
 export const LABEL_FONT_SIZE = 44;
-export const LABEL_FONT = `600 ${LABEL_FONT_SIZE}px 'Atkinson Hyperlegible Next', system-ui, sans-serif`;
+export type LabelWeight = 600 | 700;
+export const LABEL_WEIGHT: LabelWeight = 600;
 
-// Cómo se ve una etiqueta: su texto sobre una pastilla. Las de siempre
+// La etiqueta de la región seleccionada destaca, como en la maqueta: el texto
+// fuerte del tema (token label3dStrong, el --text-h), en negrita y algo mayor
+// (13 px frente a 12 en la maqueta: Brain3D la dibuja 13/12 más alta).
+export const STRONG_LABEL_WEIGHT: LabelWeight = 700;
+export const STRONG_LABEL_SCALE = 13 / 12;
+
+export function labelFont(weight: LabelWeight): string {
+  return `${weight} ${LABEL_FONT_SIZE}px 'Atkinson Hyperlegible Next', system-ui, sans-serif`;
+}
+
+export const LABEL_FONT = labelFont(LABEL_WEIGHT);
+
+// Los colores de una etiqueta: su texto sobre una pastilla. Las de siempre
 // llevan el texto del tema sobre su fondo translúcido (tokens label3dText y
-// label3dBackground de theme/themes.ts); las de una región marcada, el texto
-// de marca sobre el color de marca (5.9).
-export interface LabelStyle {
+// label3dBackground de theme/themes.ts), o el texto fuerte si es la de la
+// región seleccionada; las de una región marcada, el texto de marca sobre el
+// color de marca (5.9).
+export interface LabelColors {
   background: string;
   color: string;
 }
 
+// Cómo se ve una etiqueta: sus colores y el peso de la letra.
+export interface LabelStyle extends LabelColors {
+  weight: LabelWeight;
+}
+
 // Clave de la caché: el texto, los dos colores de la etiqueta, que salen del
 // tema (de la paleta de exportación mientras se captura el JPEG, o de las
-// marcas), y la versión de fuentes.
+// marcas), el peso de la letra y la versión de fuentes.
 export function labelTextureKey(text: string, style: LabelStyle, fontVersion: number): string {
-  return [text, style.background, style.color, String(fontVersion)].join("\u0000");
+  return [text, style.background, style.color, String(style.weight), String(fontVersion)].join("\u0000");
 }
 
 const textureCache = new Map<string, LabelTexture>();
@@ -85,14 +108,14 @@ function buildTexture(text: string, style: LabelStyle): LabelTexture {
   }
   // Medir el texto real ANTES de fijar el tamaño del canvas -- es lo que
   // permite que el canvas se dimensione para el texto en vez de al revés.
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont(style.weight);
   const textWidth = ctx.measureText(text).width;
   canvas.width = Math.max(1, Math.ceil(textWidth + PILL_PADDING_X * 2));
   canvas.height = Math.ceil(LABEL_FONT_SIZE + PILL_PADDING_Y * 2);
   // Redimensionar canvas.width/height reinicia el estado del contexto 2D
   // en cualquier navegador (se pierde el `font` fijado arriba) -- hay que
   // volver a fijar todo después de este punto, no solo una vez.
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont(style.weight);
   // Hasta la fase 4, la etiqueta de siempre era texto casi negro con un
   // contorno blanco grueso, igual en todos los temas; ahora es el texto del
   // tema sobre la pastilla translúcida, que lo separa de lo que haya detrás
@@ -181,4 +204,27 @@ export function getMarkRingTexture(gap: string, ring: string): THREE.CanvasTextu
   texture.needsUpdate = true;
   ringCache.set(key, texture);
   return texture;
+}
+
+// --- El clic en las etiquetas (fase 4 del rediseño) ---
+//
+// Decisión del usuario del 25/09/2026: un clic en la etiqueta selecciona su
+// región, y Ctrl+clic la marca (Brain3D.tsx). La etiqueta tiene que recibirlo
+// antes que lo demás, como se dibuja: react-three-fiber entrega el clic por
+// orden de distancia a la cámara, y en ese punto pueden quedar más cerca la
+// corteza pintada, la zona de clic de un marcador o una línea (Line.threshold
+// de three.js: se alcanza desde 1 unidad). Su manejador iría primero, y el de
+// la corteza corta el clic. Esta función hace el raycast de siempre del
+// sprite, que tiene en cuenta su ancla (Sprite.center), y adelanta sus
+// impactos LABEL_PICK_LEAD, más que cualquier distancia de la escena: quedan
+// delante de todo y, entre etiquetas, en su orden, así que la de delante, la
+// que se dibuja encima, recibe el clic. Con la malla translúcida, donde las
+// etiquetas no se dibujan encima de todo, un marcador que tape una parte de
+// una etiqueta en un foco muy denso no le quita el clic en esa parte.
+export const LABEL_PICK_LEAD = 1e6;
+
+export function raycastLabelFirst(this: THREE.Sprite, raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void {
+  const first = intersects.length;
+  THREE.Sprite.prototype.raycast.call(this, raycaster, intersects);
+  for (let i = first; i < intersects.length; i++) intersects[i].distance -= LABEL_PICK_LEAD;
 }
