@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. La legibilidad del cerebro 3D, adelantada de la fase 4, va aparte, en la rama `rediseno-3d` (sección 11).
+- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md` (sección 11).
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -436,17 +436,21 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **Surcos más visibles:** `sulcRange` pasa a devolver los percentiles 5 y 95 en lugar del mínimo y el máximo. `fillVertexColorsByIndex` aplica un suavizado (smoothstep) al valor normalizado.
   - Los percentiles se calculan una vez por archivo de surcos.
   - Se aplica en todos los temas; Original conserva sus grises de 0,35 y 0,72.
-- **Marcadores de región:** el radio base se reduce a la mitad y el de la región seleccionada queda un 40 % mayor que el resto. Así no tapan la región pintada. El contorno neutro del marcador (hoy a escala 1,18) tiene que seguir viéndose en nodos `#000000`; si con el tamaño nuevo deja de verse, se ensancha.
+- **Marcadores de región:** el radio base se reduce a la mitad, de 0,06 a 0,03, y el de la región seleccionada queda un 40 % mayor que el resto (0,042). Así no tapan la región pintada. Lo que dependía del radio se ajusta con él (D5):
+  - El contorno neutro del marcador tiene que seguir viéndose en nodos `#000000`. Pasa de escala 1,18 a 1,36, y así conserva el grosor absoluto de antes (0,0108).
+  - La zona de clic conserva el radio de antes (0,06, y 0,09 en la región seleccionada), en una esfera invisible: seleccionar con un clic no cuesta más.
+  - La etiqueta queda a 0,18 del borde del marcador, como antes en uno normal.
 - **Etiquetas 3D** (`logic/textSprite.ts`):
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
   - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
 - **Fondo y materiales:** `SCENE_BG` deja de ser constante en `Brain3D.tsx`, `Tractography3D.tsx` y `TractographyNodes3D.tsx` y pasa a ser el token `sceneBg`. Los materiales usan los tokens de 4.2.
-- **Atenuar lo que queda detrás** (idea del usuario, 24/09/2026):
-  - Es un interruptor en los controles del 3D, activado por defecto.
-  - Líneas, marcadores y etiquetas se ven más tenues cuanto más lejos de la cámara están, dentro de la profundidad del cerebro. Así una región de la cara interna o del otro hemisferio no parece flotar delante.
+- **Atenuar lo que queda detrás** (idea del usuario, 24/09/2026; D5):
+  - Es un interruptor en los controles del 3D, activado por defecto y guardado en este navegador con su propia clave (`neurograph.cerebro3d.atenuar`), aparte de la apariencia. Desactivado, los materiales son los de siempre.
+  - Líneas, marcadores con su contorno, conos de dirección y etiquetas se ven más tenues cuanto más lejos de la cámara están, dentro de la profundidad del cerebro. Así una región de la cara interna o del otro hemisferio no parece flotar delante. Se calcula en cada fragmento, así que una línea larga se desvanece a lo largo de su recorrido.
+  - **Tramo:** se mide con el elipsoide inscrito en la caja del cerebro que se ve (la de un solo hemisferio si solo se ve uno y, sin corteza pintada, la de todos los nodos del atlas), en la profundidad del eje de la cámara y no en la distancia euclídea. Va desde 0,2 de la semiprofundidad del cerebro por delante de su centro hasta su cara más lejana en la dirección de la vista. Lo más lejano conserva 0,2 de opacidad.
   - Para las líneas no se usa la oclusión estricta: van en recta entre dos puntos de la corteza y pasan por dentro, así que quedarían casi todas tapadas.
   - La exportación reproduce la atenuación tal como se ve.
-- **Captura del 3D sin parpadeo:** la captura se dibuja en un `WebGLRenderTarget` fuera de pantalla. Mientras dura «exportando», el bucle visible se detiene. Así ya no se ven en pantalla los fotogramas con los colores de exportación (limitación anotada en D3).
+- **Captura del 3D sin parpadeo** (D5): la captura se dibuja en un `WebGLRenderTarget` fuera de pantalla, con el mismo proceso de color que el lienzo (curva de tono y codificación sRGB). Mientras dura «exportando», el lienzo visible no se vuelve a dibujar: lo dibuja un `useFrame` de prioridad 1, y solo fuera de la exportación. Así ya no se ven en pantalla los fotogramas con los colores de exportación (limitación anotada en D3). Si se ha perdido el contexto WebGL, el lienzo no tiene tamaño o la captura sale vacía, no se descarga nada, y la consola lo dice.
 
 ## 7. Tipografía
 
@@ -507,6 +511,15 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - `SettingsPopover` es el `SettingsMenu` de la fase 1.
 - `ATLASES` sigue en `App.tsx`.
 
+**Parte 3D de la fase 4.** Lo construido añade estas unidades (D5 de `docs/decisiones-diseno.md`):
+
+- `logic/markerSize.ts`: el radio del marcador y, en un solo sitio, lo que depende de él: el contorno, la zona de clic y la separación de la etiqueta (6.3).
+- `logic/depthFade.ts`: la atenuación por profundidad. El factor, el tramo con el tamaño del cerebro que se ve, el parche de los shaders y los uniforms y las props que comparten los materiales.
+- `logic/depthFadePreference.ts`: la preferencia del interruptor, guardada en el navegador.
+- `logic/capture3d.ts`: las fases de la exportación y la captura fuera de pantalla.
+- `components/DepthFadeToggle.tsx`: el interruptor «Atenuar lo que queda detrás».
+- `exportPixelsAsJpeg`, en `logic/exportImage.ts`: el JPEG a partir de los píxeles de la captura, sin leer el lienzo.
+
 ### Archivos que cambian
 
 - **Estilos:** `index.css` (tokens por `data-theme` y `@font-face`) y `App.css` (colores fijos pasados a tokens y estilos nuevos).
@@ -564,7 +577,7 @@ El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la apli
 
 ## 11. Fases
 
-Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3 y la fase 3, la D4), con su propio commit. Todas dejan la aplicación correcta.
+Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeración D: la fase 1 es la D3, la fase 3 la D4 y la parte 3D de la fase 4, la D5), con su propio commit. Todas dejan la aplicación correcta.
 
 1. **Base de temas.**
    - Tokens de interfaz y de dibujo conectados en todos los componentes.
@@ -577,7 +590,7 @@ Cada fase es una decisión de diseño en `docs/decisiones-diseno.md` (numeració
 3. **Estructura.** Barra superior, contexto de datos, filtros con recuentos, cabeceras y miniaturas, panel de detalle, avisos, deshacer y rehacer, y el buscador de regiones.
 4. **Gráficos.** Connectograma (etiquetas radiales, arcos, leyenda y nodos), hemisferios y cerebro 3D (surcos, marcadores, etiquetas, atenuación por profundidad y captura sin parpadeo).
 
-Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4, adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y tendrá su propia decisión al fusionarla.
+Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la paleta porque es lo que más pesaba en la petición inicial (menú superior y jerarquía). Lo propusimos nosotros y el usuario nos dejó seguir en autónomo (D4). «3D» es la parte 3D de la fase 4 (D5), adelantada a petición del usuario: los marcadores de región, atenuar lo que queda detrás y la captura sin parpadeo (6.3). Se hizo en paralelo con la fase 3, en la rama `rediseno-3d`, y se fusionó después de ella (commit `63622f0`).
 
 ## 12. Riesgos y puntos abiertos
 
@@ -589,5 +602,10 @@ Orden de implementación: 1, 3, 3D, 2 y 4. La estructura se adelantó a la palet
   - Medido con TPOJ1, 3b y SCEF: la leyenda mide 402 px en pantalla, y su JPEG, 1224 px (408 × 3), igual byte a byte que antes de la fase, porque manda el ancho de la fuente de la exportación. Con etiquetas cortas, 780 px, también igual byte a byte.
 - **Formato del peso en el detalle** (pregunta abierta para el usuario, D4): la lista de conexiones conserva el formato de siempre, con todas sus cifras («0.07035581528181838»). ¿Redondearlo, con el valor exacto en la etiqueta emergente?
 - **Umbral en Filtros** (pregunta abierta para el usuario, D4): el recuadro de lectura y el historial truncan el umbral para no exagerarlo («3.9e-3»), y Filtros lo redondea al más cercano («4.0e-3», con `formatMinWeight`, que es del desarrollador principal). ¿Debe Filtros truncarlo también, para que los dos digan lo mismo?
+- **Captura del 3D y three.js** (D5): la captura depende de un detalle interno de three.js 0.185. Su destino se marca como de WebXR (`isXRRenderTarget`) para recibir la curva de tono y la codificación sRGB, como el lienzo, con el formato interno `RGBA8` fijado. Una prueba fija esa configuración, y otra lee `WebGLPrograms.js` de three.js y falla si deja de mirar esa marca. Si three.js cambiara ese detalle, el JPEG perdería la curva de tono.
+- **Para decidir el usuario tras ver las capturas** (D5):
+  - **La línea media:** las etiquetas de los pares mediales, como 5m, 24dd o 6mp, siguen dobles, porque sus dos copias quedan casi a la misma profundidad, y ajustar el tramo no las separa. Lo recomendado es la oclusión real contra la superficie pintada para marcadores y etiquetas: una pasada tenue sin prueba de profundidad, como hoy, y otra a opacidad plena con ella. Las líneas se quedan con la atenuación por distancia.
+  - **El mínimo de la atenuación,** hoy 0,2.
+  - **El cono de dirección,** con datos que tengan conectividad efectiva: hoy tiene radio 0,035, algo mayor que un marcador normal.
 - **Arcos de hemisferio:** solo aparecen si el orden de los nodos agrupa cada hemisferio. Con atlas que los alternan, no se dibujan.
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.

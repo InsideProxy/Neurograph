@@ -299,3 +299,192 @@ El spec queda al día con estas desviaciones (5.1, 5.3 a 5.8 y sección 9, «Fas
 - la leyenda en pantalla y las dos preguntas abiertas (12).
 
 Spec: `docs/rediseno-interfaz-diseno.md`, secciones 5.1 y 5.3 a 5.8. Plan: `docs/rediseno-interfaz-plan-fase3.md`.
+
+## D5. Legibilidad del 3D (parte 3D de la fase 4) -- 25/09/2026
+
+**Motivación.** Con la corteza pintada (decisión 72), los marcadores, las etiquetas y las líneas de la selección se dibujan encima de la superficie, sin prueba de profundidad, para que no queden tapados dentro de un surco. Pero así una región de la cara interna o del otro hemisferio parecía estar delante de la corteza que se ve, y las etiquetas de regiones homólogas de los dos hemisferios salían dobles. Con el conectoma denso de HCP-MMP1.0 y el peso mínimo cerca de 0, una región seleccionada mostraba una estrella de hasta 359 líneas que parecía flotar. Además, al exportar el 3D se veían unos fotogramas con los colores de exportación (limitación anotada en la D3).
+
+**Decidido por el usuario (24/09/2026).** Atenuar lo que queda detrás, con un interruptor en los controles del 3D, activado por defecto; para las líneas, atenuación por distancia y no oclusión. Adelantar esta parte de la fase 4 y hacerla en paralelo a la fase 3.
+
+**Rama y fusión.** Se hizo en paralelo a la fase 3 (D4), en la rama `rediseno-3d` y con su propio plan, y se verificó en esa rama, sobre `9b2b92a`. Se fusionó en `rediseno-interfaz` después de la D4, con el commit `63622f0`. Tras la fusión se comprobó, en una prueba corta, lo que las dos ramas no habían visto juntas: la cabecera de la vista de la fase 3 con la barra del 3D y su interruptor («Tras la fusión», en la verificación). El orden de las fases queda 1, 3, 3D, 2 y 4 (spec, sección 11).
+
+**Qué cambia.**
+- **«Atenuar lo que queda detrás».** Líneas, marcadores con su contorno, conos de dirección y etiquetas se ven más tenues cuanto más lejos de la cámara quedan dentro del cerebro, con la corteza pintada y en la vista con las esferas en su posición real. Lo más lejano conserva 0,2 de opacidad. La atenuación se calcula en cada fragmento según su profundidad, así que una línea larga se desvanece a lo largo de su recorrido. El tramo va desde 0,2 de la semiprofundidad del cerebro por delante de su centro hasta su cara más lejana en la dirección de la vista. Se mide con la caja del cerebro que se ve: la de un solo hemisferio si solo se ve uno y, sin corteza pintada, la de todos los nodos del atlas. Es un botón de alternar en la barra del 3D, activado por defecto y guardado en este navegador (`neurograph.cerebro3d.atenuar`). Desactivado, los materiales son los de siempre. Las miniaturas siguen la misma preferencia. El JPEG reproduce la atenuación tal como se ve.
+- **Marcadores a la mitad.** Radio 0,03, y 0,042 la región seleccionada. El contorno pasa a escala 1,36 y conserva el grosor absoluto de antes (0,0108). La zona de clic conserva el radio de antes (0,06 y 0,09) en una esfera invisible. La etiqueta queda a 0,18 del borde del marcador, como antes en uno normal (en el seleccionado quedaba a 0,15).
+- **Captura sin parpadeo.** La exportación se dibuja en un destino fuera de pantalla con el mismo proceso de color que el lienzo, y mientras dura el lienzo no se vuelve a dibujar. En pantalla ya no se ve ningún fotograma con los colores de exportación. Si se ha perdido el contexto WebGL, el lienzo no tiene tamaño o la captura sale vacía, no se descarga nada, en vez de un JPEG negro, y la consola lo dice.
+- **Robustez añadida en la revisión de las Tasks 1-4:**
+  - la comprobación de la captura vacía (el primer píxel leído no es opaco);
+  - una prueba que lee `WebGLPrograms.js` de three.js y falla si cambia el detalle del que depende la captura;
+  - una prueba que exige `key={fadeKey(fade)}` en cada material que lleva `fadeMaterialProps`;
+  - la esfera de clic lleva `visible={false}` en el `<mesh>` y no en su material, así three.js no la sube a la GPU (los clics la siguen encontrando).
+
+**Qué no cambia.** Los datos, los stores, `NETWORK_COLORS` y la lógica de representación: el color es la red, el grosor es el peso, el trazo discontinuo es evidencia no directa y el cono es conectividad efectiva. La atenuación solo cambia la opacidad según la profundidad. Esta minifase no toca `App.tsx`, `App.css` ni `index.css`. Con la atenuación desactivada, el 3D es el de antes salvo el tamaño de los marcadores y la separación de las etiquetas (verificación).
+
+**Diferencias con el spec.**
+- El tramo de la atenuación sale del elipsoide inscrito en la caja del cerebro que se ve, no de una esfera: el cerebro es más largo que ancho, y con la esfera lo del otro hemisferio apenas se atenuaba en la vista lateral. La profundidad es la del eje de la cámara, no la distancia euclídea.
+- Desactivada, los materiales no llevan el parche; al alternar, se crean materiales nuevos. La clave de React que lo hace es imprescindible: react-three-fiber 9.7 pondría a 0 las props del parche al quitarlas, y three.js fallaría.
+- Con la atenuación, marcadores, contornos y conos se dibujan como transparentes, de atrás adelante con las líneas; los `renderOrder` no cambian.
+- El contorno del marcador pasa de escala 1,18 a 1,36, y la zona de clic es una esfera invisible con el radio de antes.
+- El lienzo no se para con `frameloop="never"` sino con un `useFrame` de prioridad 1 que solo dibuja fuera de la exportación. La exportación pasa por tres fases (`capturing`, `restoring`, `idle`).
+- El destino de la captura se marca como de WebXR para recibir la curva de tono y la codificación sRGB, como el lienzo, con el formato interno `RGBA8` fijado.
+- El interruptor usa las clases de los botones de herramienta (`.export-btn` y `.export-btn--active`), sin CSS nuevo, dentro de su propio `div` (`.brain3d-depth-fade`). Así no es hijo directo de la barra, y la regla de la fase 3 que sube «Exportar JPEG» a la cabecera (`.brain3d-toolbar > .export-btn`) no lo alcanza. Su estado pulsado toma el borde `--accent` de la regla de la fase 3 para los botones de alternar. La preferencia tiene su propia clave y no va en `neurograph.apariencia`.
+- `preserveDrawingBuffer: true` se queda, aunque la exportación ya no lea el lienzo.
+- Unidades nuevas: `logic/markerSize.ts`, `logic/depthFade.ts`, `logic/depthFadePreference.ts`, `logic/capture3d.ts`, `components/DepthFadeToggle.tsx` y `exportPixelsAsJpeg`, en `logic/exportImage.ts`.
+
+**Limitaciones conocidas.**
+- **Las etiquetas dobles de la línea media siguen ahí.** La atenuación por distancia separa bien las dos copias de un par lateral, pero las de un par medial quedan casi a la misma profundidad. Lo decide el usuario (más abajo).
+- La captura depende de un detalle interno de three.js 0.185 (`isXRRenderTarget`). Una prueba fija la configuración del destino y otra lee el código de three.js. Si three.js cambiara ese detalle, el JPEG perdería la curva de tono, y la comparación con el JPEG de la versión anterior (verificación) lo detectaría.
+- En la vista translúcida y en los atlas volumétricos, los marcadores atenuados siguen escribiendo profundidad. En la translúcida se ve con la malla: un marcador lejano atenuado tapa el pliegue que pasa por detrás de él (6r izquierda, en el JPEG). Si una línea que pasa por detrás de uno muestra un corte no se pudo distinguir en las capturas (los marcadores lejanos miden 6-9 px).
+- Un marcador atenuado deja ver su contorno a través del relleno. Con la corteza pintada, los lejanos conservan algo más de contraste que su factor: 0,32-0,45, con factores de 0,22-0,33. En el JPEG, cuyo contorno de selección es casi negro, un marcador lejano atenuado se ve como un disco tenue con el borde algo más oscuro.
+- Con la atenuación activada, un marcador cercano queda encima de las líneas que pasan por él; antes, todas las líneas iban encima de todos los marcadores. En la translúcida, los marcadores cercanos pierden el velo de la malla y se ven algo más vivos.
+- **Desde 40rem, el interruptor va solo en una fila.** Cuando el contenido de la vista grande mide 40rem o más (a 1400 × 900, 776 px), «Exportar JPEG» sube a la cabecera (D4, desviación 7) y el interruptor se queda solo en la cuarta fila de la barra. La barra mide 138 px, frente a 102 px y tres filas sin él, y el lienzo, 518 px de alto en vez de 554. En la fila de «Hemisferio» hay sitio, pero `.brain3d-surface-controls` ocupa la línea entera. Por debajo de 40rem (1280 × 800, 1024 × 768 y 900 × 600), el interruptor comparte fila con «Exportar JPEG» y no cuesta nada. En la rama sola, antes de la fase 3, compartían fila en todos los tamaños, y la barra medía solo 2-3 px más.
+- **A 900 × 600, el tamaño mínimo de la ventana, el lienzo 3D mide 95 px de alto.** La vista grande tiene 276 px de ancho, y su barra ocupa 244 px de sus 520. Sin el interruptor mide lo mismo, así que no viene de esta minifase. A 1024 × 768, el lienzo mide 348 px.
+- Notas de la revisión de las Tasks 1-4, sin cambios:
+  - la etiqueta se separa en +Y de los datos, no hacia arriba en pantalla;
+  - un clic puede tocar dos zonas de clic que se solapan en el rayo; era así antes, pero ahora el solape no se ve.
+
+**Para decidir el usuario: las etiquetas dobles de la línea media.**
+
+Se repitió en la app la escena de su captura: red Somatomotora, corteza pintada inflada, los dos hemisferios y la cámara del principio, que mira el hemisferio derecho de lado. Se midió la opacidad de cada etiqueta con el fondo restado, en escenas con las regiones de un solo hemisferio, para que la gemela no quedara encima. Coincide con el factor del shader a ±0,002 en las 16 etiquetas que no tocan nada. La tabla da el factor de las dos copias de cada par:
+
+| Par | Grupo | x izq. / der. (mm) | Separación en profundidad | Copia de detrás (izq.) | Copia de delante (der.) | Detrás entre delante | Entre las dos etiquetas |
+|---|---|---|---|---|---|---|---|
+| 5m | medial | −5,4 / 7,1 | 15 mm | 0,80 | 0,96 | 0,83 | 14 px |
+| 24dd | medial | −7,6 / 7,8 | 14 mm | 0,84 | 0,97 | 0,86 | 15 px |
+| 24dv | medial | −8,7 / 8,8 | 13 mm | 0,86 | 0,98 | 0,88 | 9 px |
+| 5L | medial | −11,6 / 12,2 | 23 mm | 0,74 | 0,98 | 0,75 | 24 px |
+| 6mp | medial | −14,7 / 15,7 | 31 mm | 0,71 | 1,00 | 0,71 | 27 px |
+| 7AL | de su captura | −20,1 / 20,6 | 41 mm | 0,59 | 1,00 | 0,59 | 37 px |
+| 4 | de su captura | −27,6 / 28,8 | 64 mm | 0,46 | 1,00 | 0,46 | 48 px |
+| 3b | de su captura | −39,9 / 38,8 | 85 mm | 0,31 | 1,00 | 0,31 | 65 px |
+| FOP2 | lateral | −41,8 / 42,0 | 94 mm | 0,34 | 1,00 | 0,34 | 23 px |
+| OP1 | lateral | −46,4 / 45,8 | 105 mm | 0,25 | 1,00 | 0,25 | 23 px |
+| 1 | lateral | −47,3 / 49,2 | 102 mm | 0,25 | 1,00 | 0,25 | 70 px |
+| OP4 | lateral | −55,7 / 56,5 | 120 mm | 0,22 | 1,00 | 0,22 | 22 px |
+| 6v | lateral | −57,2 / 59,5 | 118 mm | 0,23 | 1,00 | 0,23 | 48 px |
+
+Los pares laterales se separan: la copia de detrás queda en 0,22-0,34, y la de delante, en 1. En los mediales, la de detrás sigue en 0,71-0,86 y la de delante en 0,96-1,00, a 9-27 px de ella. En los de su captura, 3b baja a 0,31, 4 a 0,46 y 7AL a 0,59.
+
+**Por qué no basta con ajustar el tramo.** El factor solo depende de la profundidad. Las dos copias de un par medial están a 13-31 mm una de otra en la dirección de la vista, y el tramo mide 79 mm. Adelantar su principio (`DEPTH_FADE_NEAR`, hoy −0,2) atenúa las dos copias a la vez y apenas cambia la proporción entre ellas. Calculado con la profundidad de cada etiqueta en esa escena (detrás / delante, y entre paréntesis detrás entre delante):
+
+| `DEPTH_FADE_NEAR` | 5m | 24dd | 24dv | 5L | 6mp | 7AL | 4 |
+|---|---|---|---|---|---|---|---|
+| −0,2 (hoy) | 0,80 / 0,96 (0,83) | 0,84 / 0,97 (0,86) | 0,86 / 0,98 (0,88) | 0,74 / 0,98 (0,75) | 0,71 / 1,00 (0,71) | 0,59 / 1,00 (0,59) | 0,46 / 1,00 (0,46) |
+| −0,4 | 0,69 / 0,87 (0,80) | 0,73 / 0,88 (0,83) | 0,76 / 0,89 (0,84) | 0,63 / 0,90 (0,71) | 0,61 / 0,95 (0,64) | 0,51 / 0,96 (0,53) | 0,40 / 1,00 (0,40) |
+| −0,6 | 0,61 / 0,77 (0,78) | 0,64 / 0,79 (0,81) | 0,66 / 0,80 (0,83) | 0,56 / 0,81 (0,69) | 0,53 / 0,87 (0,62) | 0,45 / 0,88 (0,51) | 0,36 / 0,97 (0,37) |
+| −1,0 | 0,49 / 0,62 (0,78) | 0,51 / 0,64 (0,80) | 0,53 / 0,65 (0,82) | 0,45 / 0,65 (0,69) | 0,43 / 0,71 (0,61) | 0,37 / 0,72 (0,51) | 0,31 / 0,84 (0,36) |
+
+Con −1,0, la copia de delante de 5m baja a 0,62 y la de detrás sigue a 0,78 de ella: el par sigue doble, solo más tenue, y lo que está delante y se ve también se apaga. Para separarlas por distancia haría falta un tramo de unos 30 mm alrededor de la línea media, que apagaría de golpe todo lo que queda detrás de ella.
+
+**Siguiente paso recomendado: oclusión real contra la superficie pintada, para marcadores y etiquetas.** Es lo que el usuario pidió al principio («opacidad por oclusión»). Por ejemplo, en dos pasadas:
+- una tenue, sin prueba de profundidad, como hoy;
+- otra a opacidad plena, con prueba de profundidad contra la corteza.
+
+Lo que tapa la corteza que se ve quedaría tenue, y lo demás, pleno, sea cual sea su profundidad. Las líneas se quedan con la atenuación por distancia, como decidió el usuario el 24/09/2026. Hay que tener en cuenta tres cosas, todavía sin comprobar en la app:
+- Con la cámara de lado, la cara interna del hemisferio de delante queda detrás de su propia corteza. Las dos copias de un par medial se verían tenues. Se separarían, una plena y otra tenue, en las vistas en que solo se ve una.
+- Con la forma «Real», un marcador dentro de un surco quedaría tenue. Es el caso por el que hoy se dibujan sin prueba de profundidad.
+- Un marcador apoyado en la superficie necesita un pequeño margen de profundidad para no quedar cortado por ella.
+
+**Queda para el resto de la fase 4.**
+- **Cerebro 3D:** los surcos más visibles (percentiles 5 y 95, con suavizado) y las etiquetas con la tipografía nueva, el fondo translúcido del tema y su caché por tema y versión de fuentes (spec 6.3). También, la fila que el interruptor ocupa él solo desde 40rem (limitaciones).
+- **Connectograma** (etiquetas radiales, arcos, leyenda y nodos) **y hemisferios** (spec 6.1 y 6.2).
+- Lo que el usuario decida:
+  - la línea media (arriba);
+  - el mínimo de la atenuación (0,2);
+  - con datos que tengan conectividad efectiva, el tamaño del cono de dirección: radio 0,035, algo mayor que un marcador normal.
+
+**Verificación.**
+- **Pruebas.** En la rama, sobre `9b2b92a`: `vitest` 201/201, las 129 de antes y 72 nuevas (61 de la implementación y 11 de la ronda de arreglos de la revisión); `tsc -b` limpio, `oxlint` sin errores y con los mismos 9 avisos, y `vite build` correcto, con el aviso de tamaño de bloque de siempre. Tras la fusión, sobre `63622f0`: `vitest` 343/343 en 39 archivos (las 271 de la D4 y las 72 de esta minifase), `tsc -b` limpio, `oxlint` sin errores y con los mismos 9 avisos, y `vite build` correcto.
+- **Cómo se probó en la rama.** En Chromium 140 sin interfaz (Playwright 1.55, WebGL por software) y con el backend local, solo con peticiones GET. Había dos servidores de desarrollo propios: la versión nueva (`9b2b92a`) y la anterior a esta minifase (`c84e6c6`). `GET /connections` cambia el orden de las filas, y con él el orden de dibujo, así que `/regions` y `/connections` de HCP-MMP1.0 (360 regiones y 64 620 conexiones) se sirvieron a las dos versiones desde los mismos JSON. Ventana de 1400 × 900; para la barra, también 1280 × 800 y 1024 × 768. Tema Grafito salvo donde se dice. Lo que sigue, hasta «Tras la fusión», se midió en la rama.
+- **Atenuación en las capturas.** En Grafito y en Claro, activada y desactivada:
+  - la red Somatomotora (39 regiones, peso mínimo 0);
+  - la estrella de 4 derecha (sus 359 conexiones), con la corteza pintada y en la translúcida;
+  - en Grafito, además, la estrella vértice a vértice (Power 2011).
+
+  Activada, las etiquetas y los marcadores del hemisferio lejano se ven tenues. Las copias izquierdas de 3b, 4, OP1-OP4 e Ig dejan de competir con las derechas, y las de los pares mediales (5m, 5L, 24dd, 24dv) siguen dobles. Desactivada, se ve como antes, con los marcadores nuevos.
+
+  Las líneas se atenúan hacia el otro hemisferio. En la estrella, al alternar cambia el 6 % de los píxeles, el 79 % de ellos a más oscuro. El mapa de diferencias muestra los trazos atenuados sobre todo lejos de 4 derecha; junto a ella, donde se cruzan todas, apenas cambia. A lo largo de una línea aislada no se pudo medir: con el fondo exacto, las que están solas son del hemisferio de delante y no cambian (46 muestras, el 90 % a ±0,04 de su factor).
+- **Medida de la atenuación.**
+  - **Escena.** Cinco regiones cercanas (hemisferio derecho) y cinco lejanas (izquierdo), separadas en pantalla y sin líneas. Con la corteza pintada (forma real) y con la translúcida, en pantalla y en el JPEG. Además, un solo hemisferio, el izquierdo, que enseña a la cámara su cara interna.
+  - **Medida del plan.** El contraste de cada etiqueta con la mediana del fondo que la rodea, activada entre desactivada.
+    - Las cercanas dan 1,0 en todos los casos.
+    - Las lejanas quedan por encima del umbral de 0,5 en la pintada (0,622 en pantalla y 0,608 en el JPEG), en el JPEG de la translúcida (0,712) y con un solo hemisferio (0,505). En la translúcida en pantalla dan 0,34.
+  - **Por qué no es la app.** La medida da por hecho un fondo liso. El sombreado de la corteza y los pliegues de la malla entran en ella y no se atenúan. Pesa más en las etiquetas lejanas, de unos 6 px de letra: en el fondo solo, sin la etiqueta, la medida de «1» izquierda da 12,1, y con ella, 12,2.
+  - **Medida con el fondo restado.** Se repitió la escena, y las capturas y los JPEG salieron iguales byte a byte. Se fotografió también sin marcadores ni etiquetas, que es el fondo, igual con la atenuación activada y desactivada. Restado el fondo, la misma medida da en las lejanas:
+    - 0,283 en la pintada, 0,255 en la translúcida y 0,253 con un solo hemisferio. Coinciden con el factor del shader (0,282, 0,253 y 0,252): como mucho a 0,01 región a región.
+    - En el JPEG, 0,33 y 0,27, a ±0,07 del factor región a región. Con mínimos cuadrados sobre toda la tinta, a ±0,05.
+  - **El JPEG reproduce la atenuación.** Con el fondo restado, sus etiquetas lejanas quedan a +0,05 y +0,01 de las de la pantalla. Con la medida del plan, −0,01 en la pintada y +0,37 en la translúcida.
+  - **Marcadores.** Lo lejano quedó en 0,514 veces lo cercano en la pintada, en 0,347 en su JPEG y en 0,44 en la translúcida. En crudo, en la pintada: los lejanos 18-54 activada frente a 26-108 desactivada, y los cercanos 64-250 en los dos estados. En el JPEG de la translúcida, la medida del plan (el centro contra un anillo 5 px por fuera) da 0,964, y 0,881 con el fondo restado. El relleno pastel se parece al gris de la malla y, atenuado, deja ver el contorno casi negro de la exportación. Sobre todo el disco, con el fondo restado, lo lejano queda en 0,22 de lo cercano, como su factor (0,20-0,30), y en la imagen se ve atenuado.
+- **Desactivada contra la versión anterior,** región a región y en la misma escena.
+  - **Translúcida en pantalla:** el contraste de las etiquetas quedó entre 0,91 y 1,07 veces el de antes, y el de los marcadores, entre 0,97 y 1,00.
+  - **Pintada y los JPEG, con la medida del plan:** fuera de ±0,1. En la pintada, 0,88-1,15 en las etiquetas y 0,87-1,00 en los marcadores; en los JPEG, 0,85-1,14 y 0,71-1,13.
+  - **Con el fondo restado:** los marcadores de la pintada quedan en 0,94-1,00. Las etiquetas no, 0,49-1,24, porque se han movido a propósito 1,6-2,7 px, y con 6-10 px de letra caen en otra fase de píxel: la «1» es una columna nítida en la anterior y dos columnas grises en la nueva. Desactivada, su material es exactamente el de antes, sin parche, comprobado en el código y en la escena viva.
+  - **En los JPEG,** además, la compresión por bloques cambia alrededor de los marcadores más pequeños y de las etiquetas movidas.
+- **Interruptor:**
+  - activado por defecto, con `aria-pressed`, el estilo del tema (distinto en Grafito y en Claro) y letra de 0,72rem;
+  - no es hijo directo de la barra;
+  - se conserva al recargar; Espacio y Enter lo alternan y el foco se queda en él, y se llega con Tab desde el selector de hemisferio;
+  - la miniatura no tiene barra y sigue la preferencia: al alternar cambia el 8 % de sus píxeles, tres cuartas partes a más oscuro con la atenuación;
+  - con el almacenamiento roto, carga activado, se puede desactivar y no hay errores.
+- **Barra del 3D:**
+  - a 1400 × 900, 4 filas y 122 px (la anterior, 4 y 119); a 1280 × 800, 4 y 122 (4 y 119); a 1024 × 768, 5 y 140 (5 y 138);
+  - el interruptor va en la fila de «Exportar JPEG»;
+  - el lienzo baja 3, 3 y 2 px (551, 451 y 414 px de alto, frente a 554, 454 y 416);
+  - con el interruptor oculto, la barra y el lienzo miden lo mismo que en la anterior, y sin selección la barra mide lo mismo que con ella (D1b).
+- **Marcadores:**
+  - **Diámetros, con el script del plan, a píxeles enteros.** 18 px el seleccionado (esperado 17,2) y 14 y 15 los normales (12,1 y 13,5); en la anterior, 33 (32,0), 20 y 24 (21,1 y 23,6). Todos a ±2 px.
+  - **Proporciones, con el mismo script.** Seleccionado entre normal, 1,30. Nuevo entre anterior, 0,548 el seleccionado y 0,664 el normal, fuera por poco de 0,58 ± 0,08: a píxeles enteros, el borde antialiasado suma 1-2 px, un 10-15 % en un disco de 12-14 px.
+  - **Con el borde a media altura y muestreo subpíxel** (dos medidas): 0,574 y 0,583 el normal (esperado 0,576), 0,537 y 0,538 el seleccionado (0,538) y 1,43 y 1,35 seleccionado entre normal (1,4).
+  - **Zona de clic.** Un clic a 0,072 del centro de un marcador seleccionado y a 0,05 del de uno sin seleccionar sigue tocando su zona de clic, y a 0,08 no, como antes.
+  - **Anillo del nodo `#000000`** (9-46d derecha, Saliencia de Power 2011). Se ve en Grafito y en Claro con la corteza pintada, y en Grafito con la translúcida. En Claro translúcida es un borde gris fino, y el nodo se distingue por su núcleo negro sobre el fondo claro.
+- **Captura:**
+  - en la versión nueva, los seis fotogramas tras pulsar «Exportar JPEG» y el de 500 ms después son iguales píxel a píxel al de antes;
+  - en la anterior, 4 fotogramas (del segundo al quinto) tenían los colores de exportación, en hasta el 29 % de los píxeles;
+  - el JPEG mide lo que el lienzo (785 × 551) y tiene las esquinas blancas;
+  - un doble clic, el de Playwright y el síncrono, da una descarga;
+  - con el teclado, el botón conserva el foco;
+  - `aria-disabled` es `true` justo tras el clic y `false` después.
+- **Contra la versión anterior,** con la atenuación desactivada y el mismo lienzo:
+  - sin selección, el JPEG es igual byte a byte;
+  - con la red Somatomotora y el peso mínimo en 0, fuera de marcadores y etiquetas hay 0 píxeles distintos de 403 117 en pantalla y 0 de 391 350 en el JPEG.
+- **Línea media:** la escena de la captura del usuario, con la opacidad de cada etiqueta medida con el fondo restado (la tabla de arriba). El tramo que usa el shader es el que calcula `logic/depthFade.ts` con esa cámara y esa malla. El fondo es igual con la atenuación activada y desactivada.
+- **Consola:** sin errores en ninguna fase, y sin el aviso de que el parche de la atenuación no se aplicara. El único aviso fue el de three.js sobre `THREE.Clock`, que ya salía antes.
+- **Tras la fusión.** Una comprobación corta sobre `63622f0`, en Chromium 140 sin interfaz (Playwright 1.55, WebGL por software), con un servidor de desarrollo propio y el backend local con datos reales, solo con peticiones GET: el script cortaba cualquier otra, y no salió ninguna. HCP-MMP1.0 con Cole-Anticevic y la red Somatomotora seleccionada con su ◎ de Filtros: 39 regiones, las mismas que da `/regions`, con el peso mínimo de por defecto, 0. El cerebro 3D, en la vista grande, con la corteza pintada. Tema Grafito salvo donde se dice.
+- **«Exportar JPEG» y el interruptor,** con la red seleccionada:
+
+  | Ventana | Contenido de la vista grande | «Exportar JPEG» | Barra del 3D | Lienzo | Sin el interruptor (oculto por CSS) |
+  |---|---|---|---|---|---|
+  | 1400 × 900 | 776 px (43rem) | en la cabecera | 138 px, 4 filas | 518 px | 102 px y 3 filas; lienzo de 554 px |
+  | 1280 × 800 | 656 px (36rem) | en la barra, en la fila del interruptor | 138 px, 4 filas | 418 px | igual |
+  | 1024 × 768 | 400 px (25rem) | en la barra, en la fila del interruptor | 174 px, 5 filas | 348 px | igual |
+  | 900 × 600 | 276 px (17rem) | en la barra, en la fila del interruptor | 244 px | 95 px | igual |
+
+  - A 1400 × 900, «Exportar JPEG» queda arriba a la derecha de la cabecera, en el hueco de 126 px que le reserva la fase 3, a 21 px de la descripción, que ocupa tres líneas. A 1280 × 800 queda al extremo derecho de la fila del interruptor, que va a la izquierda.
+  - En los cuatro tamaños no se solapa nada: título, descripción, «Exportar JPEG», los cuatro desplegables, el interruptor, la línea de estado y el lienzo. «Exportar JPEG» recibe el clic en su centro y cerca de sus cuatro esquinas, y el interruptor también (medido a 1400, 1280 y 900 px de ancho).
+  - A 1400 × 900 y a 1280 × 800, sin selección la barra y el lienzo miden lo mismo que con ella (D1b).
+- **Interruptor, en Claro y en Grafito** (1400 × 900):
+  - Activado al cargar, sin preferencia guardada. Un clic lo desactiva: `aria-pressed` pasa a `false`, se guarda `false` y cambia el lienzo (el 3,2 % de sus píxeles en Claro y el 2,4 % en Grafito). Se conserva al recargar. Con el foco en él, Espacio e Intro lo alternan y el foco se queda; al recargar, sigue como se dejó.
+  - **Contraste del estado pulsado.** El borde es el `--accent` de la regla de la fase 3 (`.export-btn[aria-pressed="true"]`). En Claro queda a 17,8:1 del fondo del panel y a 15,8:1 de su propio relleno; en Grafito, a 14,8:1 y a 12,2:1. En los píxeles de la captura, 17,1:1 y 15,1:1, y 14,4:1 y 11,8:1. En la rama sola, en Claro, quedaba a ~2,2:1.
+- **Exportación,** con la red seleccionada, a 1400 × 900 (el botón en la cabecera) y a 1280 × 800 (en la barra), con el código de la verificación en la rama:
+  - los seis fotogramas tras el clic y el de 500 ms después son iguales píxel a píxel al de antes: en pantalla no aparece ninguno con los colores de exportación;
+  - `aria-disabled` pasa de `false` a `true` justo tras el clic, y vuelve a `false`;
+  - el JPEG mide lo que el lienzo (776 × 518 y 656 × 418) y tiene las cuatro esquinas blancas;
+  - cada clic da una descarga, también un clic de ratón de verdad en el botón de la cabecera.
+- **Avisos,** a 1280 × 800 y a 900 × 600. «Importar», en el navegador, saca el aviso «“Importar síntesis” solo funciona en la aplicación de escritorio.», con `role="alert"`. Con él solo, y con él y el de deshacer («Limpiar» con la red seleccionada da «Se vació la selección de 39 regiones»), la pila queda sobre la columna derecha: empieza en x = 968 y 588 px, y la barra del 3D acaba en x = 943 y 563. No tapa la barra, ni el interruptor, ni «Exportar JPEG», ni los desplegables, que reciben el clic en su centro y cerca de sus esquinas.
+- **Consola, tras la fusión:** sin errores. El único aviso fue el de `THREE.Clock`.
+- **No comprobado:**
+  - la ventana real de Tauri (WebKitGTK en Linux, WebView2 en Windows), y en ella la captura con multimuestreo (4 muestras, resueltas con `blitFramebuffer`);
+  - el rendimiento con una GPU real;
+  - un atlas volumétrico (Brainnetome);
+  - los conos de dirección y las líneas continuas, que no están en los datos: en HCP-MMP1.0 todas las conexiones son estructurales e indirectas;
+  - en la translúcida, si una línea que pasa por detrás de un marcador atenuado muestra un corte;
+  - la opacidad a lo largo de una línea aislada que cruce el tramo: en las escenas probadas, las líneas lejanas se cruzan con otras;
+  - la captura vacía, el contexto perdido y el lienzo sin tamaño, que solo cubren las pruebas unitarias.
+
+El spec queda al día con estas diferencias y con lo que queda abierto:
+- 6.3: los marcadores (el contorno a escala 1,36, la zona de clic con el radio de antes y la etiqueta a 0,18 del borde), la atenuación (el tramo con el elipsoide de la caja del cerebro que se ve, en la profundidad del eje de la cámara, el mínimo de 0,2, la preferencia guardada en el navegador y los materiales de siempre al desactivarla) y la captura (el `useFrame` de prioridad 1, el mismo proceso de color que el lienzo, y sin JPEG si falta el contexto, el tamaño o los píxeles);
+- 9: las unidades nuevas;
+- 11: la D5 y el estado del documento;
+- 12: la dependencia de `isXRRenderTarget`, con las pruebas que la vigilan, y lo que tiene que decidir el usuario.
+
+Spec: `docs/rediseno-interfaz-diseno.md`, sección 6.3. Plan: `docs/rediseno-interfaz-plan-3d.md`.
