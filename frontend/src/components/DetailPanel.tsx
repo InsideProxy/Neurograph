@@ -17,8 +17,8 @@
 // tractografía real que consultar, así que `canFetchTracts=false` evita
 // la petición por completo en vez de mostrar un resultado vacío que
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS, NETWORK_LABELS } from "../theme/networks";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { exportResolverFor, ngFill, ngStroke } from "../theme/colors";
 import { useDrawColors } from "../theme/useDrawColors";
 import { useAppearanceStore } from "../state/appearance";
@@ -27,7 +27,13 @@ import { fetchInducedTracts } from "../data/api";
 import { inducedConnections } from "../logic/induced";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
+import { copyShortcutLabel, copyText } from "../logic/clipboard";
+import { formatCount, hemisphereLabel, regionTitleParts } from "../logic/displayText";
+import { CONNECTIONS_PREVIEW_COUNT, regionConnectionsByWeight, visibleRegionConnections } from "../logic/regionConnections";
+import { weightToSliderPosition } from "../logic/weightScale";
 import type { GraphConnection, GraphNode, InducedTract } from "../types/domain";
+import { Icon } from "./Icon";
+import { NetworkTag } from "./NetworkTag";
 
 interface Props {
   nodes: GraphNode[];
@@ -48,10 +54,48 @@ function regionDisplayText(node: GraphNode | undefined, fallbackId: string): str
   return `${node.abbreviation} — ${node.label}`;
 }
 
-function ConnectionRow({ conn, otherLabel }: { conn: GraphConnection; otherLabel: string }) {
+// Una conexión de la región (D4 de docs/decisiones-diseno.md; spec 5.5).
+// Conserva la información de antes: la otra región, el tipo, el peso con
+// el mismo formato y el nivel de evidencia. Añade el color de la red de
+// la otra región, el sentido de las efectivas («hacia» o «desde» la otra
+// región) y una barra de peso en la escala logarítmica del filtro
+// (logic/weightScale.ts), porque los pesos abarcan varios órdenes de
+// magnitud. El color sale de useDrawColors, como en las vistas.
+function ConnectionRow({
+  conn,
+  otherLabel,
+  otherNetwork,
+  outgoing,
+}: {
+  conn: GraphConnection;
+  otherLabel: string;
+  otherNetwork: string | null;
+  outgoing: boolean;
+}) {
+  const colors = useDrawColors();
   return (
-    <li>
-      {otherLabel} — {CONNECTION_TYPE_LABELS[conn.type]}, peso {conn.weight}, {EVIDENCE_LEVEL_LABELS[conn.evidenceLevel]}
+    <li className="detail__connection">
+      <span
+        className="detail__connection-dot"
+        style={{ backgroundColor: colors.networkColor(otherNetwork ?? "unclassified") }}
+        aria-hidden="true"
+      />
+      <span className="detail__connection-name">
+        {conn.type === "effective" && (
+          <span className="detail__connection-direction">{outgoing ? "hacia " : "desde "}</span>
+        )}
+        {otherLabel}
+      </span>
+      <span className="detail__connection-weight">
+        <span className="visually-hidden">peso </span>
+        {conn.weight}
+      </span>
+      <span className="detail__connection-bar" aria-hidden="true">
+        <span style={{ width: `${Math.round(weightToSliderPosition(conn.weight) * 100)}%` }} />
+      </span>
+      <span className="detail__connection-meta">
+        {CONNECTION_TYPE_LABELS[conn.type]} · {EVIDENCE_LEVEL_LABELS[conn.evidenceLevel]}
+      </span>
     </li>
   );
 }
@@ -97,6 +141,151 @@ function membershipDescription(algorithm: string, confidence: number | null): st
     return "Etiqueta propia del atlas (Gordon et al., 2016), no calculada por NeuroGraph";
   }
   return pct === null ? algorithm : `${algorithm} (confianza ${pct})`;
+}
+
+// ID científico al pie, en letra monoespaciada, con un botón para copiarlo
+// (D4; spec 5.5). Si el portapapeles no está disponible (permiso denegado,
+// contexto no seguro), se selecciona el texto para copiarlo a mano, y se
+// dice, a la vista y a los lectores de pantalla; si vuelve a fallar, se
+// vuelve a anunciar. El temporizador que devuelve el botón a «Copiar» se
+// cancela en el clic siguiente y si el panel se desmonta antes.
+function ScientificId({ id, label }: { id: string; label: string }) {
+  const codeRef = useRef<HTMLElement>(null);
+  const timerRef = useRef<number | undefined>(undefined);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
+  // Sube con cada intento: el mensaje se vuelve a pintar, y a anunciar,
+  // aunque diga lo mismo que la vez anterior.
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), []);
+
+  const handleCopy = async () => {
+    window.clearTimeout(timerRef.current);
+    setAttempt((count) => count + 1);
+    if (await copyText(id, navigator.clipboard)) {
+      setStatus("copied");
+      timerRef.current = window.setTimeout(() => setStatus("idle"), 1500);
+      return;
+    }
+    const code = codeRef.current;
+    const selection = window.getSelection();
+    if (code && selection) selection.selectAllChildren(code);
+    setStatus("failed");
+  };
+
+  const message =
+    status === "copied"
+      ? "Identificador copiado"
+      : status === "failed"
+        ? `No se pudo copiar: el identificador queda seleccionado (${copyShortcutLabel(navigator.userAgent)})`
+        : "";
+
+  return (
+    <div className="detail__id">
+      <span className="detail__id-label">{label}</span>
+      <code ref={codeRef} className="detail__id-value">
+        {id}
+      </code>
+      <button
+        type="button"
+        className="detail__id-copy"
+        aria-label="Copiar el identificador"
+        title={status === "copied" ? "Copiado" : "Copiar"}
+        onClick={handleCopy}
+      >
+        <Icon name={status === "copied" ? "check" : "copy"} size={14} />
+      </button>
+      {/* El fallo se ve, bajo el ID; «copiado» solo se anuncia, porque
+          el botón ya lo muestra con ✓. */}
+      <span className={status === "failed" ? "detail__id-status" : "visually-hidden"} role="status">
+        {message && <span key={attempt}>{message}</span>}
+      </span>
+    </div>
+  );
+}
+
+// Detalle de una región (D4 de docs/decisiones-diseno.md; spec 5.5), de
+// más a menos importante: la región, su red y su hemisferio, cómo se
+// asignó la red, sus conexiones (más fuertes primero; se ven las cinco
+// primeras) y, al pie, el ID científico. DetailPanel monta uno por región
+// (key), así que «Ver las N» vuelve a plegarse al cambiar de región sin
+// ningún efecto. Se exporta solo para su prueba de marcado
+// (DetailPanel.test.tsx): en node, la selección del store no se puede
+// fijar antes de pintar DetailPanel.
+export function RegionDetail({
+  node,
+  connections,
+  nodeById,
+}: {
+  node: GraphNode;
+  connections: GraphConnection[];
+  nodeById: Map<string, GraphNode>;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const listId = useId();
+  const sorted = useMemo(() => regionConnectionsByWeight(connections, node.id), [connections, node.id]);
+  const shown = visibleRegionConnections(sorted, showAll);
+  const { main, secondary } = regionTitleParts(node);
+
+  return (
+    <aside className="detail-panel detail detail--with-id" aria-label="Región seleccionada">
+      <p className="detail__eyebrow">Región seleccionada</p>
+      <h2 className="detail__title">
+        <span className="detail__main">{main}</span>
+        {secondary && <span className="detail__secondary">{secondary}</span>}
+      </h2>
+      <div className="detail__tags">
+        <NetworkTag network={node.network} />
+        <span className="detail__tag">{hemisphereLabel(node.hemisphere)}</span>
+      </div>
+      {node.networkAlgorithm && (
+        <p className="detail__note" title="Cómo se asignó la red">
+          <Icon name="info" size={14} />
+          <span>
+            <span className="visually-hidden">Cómo se asignó la red: </span>
+            {membershipDescription(node.networkAlgorithm, node.networkConfidence ?? null)}
+          </span>
+        </p>
+      )}
+      <div className="detail__section-header">
+        <h3 className="detail__heading">
+          Conexiones <span className="detail__count">{formatCount(sorted.length)}</span>
+        </h3>
+        {sorted.length > 1 && <span className="detail__hint">más fuertes primero · barra logarítmica</span>}
+      </div>
+      {sorted.length === 0 ? (
+        <p className="detail-panel__empty-note">Esta región no tiene conexiones cargadas.</p>
+      ) : (
+        <ul className="detail__connections" id={listId}>
+          {shown.map(({ connection, otherId, outgoing }) => {
+            const other = nodeById.get(otherId);
+            return (
+              <ConnectionRow
+                key={connection.id}
+                conn={connection}
+                otherLabel={regionDisplayText(other, otherId)}
+                otherNetwork={other?.network ?? null}
+                outgoing={outgoing}
+              />
+            );
+          })}
+        </ul>
+      )}
+      {sorted.length > CONNECTIONS_PREVIEW_COUNT && (
+        <button
+          type="button"
+          className="detail__more"
+          aria-expanded={showAll}
+          aria-controls={listId}
+          onClick={() => setShowAll((value) => !value)}
+        >
+          {showAll ? `Ver solo las ${CONNECTIONS_PREVIEW_COUNT} primeras` : `Ver las ${formatCount(sorted.length)}`}
+          <Icon name={showAll ? "chevronUp" : "arrowRight"} size={14} />
+        </button>
+      )}
+      <ScientificId id={node.id} label="ID científico" />
+    </aside>
+  );
 }
 
 export function DetailPanel({ nodes, connections, canFetchTracts = false }: Props) {
@@ -210,35 +399,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
 
   if (selectedNodesList.length === 1) {
     const node = selectedNodesList[0];
-    const related = connections.filter((c) => c.source === node.id || c.target === node.id);
-    return (
-      <aside className="detail-panel">
-        <h2>{regionDisplayText(node, node.id)}</h2>
-        <dl>
-          <dt>ID científico</dt>
-          <dd><code>{node.id}</code></dd>
-          <dt>Red</dt>
-          <dd>{NETWORK_LABELS[node.network] ?? node.network}</dd>
-          {node.networkAlgorithm && (
-            <>
-              <dt>Cómo se asignó la red</dt>
-              <dd>{membershipDescription(node.networkAlgorithm, node.networkConfidence ?? null)}</dd>
-            </>
-          )}
-          <dt>Conexiones ({related.length})</dt>
-          <dd>
-            <ul>
-              {related.map((c) => {
-                const otherId = c.source === node.id ? c.target : c.source;
-                const other = nodeById.get(otherId);
-                const otherLabel = regionDisplayText(other, otherId);
-                return <ConnectionRow key={c.id} conn={c} otherLabel={otherLabel} />;
-              })}
-            </ul>
-          </dd>
-        </dl>
-      </aside>
-    );
+    return <RegionDetail key={node.id} node={node} connections={connections} nodeById={nodeById} />;
   }
 
   // Selección múltiple: dos o más regiones a la vez.

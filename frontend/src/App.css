@@ -271,9 +271,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filter-row--network .legend-swatch { flex: 0 0 auto; }
 .filter-row--network input { flex: 0 0 auto; margin: 0; }
 
-/* Panel de detalle en la columna derecha. */
-.ws-detail .detail-panel h2 { font-size: 0.9rem; margin: 0 0 4px; font-weight: 600; }
-
 /* Barra de controles del cerebro 3D, más compacta en el espacio de
    trabajo (antes ocupaba cuatro filas a 800 px de ancho). */
 .ws-view .brain3d-toolbar { gap: 6px 12px; font-size: 0.76rem; }
@@ -641,3 +638,49 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .network-tag { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 1.7em; margin-left: 8px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--code-bg); color: var(--text-h); font-size: 0.92em; line-height: 1; white-space: nowrap; vertical-align: middle; }
 .network-tag__dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
 .region-summary strong { color: var(--text-h); }
+
+/* Panel de detalle (spec 5.5). position: relative: el texto oculto de
+   sus listas (.visually-hidden) se coloca respecto al panel, que se
+   desplaza por dentro. Sin él, «Ver las 359» alargaría la página. */
+.ws-detail .detail-panel { position: relative; border-radius: 12px; padding: 14px 16px; }
+.ws-detail .detail { display: flex; flex-direction: column; gap: 8px; }
+.ws-detail .detail--with-id { padding-bottom: 0; }
+.detail > * { flex-shrink: 0; }
+.detail-panel .detail__eyebrow, .detail-panel .detail__heading { margin: 0; padding: 0; border: none; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.detail-panel .detail__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: -4px 0 0; font-size: inherit; line-height: 1.2; letter-spacing: normal; }
+.detail-panel .detail__main { font-size: 1.44rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-h); overflow-wrap: anywhere; }
+.detail-panel .detail__secondary { font-size: 0.78rem; font-weight: 400; color: var(--text); }
+.detail-panel .detail__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.detail-panel .detail__tags .network-tag { height: 24px; margin-left: 0; padding: 0 10px; font-size: 0.7rem; }
+.detail-panel .detail__tag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.7rem; color: var(--text); }
+.detail-panel .detail__note { display: flex; gap: 8px; margin: 0; font-size: 0.7rem; line-height: 1.45; color: var(--text-muted); }
+.detail-panel .detail__note .icon { margin-top: 2px; }
+.detail-panel .detail__section-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+.detail-panel .detail__count { margin-left: 6px; font-weight: 400; letter-spacing: 0; }
+.detail-panel .detail__hint { font-size: 0.7rem; color: var(--text-muted); }
+.detail-panel .detail__connections { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+/* Cada conexión en tres filas: la otra región, a todo lo ancho; la barra
+   de peso con el peso a su derecha, y el tipo y la evidencia. El peso
+   conserva su formato de siempre, que puede llegar a 22 cifras
+   (0.00007545708085457741): a la derecha del nombre le quitaría casi
+   todo el sitio. */
+.detail-panel .detail__connection { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: "dot name name" ". bar weight" ". meta meta"; align-items: center; column-gap: 8px; row-gap: 3px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.detail-panel .detail__connection:last-child { border-bottom: none; }
+.detail-panel .detail__connection-dot { grid-area: dot; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.detail-panel .detail__connection-name { grid-area: name; font-size: 0.7rem; font-weight: 600; color: var(--text-h); overflow-wrap: anywhere; }
+.detail-panel .detail__connection-direction { font-weight: 400; color: var(--text-muted); }
+.detail-panel .detail__connection-weight { grid-area: weight; font-family: var(--mono); font-size: 0.7rem; color: var(--text); }
+.detail-panel .detail__connection-bar { grid-area: bar; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.detail-panel .detail__connection-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--text-muted); }
+.detail-panel .detail__connection-meta { grid-area: meta; font-size: 0.7rem; color: var(--text-muted); }
+.detail-panel .detail__more { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 2px 0; border: none; background: none; color: var(--text-h); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
+.detail-panel .detail__more:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* ID científico al pie: queda abajo aunque la lista sea corta, y a la
+   vista aunque sea larga. */
+.detail-panel .detail__id { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: auto -16px 0; padding: 6px 8px 6px 16px; border-top: 1px solid var(--border); background: var(--panel-bg); }
+.detail-panel .detail__id-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.detail-panel .detail__id-value { flex: 1 1 auto; min-width: 0; padding: 0; background: none; font-size: 0.7rem; color: var(--text-muted); word-break: break-all; }
+.detail-panel .detail__id-copy { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.detail-panel .detail__id-copy:hover { background: var(--hover); color: var(--text-h); }
+/* Si no se pudo copiar, se dice bajo el ID. */
+.detail-panel .detail__id-status { flex-basis: 100%; font-size: 0.7rem; line-height: 1.35; color: var(--text); }
