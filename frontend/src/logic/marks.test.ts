@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
+import type { GraphNode } from "../types/domain";
 import {
   MARK_ATTRIBUTE,
   MARK_ELEMENT,
   MARK_RING_GAP,
   estimatedTextBox,
   isMarkGesture,
+  markGestureHint,
   markRing,
+  marksHeading,
+  marksHiddenText,
+  marksNamesText,
+  marksSummary,
   outwardLabel,
   pillAround,
   removeMarkElements,
@@ -97,5 +103,52 @@ describe("removeMarkElements", () => {
 
   it("los elementos de las marcas llevan ese atributo", () => {
     expect(Object.keys(MARK_ELEMENT)).toEqual([MARK_ATTRIBUTE]);
+  });
+});
+
+// La línea de las marcas en Filtros (spec 5.9): «Marcadas: N» con sus
+// nombres, los primeros y «y N más», y cuántas ocultan los filtros.
+describe("línea de las marcas", () => {
+  function region(id: string, abbreviation: string, hemisphere: "L" | "R", network = "cole-anticevic.visual"): GraphNode {
+    return { id, label: `Area ${abbreviation}`, abbreviation, hemisphere, network, position3d: [0, 0, 0], referenceSpace: null };
+  }
+  const NODES = [
+    region("l_te1m", "TE1m", "L"),
+    region("r_ifja", "IFJa", "R"),
+    region("l_v1", "V1", "L"),
+    region("r_v1", "V1", "R"),
+    region("r_fef", "FEF", "R", "cole-anticevic.default"),
+  ];
+  const BY_ID = new Map(NODES.map((node) => [node.id, node]));
+  const hiddenByFilters = (node: GraphNode) => node.network === "cole-anticevic.default";
+
+  it("cuenta solo las regiones cargadas y nombra las primeras en el orden en que se marcaron, con su lado", () => {
+    const summary = marksSummary(new Set(["l_te1m", "r_ifja", "otro_atlas", "l_v1", "r_v1", "r_fef"]), BY_ID, hiddenByFilters);
+    expect(summary.count).toBe(5);
+    expect(summary.names).toEqual(["TE1m (izq.)", "IFJa (der.)", "V1 (izq.)"]);
+    expect(summary.allNames).toEqual(["TE1m (izq.)", "IFJa (der.)", "V1 (izq.)", "V1 (der.)", "FEF (der.)"]);
+    expect(summary.hidden).toBe(1);
+    expect(marksNamesText(summary)).toBe("TE1m (izq.), IFJa (der.), V1 (izq.) y 2 más");
+  });
+
+  it("con pocas, las nombra todas, con «e» ante el sonido /i/", () => {
+    expect(marksNamesText(marksSummary(new Set(["l_v1"]), BY_ID, hiddenByFilters))).toBe("V1 (izq.)");
+    expect(marksNamesText(marksSummary(new Set(["l_v1", "r_ifja"]), BY_ID, hiddenByFilters))).toBe("V1 (izq.) e IFJa (der.)");
+    expect(marksNamesText(marksSummary(new Set(["r_ifja", "l_v1", "l_te1m"]), BY_ID, hiddenByFilters))).toBe(
+      "IFJa (der.), V1 (izq.) y TE1m (izq.)",
+    );
+  });
+
+  it("dice cuántas hay, o que no hay ninguna, y cuántas ocultan los filtros", () => {
+    expect(marksHeading(0)).toBe("Ninguna región marcada");
+    expect(marksHeading(5)).toBe("Marcadas: 5");
+    expect(marksHiddenText(0)).toBeNull();
+    expect(marksHiddenText(1)).toBe("1 oculta por los filtros");
+    expect(marksHiddenText(2)).toBe("2 ocultas por los filtros");
+  });
+
+  it("sin marcas, explica el gesto como en cada sistema", () => {
+    expect(markGestureHint("Mozilla/5.0 (X11; Linux x86_64)")).toBe("Ctrl+clic en una región para marcarla");
+    expect(markGestureHint("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe("⌘+clic en una región para marcarla");
   });
 });

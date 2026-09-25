@@ -7,16 +7,21 @@
 // añadiendo. Si lo buscado está en redes ocultas, lo dice en una línea bajo
 // el campo, con un botón para mostrarlas: una lista (listbox) no puede
 // llevar botones. Ctrl+K lleva aquí (useRegionSearchShortcut, desde App).
+// Marcar regiones (spec 5.9): Ctrl+Intro marca o desmarca la sugerencia
+// activa en lugar de elegirla, la sugerencia marcada lo dice, y mientras la
+// lista está abierta la línea de avisos lo recuerda.
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type Ref } from "react";
 import {
   NO_MATCH_TEXT,
   defaultActiveIndex,
+  markKeyHint,
   searchKey,
   searchRegions,
   searchShortcutLabel,
   type RegionSearchResult,
 } from "../logic/regionSearch";
 import { useFiltersStore } from "../state/filters";
+import { useMarksStore } from "../state/marks";
 import { useSelectionStore } from "../state/selection";
 import { useDrawColors } from "../theme/useDrawColors";
 import type { GraphNode } from "../types/domain";
@@ -32,6 +37,10 @@ interface RegionSearchViewProps {
   active: number;
   selectedIds: ReadonlySet<string>;
   shortcutLabel: string;
+  // Marcar regiones (spec 5.9): las marcadas, y lo que recuerda la línea de
+  // avisos mientras la lista está abierta (markKeyHint).
+  markedIds?: ReadonlySet<string>;
+  markHint?: string;
   inputRef?: Ref<HTMLInputElement>;
   listRef?: Ref<HTMLUListElement>;
   onQueryChange: (query: string) => void;
@@ -44,9 +53,12 @@ interface RegionSearchViewProps {
   onShowNetworks: (networks: readonly string[]) => void;
 }
 
+const NO_MARKS: ReadonlySet<string> = new Set();
+
 // El buscador sin estado: se prueba con cualquier resultado.
 export function RegionSearchView(props: RegionSearchViewProps) {
   const { baseId, query, result, open, active, selectedIds, shortcutLabel, inputRef, listRef } = props;
+  const { markedIds = NO_MARKS, markHint } = props;
   const { onQueryChange, onKeyDown, onFocusChange, onChoose, onHover, onShowNetworks } = props;
   const { networkColor } = useDrawColors();
   const inputId = `${baseId}-input`;
@@ -95,6 +107,9 @@ export function RegionSearchView(props: RegionSearchViewProps) {
           </>
         )}
         {result.noMatch && <span>{NO_MATCH_TEXT}</span>}
+        {/* Con la lista abierta, recuerda Ctrl+Intro (spec 5.9), salvo si
+            ya hay un aviso de las redes ocultas. */}
+        {open && !hint && markHint && <span>{markHint}</span>}
       </div>
       {/* La lista solo está en la página mientras está abierta: la guarda de
           los atajos de deshacer busca listas abiertas ([role="listbox"]).
@@ -128,6 +143,11 @@ export function RegionSearchView(props: RegionSearchViewProps) {
                   <span className="visually-hidden">, </span>seleccionada
                 </span>
               )}
+              {markedIds.has(suggestion.id) && (
+                <span className="region-search__marked">
+                  <span className="visually-hidden">, </span>marcada
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -141,6 +161,8 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
   const toggleNetwork = useFiltersStore((state) => state.toggleNetwork);
   const selectedNodeIds = useSelectionStore((state) => state.selectedNodeIds);
   const addNodes = useSelectionStore((state) => state.addNodes);
+  const markedIds = useMarksStore((state) => state.markedIds);
+  const toggleMark = useMarksStore((state) => state.toggleMark);
   const [query, setQuery] = useState("");
   // null: la sugerencia activa por defecto (defaultActiveIndex).
   const [active, setActive] = useState<number | null>(null);
@@ -196,7 +218,7 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    const action = searchKey(event.key, { open, active: current, count: suggestions.length, hasText: query !== "" });
+    const action = searchKey(event.key, { open, active: current, count: suggestions.length, hasText: query !== "" }, event);
     switch (action.kind) {
       case "ignore":
         return;
@@ -209,6 +231,15 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
         event.preventDefault();
         choose(action.index);
         return;
+      case "mark": {
+        // Ctrl+Intro (spec 5.9) marca o desmarca la sugerencia activa. El
+        // campo y la lista se quedan como están: la sugerencia dice
+        // «marcada», y otro Ctrl+Intro la desmarca.
+        event.preventDefault();
+        const suggestion = suggestions[action.index];
+        if (suggestion) toggleMark(suggestion.id);
+        return;
+      }
       case "close":
         if (!action.keepDefault) event.preventDefault();
         setDismissed(true);
@@ -264,6 +295,8 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
       active={current}
       selectedIds={selectedNodeIds}
       shortcutLabel={searchShortcutLabel(typeof navigator === "undefined" ? "" : navigator.userAgent)}
+      markedIds={markedIds}
+      markHint={markKeyHint(typeof navigator === "undefined" ? "" : navigator.userAgent)}
       inputRef={inputRef}
       listRef={listRef}
       onQueryChange={restart}

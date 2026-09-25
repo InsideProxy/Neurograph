@@ -3,6 +3,7 @@ import type { GraphNode } from "../types/domain";
 import {
   SEARCH_LIMIT,
   defaultActiveIndex,
+  markKeyHint,
   normalizeSearch,
   regionSearchShortcut,
   searchKey,
@@ -173,6 +174,37 @@ describe("searchKey", () => {
     expect(searchKey("Escape", { ...closed, count: 0 })).toEqual({ kind: "clear" });
     expect(searchKey("Escape", { ...closed, hasText: false })).toEqual({ kind: "ignore" });
     expect(searchKey("Enter", closed)).toEqual({ kind: "ignore" });
+  });
+});
+
+// Marcar regiones (spec 5.9): Ctrl+Intro marca o desmarca la sugerencia
+// activa, en lugar de añadirla a la selección.
+describe("searchKey: Ctrl+Intro", () => {
+  const open = { open: true, active: 1, count: 3, hasText: true };
+  const NO_KEYS = { ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false };
+
+  it("Ctrl+Intro y ⌘Intro marcan o desmarcan la sugerencia activa; Intro solo sigue eligiéndola", () => {
+    expect(searchKey("Enter", open, { ...NO_KEYS, ctrlKey: true })).toEqual({ kind: "mark", index: 1 });
+    expect(searchKey("Enter", open, { ...NO_KEYS, metaKey: true })).toEqual({ kind: "mark", index: 1 });
+    expect(searchKey("Enter", { ...open, active: 7 }, { ...NO_KEYS, ctrlKey: true })).toEqual({ kind: "mark", index: 2 });
+    expect(searchKey("Enter", open, NO_KEYS)).toEqual({ kind: "choose", index: 1 });
+  });
+
+  it("no marca con la tecla repetida, sin lista ni sin sugerencias; con Alt o Mayús, Intro elige como siempre", () => {
+    expect(searchKey("Enter", open, { ...NO_KEYS, ctrlKey: true, repeat: true })).toEqual({ kind: "ignore" });
+    expect(searchKey("Enter", { ...open, open: false }, { ...NO_KEYS, ctrlKey: true })).toEqual({ kind: "ignore" });
+    expect(searchKey("Enter", { ...open, count: 0 }, { ...NO_KEYS, ctrlKey: true })).toEqual({ kind: "ignore" });
+    expect(searchKey("Enter", open, { ...NO_KEYS, ctrlKey: true, shiftKey: true })).toEqual({ kind: "choose", index: 1 });
+    expect(searchKey("Enter", open, { ...NO_KEYS, ctrlKey: true, altKey: true })).toEqual({ kind: "choose", index: 1 });
+  });
+
+  it("la línea de avisos lo recuerda, con el atajo como en cada sistema", () => {
+    expect(markKeyHint("Mozilla/5.0 (X11; Linux x86_64)")).toBe(
+      "Intro añade la región a la selección · Ctrl+Intro la marca o la desmarca",
+    );
+    expect(markKeyHint("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe(
+      "Intro añade la región a la selección · ⌘Intro la marca o la desmarca",
+    );
   });
 });
 

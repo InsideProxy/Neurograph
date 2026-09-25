@@ -5,9 +5,10 @@
 // se prueban sin DOM.
 import type { GraphNode } from "../types/domain";
 import { shortcutLabel } from "./clipboard";
-import { SIDE_IN_ABBREVIATION, networkShortLabel, regionNameWithSide, regionTitleParts } from "./displayText";
+import { SIDE_IN_ABBREVIATION, joinNames, networkShortLabel, regionNameWithSide, regionTitleParts } from "./displayText";
 import { isTextEntry, type ShortcutTarget } from "./historyStep";
 import { listboxKey, type ListboxKeyResult } from "./listbox";
+import { isMarkGesture } from "./marks";
 
 // Como mucho, 8 sugerencias (spec 5.8).
 export const SEARCH_LIMIT = 8;
@@ -99,19 +100,6 @@ function compareMatches(a: Match, b: Match): number {
   );
 }
 
-// «y» pasa a «e» ante el sonido /i/ («Visual e Hipocampo»), salvo si esa i
-// forma diptongo con la vocal siguiente («Visual y Hielo»), como pide la
-// ortografía.
-function andBefore(word: string): string {
-  return /^h?[ií](?![aeiouáéíóú])/iu.test(word) ? "e" : "y";
-}
-
-function joinNames(names: readonly string[]): string {
-  if (names.length === 1) return names[0];
-  const last = names[names.length - 1];
-  return `${names.slice(0, -1).join(", ")} ${andBefore(last)} ${last}`;
-}
-
 // El aviso de las redes ocultas (spec 5.8): nombra la región, si todas las
 // coincidencias ocultas son la misma («TE1m», también las dos de un par), o
 // «Lo escrito», y su red o sus redes; con más de tres, solo cuántas. Si solo
@@ -192,14 +180,26 @@ export function defaultActiveIndex(suggestions: readonly RegionSuggestion[], sel
 // flechas se mueven, Intro elige, Escape cierra y Tab cierra y sigue.
 // Espacio, Inicio y Fin son del campo: escriben o mueven el cursor. Sin
 // lista, la flecha abajo la abre y Escape vacía el campo a la primera.
-export type SearchKeyResult = ListboxKeyResult | { kind: "open" } | { kind: "clear" };
+// Marcar regiones (spec 5.9): con la lista abierta, Ctrl+Intro (⌘Intro en
+// macOS) marca o desmarca la sugerencia activa en lugar de elegirla, con las
+// teclas del gesto de marcar (isMarkGesture: con Alt o Mayús, Intro elige
+// como siempre). Con la tecla repetida no hace nada: la marca se encendería
+// y se apagaría sin parar.
+export type SearchKeyResult = ListboxKeyResult | { kind: "open" } | { kind: "clear" } | { kind: "mark"; index: number };
+
+export type SearchKeyModifiers = Pick<KeyboardEvent, "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat">;
 
 export function searchKey(
   key: string,
   state: { open: boolean; active: number; count: number; hasText: boolean },
+  modifiers?: SearchKeyModifiers,
 ): SearchKeyResult {
   if (state.open) {
     if (key === " " || key === "Home" || key === "End") return { kind: "ignore" };
+    if (key === "Enter" && modifiers && isMarkGesture(modifiers)) {
+      if (modifiers.repeat || state.count === 0) return { kind: "ignore" };
+      return { kind: "mark", index: Math.min(Math.max(state.active, 0), state.count - 1) };
+    }
     return listboxKey(key, state.active, state.count);
   }
   if (key === "ArrowDown" && state.count > 0) return { kind: "open" };
@@ -226,4 +226,10 @@ export function regionSearchShortcut(
 // (logic/clipboard.ts): «⌘K» en macOS, «Ctrl+K» en los demás.
 export function searchShortcutLabel(userAgent: string): string {
   return shortcutLabel("K", userAgent);
+}
+
+// Lo que recuerda la línea de avisos mientras la lista está abierta (spec
+// 5.9): qué hace Intro y qué hace Ctrl+Intro (⌘Intro en macOS).
+export function markKeyHint(userAgent: string): string {
+  return `Intro añade la región a la selección · ${shortcutLabel("Intro", userAgent)} la marca o la desmarca`;
 }

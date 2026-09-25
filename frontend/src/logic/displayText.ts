@@ -138,3 +138,19 @@ export function connectionTitle(
     withSide ? regionNameWithSide(node) : regionTitleParts(node).main;
   return `${name(source)} ${connectionArrow(connection.type)} ${name(target)}`;
 }
+
+// Une nombres como en una frase: «Visual, Auditiva y Lenguaje». «y» pasa a
+// «e» ante el sonido /i/ («Visual e Hipocampo», «V1 (izq.) e IFJa (der.)»),
+// salvo si esa i forma diptongo con la vocal siguiente («Visual y Hielo»),
+// como pide la ortografía. La usan el aviso de las redes ocultas del
+// buscador (logic/regionSearch.ts) y la línea de las marcas de Filtros
+// (logic/marks.ts).
+function andBefore(word: string): string {
+  return /^h?[ií](?![aeiouáéíóú])/iu.test(word) ? "e" : "y";
+}
+
+export function joinNames(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  const last = names[names.length - 1];
+  return `${names.slice(0, -1).join(", ")} ${andBefore(last)} ${last}`;
+}

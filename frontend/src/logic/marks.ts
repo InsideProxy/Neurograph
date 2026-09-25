@@ -1,7 +1,10 @@
 // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): el gesto que
 // marca, la geometría del anillo y de la pastilla de la etiqueta en el
-// connectograma y los hemisferios, y lo que la exportación quita. Funciones
-// puras: se prueban sin DOM. El store es state/marks.ts.
+// connectograma y los hemisferios, lo que la exportación quita y la línea de
+// las marcas en Filtros. Funciones puras: se prueban sin DOM. El store es
+// state/marks.ts.
+import type { GraphNode } from "../types/domain";
+import { formatCount, joinNames, regionNameWithSide } from "./displayText";
 
 // Teclas que acompañan a un clic: las de un evento de ratón del DOM, de
 // React o de react-three-fiber.
@@ -104,4 +107,74 @@ export function removeMarkElements(root: MarkRemovalRoot): number {
   const elements = Array.from(root.querySelectorAll(`[${MARK_ATTRIBUTE}]`));
   for (const element of elements) element.remove();
   return elements.length;
+}
+
+// --- La línea de las marcas en Filtros ---
+
+// Cuántas regiones se nombran; las demás son «y N más».
+export const MARKS_NAMED = 3;
+
+export interface MarksSummary {
+  // Regiones marcadas del atlas que se está viendo. Los ids que no están
+  // cargados no cuentan: al cambiar de atlas las marcas se vacían, pero si
+  // los datos caen a los de demostración, las del atlas real se quedan en el
+  // store y no se ven.
+  count: number;
+  // Las primeras MARKS_NAMED, en el orden en que se marcaron, con su lado:
+  // «IFJa (der.)».
+  names: string[];
+  // Todas, para la etiqueta emergente.
+  allNames: string[];
+  // Las que ocultan los filtros: no se dibujan.
+  hidden: number;
+}
+
+export function marksSummary(
+  markedIds: ReadonlySet<string>,
+  nodeById: ReadonlyMap<string, GraphNode>,
+  isHidden: (node: GraphNode) => boolean,
+): MarksSummary {
+  const marked = [...markedIds].map((id) => nodeById.get(id)).filter((node): node is GraphNode => node !== undefined);
+  const allNames = marked.map(regionNameWithSide);
+  return {
+    count: marked.length,
+    names: allNames.slice(0, MARKS_NAMED),
+    allNames,
+    hidden: marked.filter(isHidden).length,
+  };
+}
+
+// «Marcadas: 5», o «Ninguna región marcada».
+export function marksHeading(count: number): string {
+  return count === 0 ? "Ninguna región marcada" : `Marcadas: ${formatCount(count)}`;
+}
+
+// «TE1m (izq.), IFJa (der.), V1 (izq.) y 2 más», o todas si son pocas:
+// «V1 (izq.) e IFJa (der.)».
+export function marksNamesText(summary: Pick<MarksSummary, "count" | "names">): string {
+  const more = summary.count - summary.names.length;
+  return more > 0 ? `${summary.names.join(", ")} y ${formatCount(more)} más` : joinNames(summary.names);
+}
+
+// «1 oculta por los filtros», o null si no hay ninguna.
+export function marksHiddenText(hidden: number): string | null {
+  if (hidden === 0) return null;
+  return `${formatCount(hidden)} ${hidden === 1 ? "oculta" : "ocultas"} por los filtros`;
+}
+
+// Lo que anuncia la región viva de la línea al cambiar las marcas: «5
+// regiones marcadas: TE1m (izq.), …; 1 oculta por los filtros». El número va
+// con los dígitos seguidos, como los de Filtros para los lectores de
+// pantalla.
+export function marksAnnouncement(summary: MarksSummary): string {
+  if (summary.count === 0) return marksHeading(0);
+  const hidden = marksHiddenText(summary.hidden);
+  const counted = summary.count === 1 ? "1 región marcada" : `${summary.count} regiones marcadas`;
+  return `${counted}: ${marksNamesText(summary)}${hidden ? `; ${hidden}` : ""}`;
+}
+
+// Sin marcas, la línea explica el gesto: Ctrl+clic, o ⌘+clic en macOS, como
+// los demás atajos (shortcutLabel, logic/clipboard.ts).
+export function markGestureHint(userAgent: string): string {
+  return `${/Mac/i.test(userAgent) ? "⌘+clic" : "Ctrl+clic"} en una región para marcarla`;
 }

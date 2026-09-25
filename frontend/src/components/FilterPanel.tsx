@@ -26,6 +26,7 @@ import { connectionsPassingText, formatCount, networkShortLabel, selectionStatus
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import type { GraphNode } from "../types/domain";
 import { Icon } from "./Icon";
+import { MarksLine } from "./MarksLine";
 import { RegionSearch } from "./RegionSearch";
 
 const CONNECTION_TYPES: ConnectionType[] = ["structural", "functional", "effective"];
@@ -230,6 +231,10 @@ export function FilterPanel({
         </span>
       </div>
 
+      {/* Marcas de regiones (spec 5.9), bajo la selección: son una capa
+          aparte de ella. */}
+      <MarksLine nodes={nodes} />
+
       <div className="filters__section" role="group" aria-labelledby={`${headingId}-networks`}>
         <div className="filters__section-header">
           <h3 className="filters__heading" id={`${headingId}-networks`}>
@@ -396,6 +401,11 @@ export function FilterPanel({
           ¿Cómo funcionan los filtros?
         </summary>
         <p>◎ resalta solo esa red · + la añade a lo ya resaltado.</p>
+        <p>
+          Ctrl+clic (⌘+clic en macOS) en una región la marca o la desmarca, también en el buscador con Ctrl+Intro:
+          se resalta en las tres vistas para encontrarla de un vistazo, sin cambiar la selección. Las marcas no
+          salen en las imágenes exportadas.
+        </p>
         <p>
           El número junto a cada tipo de conectividad cuenta sus conexiones que pasan los filtros de redes y de
           peso mínimo, aunque su casilla esté desmarcada: así se ve cuántas añadiría al marcarla.

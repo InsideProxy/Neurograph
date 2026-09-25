@@ -64,4 +64,29 @@ describe("RegionSearch", () => {
       '<div class="region-search__status" role="status"><span>Ninguna región coincide.</span></div>',
     );
   });
+
+  // Marcar regiones (spec 5.9): Ctrl+Intro marca o desmarca la sugerencia
+  // activa, y la línea de avisos lo recuerda mientras la lista está abierta.
+  describe("marcas", () => {
+    const MARK_HINT = "Intro añade la región a la selección · Ctrl+Intro la marca o la desmarca";
+    const marked = (result: RegionSearchResult, open: boolean) => {
+      const state = { baseId: "busca", query: "te1m", result, open, active: 0, selectedIds: new Set<string>(), shortcutLabel: "Ctrl+K" };
+      return renderToStaticMarkup(
+        <RegionSearchView {...state} markedIds={new Set(["r_te1m"])} markHint={MARK_HINT} {...HANDLERS} />,
+      );
+    };
+
+    it("cada sugerencia marcada lo dice, y con la lista abierta la línea de avisos recuerda Ctrl+Intro", () => {
+      const html = marked({ suggestions: TE1M, hidden: null, noMatch: false }, true);
+      expect(html.match(/<span class="region-search__marked"><span class="visually-hidden">, <\/span>marcada<\/span>/g)).toHaveLength(1);
+      expect(html.indexOf("marcada")).toBeGreaterThan(html.indexOf('id="busca-option-1"'));
+      expect(html).toContain(`<div class="region-search__status" role="status"><span>${MARK_HINT}</span></div>`);
+    });
+
+    it("con la lista cerrada, o con el aviso de las redes ocultas, no lo recuerda", () => {
+      expect(marked({ suggestions: TE1M, hidden: null, noMatch: false }, false)).not.toContain(MARK_HINT);
+      const hidden = { message: "TE1m (izq.) está en la red Auditiva, que está oculta.", networks: [AUDITORY] };
+      expect(marked({ suggestions: TE1M, hidden, noMatch: false }, true)).not.toContain(MARK_HINT);
+    });
+  });
 });

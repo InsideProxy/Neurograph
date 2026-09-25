@@ -78,6 +78,18 @@ describe("FilterPanel", () => {
   it("el deslizador dice el peso mínimo con palabras", () => {
     expect(html).toContain('aria-valuetext="0 (sin filtro, se muestra todo)"');
   });
+
+  // Marcas de regiones (spec 5.9). Con renderToStaticMarkup, el store de
+  // marcas da su estado inicial: ninguna.
+  it("la línea de las marcas va bajo la selección, antes de las redes, y la ayuda explica cómo marcar", () => {
+    const selection = html.indexOf('class="filters__selection"');
+    const marks = html.indexOf('class="filters__marks"');
+    expect(selection).toBeGreaterThan(-1);
+    expect(marks).toBeGreaterThan(selection);
+    expect(marks).toBeLessThan(html.indexOf('class="filters__section"'));
+    expect(html).toContain(">Ninguna región marcada</span>");
+    expect(html).toMatch(/<p>Ctrl\+clic \(⌘\+clic en macOS\) en una región la marca o la desmarca/);
+  });
 });
 
 // Paleta suave (fase 2 del rediseño). En node no hay almacenamiento: el store
