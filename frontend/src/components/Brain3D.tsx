@@ -37,7 +37,7 @@
 // abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
 // propia (src/logic/textSprite.ts) en vez de troika-three-text o
 // @react-three/drei <Text> -- mismo criterio.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
@@ -47,7 +47,8 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
-import { exportCanvasAsJpeg } from "../logic/exportImage";
+import { exportPixelsAsJpeg } from "../logic/exportImage";
+import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
 import { getLabelTexture } from "../logic/textSprite";
 import { markerSize } from "../logic/markerSize";
 import {
@@ -356,90 +357,82 @@ function DepthFadeUpdater({ fade, bounds }: { fade: DepthFade; bounds: DepthBoun
   return null;
 }
 
-// Puente para exportar el frame actual del canvas WebGL a JPEG en color
-// sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
+// Puente para exportar el cerebro 3D a JPEG en color sobre fondo blanco
+// (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
 // react-three-fiber no expone gl, scene ni camera fuera del árbol de
-// <Canvas>, así que este componente vive dentro de él y deja la función
-// de exportación en el ref que le pasa Brain3D.
+// <Canvas>, así que este componente vive dentro de él.
 //
-// D3 (docs/decisiones-diseno.md): antes de capturar, el cerebro se vuelve a dibujar con los
-// colores de EXPORTACIÓN (estado local «exportando» de Brain3D), no con
-// los del tema de pantalla. Si no, en un tema oscuro la selección (casi
-// blanca) desaparecería sobre el blanco del JPEG. La captura espera un
-// fotograma: en él ya están los materiales nuevos y los colores de la
-// corteza, que PaintedCortex recalcula en un efecto. Como en la decisión
-// 18, se sustituye tanto el color de "clear" como scene.background, que
-// gana siempre sobre el primero. Después se restaura el fondo, se vuelve
-// a dibujar en el acto (para que en pantalla no quede el fotograma blanco
-// de la captura) y se sale del modo «exportando»; los colores de
-// pantalla vuelven en el siguiente render.
+// D3: la captura lleva los colores de EXPORTACIÓN, no los del tema de
+// pantalla. Si no, en un tema oscuro la selección (casi blanca)
+// desaparecería sobre el blanco del JPEG.
 //
-// onExportingChange tiene que ser estable (Brain3D pasa setExporting). Con
-// una función en línea cambiaría en cada render, y el efecto de la captura
-// se limpiaría a mitad de la exportación: la cancelaría sin avisar.
+// Legibilidad del 3D (logic/capture3d.ts): la exportación pasa por tres
+// fases, que Brain3D guarda en su estado.
+// - «capturing»: Brain3D da a la escena los colores de exportación. Un
+//   fotograma después, cuando ya están en los materiales y la corteza
+//   pintada los ha recalculado en su efecto, la escena se dibuja sobre
+//   blanco en un destino fuera de pantalla, se lee y se descarga.
+// - «restoring»: vuelven los colores de pantalla; se espera otro fotograma,
+//   a que la corteza los recalcule.
+// - «idle»: el lienzo se vuelve a dibujar.
+// Este componente dibuja la escena en cada fotograma (useFrame con
+// prioridad 1: react-three-fiber deja entonces de dibujar por su cuenta),
+// pero solo en «idle». Mientras se exporta, el lienzo sigue mostrando el
+// último fotograma y nunca se ve uno con los colores de exportación, que
+// era la limitación que anotó la D3.
+//
+// onPhaseEvent tiene que ser estable (Brain3D pasa el dispatch de su
+// useReducer). Si cambiara en cada render, el efecto de la captura se
+// limpiaría a mitad de la exportación y la cancelaría.
 function ExportBridge({
-  exportRef,
-  exporting,
-  onExportingChange,
+  phase,
+  onPhaseEvent,
 }: {
-  exportRef: { current: (() => void) | null };
-  exporting: boolean;
-  onExportingChange: (exporting: boolean) => void;
+  phase: ExportPhase;
+  onPhaseEvent: (event: ExportEvent) => void;
 }) {
   const { gl, scene, camera } = useThree();
-  // Estado «exportando» ya aplicado, leído a través de un ref para que la
-  // función de exportación no cambie en cada render.
-  const exportingRef = useRef(exporting);
+  useFrame((state) => {
+    if (phase === "idle") state.gl.render(state.scene, state.camera);
+  }, 1);
   useEffect(() => {
-    exportingRef.current = exporting;
-  }, [exporting]);
-  useEffect(() => {
-    // Segunda protección, además de la del botón (handleExport en
-    // Brain3D): mientras se exporta, pedir otra exportación no hace nada.
-    // Si no, un clic que llegara antes de que React aplique el «false» del
-    // final de la captura dejaría «exportando» en true para siempre.
-    exportRef.current = () => {
-      if (!exportingRef.current) onExportingChange(true);
-    };
-    return () => {
-      exportRef.current = null;
-    };
-  }, [exportRef, onExportingChange]);
-  useEffect(() => {
-    if (!exporting) return;
-    let captured = false;
+    if (phase !== "capturing") return;
+    let done = false;
     const frame = requestAnimationFrame(() => {
-      const previousClearColor = gl.getClearColor(new THREE.Color());
-      const previousClearAlpha = gl.getClearAlpha();
-      const previousBackground = scene.background;
-      // try/finally: aunque la captura falle, la pantalla vuelve al fondo
-      // del tema y se sale del modo «exportando».
+      // try/finally: aunque la captura falle, se sale de la fase. Sin
+      // contexto WebGL o con el lienzo sin tamaño, renderSceneOffscreen lo
+      // dice en la consola y devuelve null: no hay JPEG, y se sale igual.
       try {
-        gl.setClearColor("#ffffff", 1);
-        scene.background = new THREE.Color("#ffffff");
-        gl.render(scene, camera);
-        exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
+        const capture = renderSceneOffscreen(gl, scene, camera);
+        if (capture) {
+          exportPixelsAsJpeg(capture.pixels, capture.width, capture.height, `neurograph-cerebro3d-${Date.now()}.jpg`);
+        }
       } finally {
-        gl.setClearColor(previousClearColor, previousClearAlpha);
-        scene.background = previousBackground;
-        // Antes del redibujo: si gl.render lanzara, el modo «exportando»
-        // terminaría igualmente (React aplica el cambio de estado después).
-        captured = true;
-        onExportingChange(false);
-        // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
-        // él el blanco de la captura se vería en pantalla durante un fotograma.
-        gl.render(scene, camera);
+        done = true;
+        onPhaseEvent("captured");
       }
     });
     return () => {
       cancelAnimationFrame(frame);
       // Si el fotograma no llegó a ejecutarse (se desmontó el lienzo o se
-      // perdió el contexto WebGL en esos ~16 ms), también se sale del modo
-      // «exportando»: si no, Brain3D seguiría con los colores de
-      // exportación y exportaría sola al volver a montar el lienzo.
-      if (!captured) onExportingChange(false);
+      // perdió el contexto WebGL), también se sale de la exportación: si
+      // no, Brain3D seguiría con los colores de exportación y el lienzo no
+      // se volvería a dibujar.
+      if (!done) onPhaseEvent("abort");
     };
-  }, [exporting, gl, scene, camera, onExportingChange]);
+  }, [phase, gl, scene, camera, onPhaseEvent]);
+  useEffect(() => {
+    if (phase !== "restoring") return;
+    let done = false;
+    const frame = requestAnimationFrame(() => {
+      done = true;
+      onPhaseEvent("restored");
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!done) onPhaseEvent("abort");
+    };
+  }, [phase, onPhaseEvent]);
   return null;
 }
 
@@ -993,22 +986,25 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // moviendo la cámara hacia ella -- si hace falta acercarse a algo
   // concreto, la rueda del ratón controla el zoom.
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
-  const exportRef = useRef<(() => void) | null>(null);
-  const [exporting, setExporting] = useState(false);
+  // Fases de la exportación (Legibilidad del 3D; logic/capture3d.ts y
+  // ExportBridge). El dispatch de useReducer es estable, como pide
+  // ExportBridge.
+  const [exportPhase, dispatchExport] = useReducer(exportPhaseAfter, "idle");
+  const exporting = exportPhase !== "idle";
   // Mientras se exporta, el botón lleva aria-disabled y no disabled, para
   // que no pierda el foco del teclado; por eso el clic se ignora aquí.
-  // ExportBridge descarta además una segunda petición que llegue antes de
-  // que React aplique el estado.
+  // exportPhaseAfter descarta además una segunda petición que llegue antes
+  // de que React aplique el estado.
   const handleExport = () => {
     if (exporting) return;
-    exportRef.current?.();
+    dispatchExport("request");
   };
-  // Colores de dibujo; durante la exportación, los de la paleta de
-  // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
-  // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
-  // de fondo claro en los temas oscuros.
+  // Colores de dibujo; durante la captura, los de la paleta de exportación
+  // (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los
+  // de pantalla: la captura ya fuerza el blanco en su destino, fuera de
+  // pantalla.
   const screenColors = useDrawColors();
-  const colors = useDrawColors(exporting);
+  const colors = useDrawColors(exportPhase === "capturing");
   const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
 
   // «Atenuar lo que queda detrás» (Legibilidad del 3D; spec 6.3): activado
@@ -1476,7 +1472,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       // contenido siga en el búfer de dibujo en el momento de leerlo
       // con toBlob/toDataURL (el navegador puede limpiarlo antes del
       // siguiente frame) -- necesario para que la exportación a JPEG
-      // sea fiable en vez de "funciona a veces".
+      // sea fiable en vez de "funciona a veces". Legibilidad del 3D: la
+      // exportación ya no lee este lienzo (se dibuja fuera de pantalla,
+      // logic/capture3d.ts); se deja como estaba para no cambiar cómo se
+      // presenta el lienzo.
       gl={{ preserveDrawingBuffer: true }}
       // Posición inicial de la cámara (30/08/2026, parte de la misma
       // corrección que `camera.up.set(0, 0, 1)` en Controls más arriba):
@@ -1510,7 +1509,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       {painted && <CameraLight />}
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
-      <ExportBridge exportRef={exportRef} exporting={exporting} onExportingChange={setExporting} />
+      <ExportBridge phase={exportPhase} onPhaseEvent={dispatchExport} />
       {/* Malla de fondo (30/08/2026, petición de la usuaria) -- ver
           REFERENCE_SPACE_MESH/resolveMeshUrl más arriba y ReferenceMesh.tsx. Envuelta
           en su propio ErrorBoundary (nunca el mismo que usa App.tsx para
