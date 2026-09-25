@@ -67,6 +67,7 @@ Se cargan siempre, con este archivo:
     **Verificación.** Cómo se comprobó: pruebas, recuentos, navegador.
 ```
 
+- **Tras tocar la documentación**, `python3 scripts/check_docs.py` debe dar OK. Comprueba que las fuentes citadas y las rutas existen, que no hay redirecciones ni «la usuaria» y que el mapa está completo.
 - **El trabajo en curso** (lo pendiente, las decisiones abiertas) va en el plan o en la memoria de la sesión, no en los criterios ni en el log.
 - **Los comentarios del código** citan la entrada del log: «decisión N», «D4», «H1».
 

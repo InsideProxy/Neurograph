@@ -163,3 +163,4 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   - `frontend/public/meshes/` no se edita a mano.
 
   (22, 63, 72)
+- **Documentación:** tras tocar criterios, logs o un CLAUDE.md, `python3 scripts/check_docs.py` debe dar OK. (H2)

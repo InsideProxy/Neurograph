@@ -35,3 +35,11 @@ Log de las decisiones sobre cómo se instala, se pone en marcha y se mantiene Ne
 - `100HCP-population-mean-wmparc.nii.gz` (0,8 MB, md5 `b8bec868a3cc878dcfc62c704ba15e4b`), registro 8082481 (10.5281/zenodo.8082481). El md5 coincide con el anotado en la decisión 63.
 
 Del zip no quedó ningún checksum en el repositorio. Para confirmar que son los mismos datos, al regenerar deben salir los recuentos de la decisión 49: 41 tractos, 523 696 streamlines reales y 12 300 mostradas. Los genes (`genes`, `expressions`) y `evidence` no forman parte de este pendiente: nunca tuvieron filas (migración 0013 y decisiones 20 y 47).
+
+## H2. Documentación para agentes: criterios vigentes aparte de los logs, CLAUDE.md y comprobación de coherencia -- 25/09/2026
+
+**Qué.** Los criterios vigentes pasan a `docs/principios.md` y a `docs/criterios-funcionales.md`, `docs/criterios-diseno.md` y `docs/criterios-herramientas.md`, cada uno con la entrada del log de la que sale. Los logs (general, D y H) quedan como historia. Hay un `CLAUDE.md` en la raíz, que importa los principios y fija dónde se escribe cada cosa, y otro en `frontend/`, `backend/` y `scripts/`. `scripts/check_docs.py` comprueba fuentes, rutas, redirecciones y el mapa de documentos.
+
+**Por qué.** El log general mezclaba en ~400 KB criterios, historia y conversación: para conocer una regla vigente había que leerlo entero y averiguar qué decisión corregía a cuál. Los criterios suman ~40 KB y cada agente carga solo los de su área.
+
+**Verificación.** Los criterios se extrajeron del log completo, y los valores que cambiaron a lo largo de él se contrastaron con el código. `check_docs.py` da OK y detecta cada tipo de error en una prueba con errores inyectados. Las tres ramas del rediseño se fusionan sin conflictos (`git merge-tree`).
