@@ -23,7 +23,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   (27, 31, 49, 63)
 - **Cliente MCP:** `.mcp.json` en la raíz, con el Python del entorno virtual, `-m backend.mcp.server` y la contraseña por variable de entorno. (32)
 - **`node_modules` no sirve de una plataforma a otra.** En Windows y en Linux se instala por separado. (18)
-- **Dependencias de npm al día solas:** `npm run dev` y `npm run build`, también desde Tauri, ejecutan antes `frontend/scripts/ensure-deps.mjs`, que hace `npm install` si `node_modules` no tiene lo de `frontend/package-lock.json`; un opcional que falte no cuenta. Con `ignore-scripts=true`, npm se salta ese paso, y el script se ejecuta a mano. (H5)
+- **Preparación antes de arrancar:** `npm run dev` y `npm run build`, también desde Tauri, ejecutan primero `frontend/scripts/prepare.mjs`, dentro del propio script para que valga con `ignore-scripts=true`. Sus pasos van en orden, callan si no hay nada que hacer y, si fallan, paran el arranque. El primero hace `npm install`, con la configuración de npm del usuario, si `node_modules` no tiene lo de `frontend/package-lock.json`; un opcional que falte no cuenta. (H5)
 
 ## Carga de SQL y codificación
 
@@ -148,10 +148,11 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   (28, 46, 49)
 - **Frontend:**
   - se prueba con `npx --no -- tsc -b` (el `--no` impide que `npx` descargue paquetes), `npm test` (vitest), `npm run lint` (oxlint) y `npm run build`;
-  - solo la lógica pura de `src/logic/` lleva tests;
-  - los componentes se comprueban visualmente.
+  - la lógica pura lleva sus tests: la de la app, en `src/logic/`, y la de los scripts, junto a ellos en `frontend/scripts/`;
+  - los componentes pueden llevar tests de marcado (`react-dom/server`) o de conexión (que leen su código) donde protejan una regla;
+  - lo visual se comprueba en un navegador headless.
 
-  (42, 43, 50)
+  (42, 43, 50, D4, H5)
 - **Avisos aceptados:** `ruff` B008 (`Depends` como valor por defecto) y el `set-state-in-effect` de oxlint al marcar «cargando». (27, 50)
 - **Lógica pura separada** de React, three.js y los endpoints, para probarla sin base ni render. Cada criterio tiene una sola implementación, que se reutiliza (`exportSvgAsJpeg`, `regionDisplayText`, `DISPLAY_SCALE`, `ReferenceMesh`, `_mesh_io`). (13, 14, 22, 63)
 - **React:**

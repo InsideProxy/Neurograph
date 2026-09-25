@@ -10,7 +10,7 @@ Reglas para trabajar en `frontend/`. Las generales están en el CLAUDE.md de la 
 ## Reglas
 
 - **Colores de datos.** `NETWORK_COLORS` (`src/theme/networks.ts`) son datos extraídos de cada atlas y no se modifican. El amarillo `HOVER_HIGHLIGHT_COLOR` queda reservado para el resaltado al pasar el ratón.
-- **Lógica pura y tests.** La lógica pura va en `src/logic/`, separada de React y three.js, con sus tests (vitest). Los componentes pueden llevar tests de marcado (`react-dom/server`) o de conexión (que leen su código) donde protejan una regla. Lo visual se comprueba en un navegador headless (ver «Verificar»).
+- **Lógica pura y tests.** La lógica pura va en `src/logic/`, separada de React y three.js, con sus tests (vitest); la de los scripts de `scripts/`, junto a ellos, con los suyos. Los componentes pueden llevar tests de marcado (`react-dom/server`) o de conexión (que leen su código) donde protejan una regla. Lo visual se comprueba en un navegador headless (ver «Verificar»).
 - **Clientes de la API** (`src/data/*Api.ts`): `fetch`, error si `!response.ok` y conversión a camelCase. El estado de cada petición es una unión discriminada: cargando, error o resultado.
 - **Efectos.** Lo que tiene efectos secundarios (por ejemplo `OrbitControls`) se crea en `useEffect` con su `dispose()`, nunca en `useMemo`, porque `StrictMode` duplica las factorías. Los elementos `threeXxx` se registran con `extend`.
 - **Estilos.** Se reutilizan las variables CSS y los patrones existentes; no se añaden colores sueltos.
@@ -19,4 +19,4 @@ Reglas para trabajar en `frontend/`. Las generales están en el CLAUDE.md de la 
 
 - `npx --no -- tsc -b`, `npm test`, `npm run lint` y `npm run build`. El `--no` impide que `npx` descargue un paquete de npm si no encuentra TypeScript instalado: sin él, ejecutado fuera de `frontend/` bajaría y ejecutaría el paquete `tsc`, que no es TypeScript.
 - La comprobación visual automática usa un navegador headless propio, nunca la ventana del usuario.
-- `node_modules` se instala por separado en cada sistema operativo. `npm run dev` y `npm run build` instalan antes lo que falte con `scripts/ensure-deps.mjs` (H5), salvo si npm tiene `ignore-scripts=true`: entonces, `node scripts/ensure-deps.mjs`.
+- `node_modules` se instala por separado en cada sistema operativo. `npm run dev` y `npm run build` ejecutan antes `scripts/prepare.mjs`, que instala lo que falte (H5); un paso de preparación nuevo es una entrada más en su lista `STEPS`.

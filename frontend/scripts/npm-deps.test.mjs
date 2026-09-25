@@ -1,7 +1,7 @@
 // Cuándo hay que instalar las dependencias de npm (H5): la comparación
-// pura de scripts/ensure-deps.mjs, sin tocar node_modules ni ejecutar npm.
+// pura de scripts/npm-deps.mjs, sin tocar node_modules ni ejecutar npm.
 import { describe, expect, it } from "vitest";
-import { pendingPackages } from "./ensure-deps.mjs";
+import { pendingPackages } from "./npm-deps.mjs";
 
 const DRIVER = "node_modules/driver.js";
 const VITE = "node_modules/vite";
