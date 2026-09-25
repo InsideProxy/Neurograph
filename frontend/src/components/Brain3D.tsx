@@ -37,7 +37,7 @@
 // abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
 // propia (src/logic/textSprite.ts) en vez de troika-three-text o
 // @react-three/drei <Text> -- mismo criterio.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
@@ -47,8 +47,22 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
-import { exportCanvasAsJpeg } from "../logic/exportImage";
+import { exportPixelsAsJpeg } from "../logic/exportImage";
+import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
 import { getLabelTexture } from "../logic/textSprite";
+import { markerSize } from "../logic/markerSize";
+import {
+  createDepthFade,
+  depthBounds,
+  fadeKey,
+  fadeMaterialProps,
+  tuplePoints,
+  updateDepthFadeUniforms,
+  type DepthBounds,
+  type DepthFade,
+} from "../logic/depthFade";
+import { readDepthFadePreference, writeDepthFadePreference } from "../logic/depthFadePreference";
+import { browserStorage } from "../state/appearance";
 import { NETWORK_LABELS } from "../theme/networks";
 import { hasNetworkColor } from "../theme/colors";
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
@@ -56,6 +70,7 @@ import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
+import { DepthFadeToggle } from "./DepthFadeToggle";
 import {
   PaintedCortex,
   type HemisphereVisibility,
@@ -333,90 +348,91 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
   return null;
 }
 
-// Puente para exportar el frame actual del canvas WebGL a JPEG en color
-// sobre fondo blanco (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
+// Tramo de la atenuación por profundidad (Legibilidad del 3D;
+// logic/depthFade.ts), en cada fotograma: después de que los controles
+// coloquen la cámara, que se suscribieron antes, y antes de dibujar.
+// `bounds` es la caja del cerebro que se ve.
+function DepthFadeUpdater({ fade, bounds }: { fade: DepthFade; bounds: DepthBounds | null }) {
+  useFrame(({ camera }) => updateDepthFadeUniforms(fade.uniforms, camera, bounds));
+  return null;
+}
+
+// Puente para exportar el cerebro 3D a JPEG en color sobre fondo blanco
+// (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
 // react-three-fiber no expone gl, scene ni camera fuera del árbol de
-// <Canvas>, así que este componente vive dentro de él y deja la función
-// de exportación en el ref que le pasa Brain3D.
+// <Canvas>, así que este componente vive dentro de él.
 //
-// D3 (docs/decisiones-diseno.md): antes de capturar, el cerebro se vuelve a dibujar con los
-// colores de EXPORTACIÓN (estado local «exportando» de Brain3D), no con
-// los del tema de pantalla. Si no, en un tema oscuro la selección (casi
-// blanca) desaparecería sobre el blanco del JPEG. La captura espera un
-// fotograma: en él ya están los materiales nuevos y los colores de la
-// corteza, que PaintedCortex recalcula en un efecto. Como en la decisión
-// 18, se sustituye tanto el color de "clear" como scene.background, que
-// gana siempre sobre el primero. Después se restaura el fondo, se vuelve
-// a dibujar en el acto (para que en pantalla no quede el fotograma blanco
-// de la captura) y se sale del modo «exportando»; los colores de
-// pantalla vuelven en el siguiente render.
+// D3: la captura lleva los colores de EXPORTACIÓN, no los del tema de
+// pantalla. Si no, en un tema oscuro la selección (casi blanca)
+// desaparecería sobre el blanco del JPEG.
 //
-// onExportingChange tiene que ser estable (Brain3D pasa setExporting). Con
-// una función en línea cambiaría en cada render, y el efecto de la captura
-// se limpiaría a mitad de la exportación: la cancelaría sin avisar.
+// Legibilidad del 3D (logic/capture3d.ts): la exportación pasa por tres
+// fases, que Brain3D guarda en su estado.
+// - «capturing»: Brain3D da a la escena los colores de exportación. Un
+//   fotograma después, cuando ya están en los materiales y la corteza
+//   pintada los ha recalculado en su efecto, la escena se dibuja sobre
+//   blanco en un destino fuera de pantalla, se lee y se descarga.
+// - «restoring»: vuelven los colores de pantalla; se espera otro fotograma,
+//   a que la corteza los recalcule.
+// - «idle»: el lienzo se vuelve a dibujar.
+// Este componente dibuja la escena en cada fotograma (useFrame con
+// prioridad 1: react-three-fiber deja entonces de dibujar por su cuenta),
+// pero solo en «idle». Mientras se exporta, el lienzo sigue mostrando el
+// último fotograma y nunca se ve uno con los colores de exportación, que
+// era la limitación que anotó la D3.
+//
+// onPhaseEvent tiene que ser estable (Brain3D pasa el dispatch de su
+// useReducer). Si cambiara en cada render, el efecto de la captura se
+// limpiaría a mitad de la exportación y la cancelaría.
 function ExportBridge({
-  exportRef,
-  exporting,
-  onExportingChange,
+  phase,
+  onPhaseEvent,
 }: {
-  exportRef: { current: (() => void) | null };
-  exporting: boolean;
-  onExportingChange: (exporting: boolean) => void;
+  phase: ExportPhase;
+  onPhaseEvent: (event: ExportEvent) => void;
 }) {
   const { gl, scene, camera } = useThree();
-  // Estado «exportando» ya aplicado, leído a través de un ref para que la
-  // función de exportación no cambie en cada render.
-  const exportingRef = useRef(exporting);
+  useFrame((state) => {
+    if (phase === "idle") state.gl.render(state.scene, state.camera);
+  }, 1);
   useEffect(() => {
-    exportingRef.current = exporting;
-  }, [exporting]);
-  useEffect(() => {
-    // Segunda protección, además de la del botón (handleExport en
-    // Brain3D): mientras se exporta, pedir otra exportación no hace nada.
-    // Si no, un clic que llegara antes de que React aplique el «false» del
-    // final de la captura dejaría «exportando» en true para siempre.
-    exportRef.current = () => {
-      if (!exportingRef.current) onExportingChange(true);
-    };
-    return () => {
-      exportRef.current = null;
-    };
-  }, [exportRef, onExportingChange]);
-  useEffect(() => {
-    if (!exporting) return;
-    let captured = false;
+    if (phase !== "capturing") return;
+    let done = false;
     const frame = requestAnimationFrame(() => {
-      const previousClearColor = gl.getClearColor(new THREE.Color());
-      const previousClearAlpha = gl.getClearAlpha();
-      const previousBackground = scene.background;
-      // try/finally: aunque la captura falle, la pantalla vuelve al fondo
-      // del tema y se sale del modo «exportando».
+      // try/finally: aunque la captura falle, se sale de la fase. Sin
+      // contexto WebGL o con el lienzo sin tamaño, renderSceneOffscreen lo
+      // dice en la consola y devuelve null: no hay JPEG, y se sale igual.
       try {
-        gl.setClearColor("#ffffff", 1);
-        scene.background = new THREE.Color("#ffffff");
-        gl.render(scene, camera);
-        exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
+        const capture = renderSceneOffscreen(gl, scene, camera);
+        if (capture) {
+          exportPixelsAsJpeg(capture.pixels, capture.width, capture.height, `neurograph-cerebro3d-${Date.now()}.jpg`);
+        }
       } finally {
-        gl.setClearColor(previousClearColor, previousClearAlpha);
-        scene.background = previousBackground;
-        // Antes del redibujo: si gl.render lanzara, el modo «exportando»
-        // terminaría igualmente (React aplica el cambio de estado después).
-        captured = true;
-        onExportingChange(false);
-        // Redibujo con el fondo ya restaurado: con preserveDrawingBuffer, sin
-        // él el blanco de la captura se vería en pantalla durante un fotograma.
-        gl.render(scene, camera);
+        done = true;
+        onPhaseEvent("captured");
       }
     });
     return () => {
       cancelAnimationFrame(frame);
       // Si el fotograma no llegó a ejecutarse (se desmontó el lienzo o se
-      // perdió el contexto WebGL en esos ~16 ms), también se sale del modo
-      // «exportando»: si no, Brain3D seguiría con los colores de
-      // exportación y exportaría sola al volver a montar el lienzo.
-      if (!captured) onExportingChange(false);
+      // perdió el contexto WebGL), también se sale de la exportación: si
+      // no, Brain3D seguiría con los colores de exportación y el lienzo no
+      // se volvería a dibujar.
+      if (!done) onPhaseEvent("abort");
     };
-  }, [exporting, gl, scene, camera, onExportingChange]);
+  }, [phase, gl, scene, camera, onPhaseEvent]);
+  useEffect(() => {
+    if (phase !== "restoring") return;
+    let done = false;
+    const frame = requestAnimationFrame(() => {
+      done = true;
+      onPhaseEvent("restored");
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!done) onPhaseEvent("abort");
+    };
+  }, [phase, onPhaseEvent]);
   return null;
 }
 
@@ -427,7 +443,17 @@ function ExportBridge({
 // Se omite por completo cuando la región no tiene abreviatura registrada
 // todavía (atlas sin backfill de la migración 0007): nunca se inventa
 // una a partir de `label`.
-function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boolean }) {
+function NodeLabel({
+  node,
+  offset,
+  fade,
+  overlay = false,
+}: {
+  node: GraphNode;
+  offset: number;
+  fade: DepthFade | null;
+  overlay?: boolean;
+}) {
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
@@ -439,9 +465,12 @@ function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boole
   // 0.24 -- junto con el radio de nodo reducido en NodeMesh (baseRadius,
   // más abajo), deja un hueco visible entre la esfera y su etiqueta en
   // vez de que la etiqueta arranque casi pegada al borde superior.
+  // Legibilidad del 3D: el marcador es más pequeño y la separación
+  // (`offset`, de logic/markerSize.ts) se mide desde su borde: 0,18, la
+  // que dejaba 0.24 con el radio normal de antes.
   const position: [number, number, number] = [
     node.position3d[0],
-    node.position3d[1] + 0.24,
+    node.position3d[1] + offset,
     node.position3d[2],
   ];
   // Ancho del sprite proporcional al aspecto real de la textura (corregido
@@ -458,11 +487,13 @@ function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boole
   return (
     <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
       <spriteMaterial
+        key={fadeKey(fade)}
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
+        {...fadeMaterialProps(fade, false)}
       />
     </sprite>
   );
@@ -480,6 +511,7 @@ function NodeMesh({
   node,
   isHomologyHighlighted,
   colors,
+  fade,
   overlay = false,
 }: {
   node: GraphNode;
@@ -497,6 +529,8 @@ function NodeMesh({
   // concreto no tiene ninguna fila de homología real hacia ella).
   isHomologyHighlighted: boolean;
   colors: DrawColors;
+  // Atenuación por profundidad (Legibilidad del 3D); null, desactivada.
+  fade: DepthFade | null;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
   const isSelected = selectedNodeIds.has(node.id);
@@ -505,7 +539,11 @@ function NodeMesh({
   // pequeños" -- a 0.09/0.06) -- deja más espacio real alrededor de cada
   // nodo, tanto para distinguir nodos vecinos entre sí como para separar
   // visualmente la esfera de su etiqueta (ver NodeLabel).
-  const baseRadius = isSelected ? 0.09 : 0.06;
+  // Legibilidad del 3D (spec 6.3): otra vez a la mitad, 0,03, para no tapar
+  // la región pintada, con la región seleccionada un 40 % mayor. El
+  // contorno, la zona de clic y la etiqueta se ajustan con el radio
+  // (logic/markerSize.ts).
+  const size = markerSize(isSelected);
   // Vista en dos colores por homología real (02/09/2026, petición de la
   // usuaria tras cerrar el resto del inventario pendiente): el color de
   // red real (NETWORK_COLORS) es la codificación por defecto de SIEMPRE,
@@ -529,34 +567,52 @@ function NodeMesh({
           (`side: THREE.BackSide`), deja ver solo un fino borde alrededor
           del nodo real -- técnica estándar de "contorno por casco
           invertido". Usa los tokens nodeRing/selected del tema (D3 de
-          docs/decisiones-diseno.md); al exportar, ExportBridge vuelve a
-          dibujar con los de la paleta de exportación, así que el
-          contorno también se ve en la figura exportada. */}
-      <mesh position={node.position3d} scale={1.18} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+          docs/decisiones-diseno.md); al exportar, `colors` ya lleva la
+          paleta de exportación -- la captura se dibuja fuera de pantalla
+          (logic/capture3d.ts) --, así que el contorno también se ve en
+          la figura exportada. */}
+      <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
+          key={fadeKey(fade)}
           color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
+          {...fadeMaterialProps(fade, true)}
         />
       </mesh>
-      <mesh
-        position={node.position3d}
-        renderOrder={overlay ? 2 : 0}
-        {...(overlay ? overlayNoRaycast(true) : { onClick: () => toggleNode(node.id) })}
-      >
+      <mesh position={node.position3d} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
             segmento de más cuesta 360 veces más caro que en la demo de 8
             nodos. Sigue viéndose redondo a esta escala. */}
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshStandardMaterial
+          key={fadeKey(fade)}
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
           depthTest={!overlay}
+          {...fadeMaterialProps(fade, true)}
         />
       </mesh>
-      <NodeLabel node={node} overlay={overlay} />
+      {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
+          visible={false} va en el <mesh>, no en su material: WebGLRenderer
+          descarta un Object3D con visible={false} nada más empezar
+          (projectObject), antes de recortarlo contra la cámara o subir su
+          geometría a la GPU (~9 KB por nodo). Con el material invisible en
+          vez del mesh (como antes), three.js sí hace las dos cosas y solo
+          deja de dibujarlo al final. Ni el raycaster de three.js ni el de
+          react-three-fiber miran `visible` (comprobado en su código de
+          node_modules): la encuentran igual, así que seleccionar con un
+          clic sigue costando lo mismo que antes. Con la corteza pintada no
+          hay, como antes: se selecciona pulsando la propia región. */}
+      {!overlay && (
+        <mesh position={node.position3d} visible={false} onClick={() => toggleNode(node.id)}>
+          <sphereGeometry args={[size.hitRadius, 14, 14]} />
+          <meshBasicMaterial />
+        </mesh>
+      )}
+      <NodeLabel node={node} offset={size.labelOffset} fade={fade} overlay={overlay} />
     </>
   );
 }
@@ -565,11 +621,13 @@ function DirectionArrow({
   from,
   to,
   color,
+  fade,
   overlay = false,
 }: {
   from: THREE.Vector3;
   to: THREE.Vector3;
   color: string;
+  fade: DepthFade | null;
   overlay?: boolean;
 }) {
   // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
@@ -588,7 +646,7 @@ function DirectionArrow({
   return (
     <mesh position={position} quaternion={quaternion} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
       <coneGeometry args={[0.035, 0.09, 12]} />
-      <meshBasicMaterial color={color} depthTest={!overlay} />
+      <meshBasicMaterial key={fadeKey(fade)} color={color} depthTest={!overlay} {...fadeMaterialProps(fade, true)} />
     </mesh>
   );
 }
@@ -601,6 +659,7 @@ function ConnectionLine({
   isDirected,
   onClick,
   colors,
+  fade,
   overlay = false,
 }: {
   a: [number, number, number];
@@ -610,6 +669,7 @@ function ConnectionLine({
   isDirected: boolean;
   onClick: () => void;
   colors: DrawColors;
+  fade: DepthFade | null;
   overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
@@ -645,23 +705,27 @@ function ConnectionLine({
       >
         {isDashed ? (
           <lineDashedMaterial
+            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             dashSize={0.08}
             gapSize={0.06}
             depthTest={!overlay}
+            {...fadeMaterialProps(fade, false)}
           />
         ) : (
           <lineBasicMaterial
+            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             depthTest={!overlay}
+            {...fadeMaterialProps(fade, false)}
           />
         )}
       </threeLine>
-      {isDirected && <DirectionArrow from={from} to={to} color={color} overlay={overlay} />}
+      {isDirected && <DirectionArrow from={from} to={to} color={color} fade={fade} overlay={overlay} />}
     </>
   );
 }
@@ -928,23 +992,45 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // moviendo la cámara hacia ella -- si hace falta acercarse a algo
   // concreto, la rueda del ratón controla el zoom.
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
-  const exportRef = useRef<(() => void) | null>(null);
-  const [exporting, setExporting] = useState(false);
+  // Fases de la exportación (Legibilidad del 3D; logic/capture3d.ts y
+  // ExportBridge). El dispatch de useReducer es estable, como pide
+  // ExportBridge.
+  const [exportPhase, dispatchExport] = useReducer(exportPhaseAfter, "idle");
+  const exporting = exportPhase !== "idle";
   // Mientras se exporta, el botón lleva aria-disabled y no disabled, para
   // que no pierda el foco del teclado; por eso el clic se ignora aquí.
-  // ExportBridge descarta además una segunda petición que llegue antes de
-  // que React aplique el estado.
+  // exportPhaseAfter descarta además una segunda petición que llegue antes
+  // de que React aplique el estado.
   const handleExport = () => {
     if (exporting) return;
-    exportRef.current?.();
+    dispatchExport("request");
   };
-  // Colores de dibujo; durante la exportación, los de la paleta de
-  // exportación (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los de
-  // pantalla: la exportación ya fuerza el blanco, y así no hay un destello
-  // de fondo claro en los temas oscuros.
+  // Colores de dibujo; durante la captura, los de la paleta de exportación
+  // (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los
+  // de pantalla: la captura ya fuerza el blanco en su destino, fuera de
+  // pantalla.
   const screenColors = useDrawColors();
-  const colors = useDrawColors(exporting);
+  const colors = useDrawColors(exportPhase === "capturing");
   const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
+
+  // «Atenuar lo que queda detrás» (Legibilidad del 3D; spec 6.3): activado
+  // por defecto y guardado en este navegador. `depthFade` guarda el parche y
+  // los uniforms que comparten los materiales de la capa de foco, uno por
+  // lienzo; `activeFade` es null con el interruptor desactivado.
+  const [depthFadeOn, setDepthFadeOn] = useState(() => readDepthFadePreference(browserStorage()));
+  const [depthFade] = useState(createDepthFade);
+  const activeFade = depthFadeOn ? depthFade : null;
+  const toggleDepthFade = () => {
+    const next = !depthFadeOn;
+    setDepthFadeOn(next);
+    writeDepthFadePreference(browserStorage(), next);
+  };
+  // Caja de todos los nodos del atlas: con ella se mide la atenuación cuando
+  // los marcadores van en su posición real (sin corteza pintada).
+  const nodeBounds = useMemo(
+    () => depthBounds(tuplePoints(allNodes.map((n) => n.position3d)), 0, allNodes.length),
+    [allNodes],
+  );
 
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
@@ -1276,12 +1362,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     const overlay = helpers !== null;
     return (
       <>
+        {activeFade && <DepthFadeUpdater fade={activeFade} bounds={helpers ? helpers.visibleBounds : nodeBounds} />}
         {[...placed.values()].map((node) => (
           <NodeMesh
             key={node.id}
             node={node}
             isHomologyHighlighted={homologyNodeIds.has(node.id)}
             colors={colors}
+            fade={activeFade}
             overlay={overlay}
           />
         ))}
@@ -1309,6 +1397,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               isDirected={conn.type === "effective"}
               onClick={() => selectConnection(conn.id)}
               colors={colors}
+              fade={activeFade}
               overlay={overlay}
             />
           );
@@ -1350,10 +1439,12 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
-        {/* Desactivado mientras se exporta (ver handleExport y
-            ExportBridge): un segundo clic antes de que acabe la exportación
-            dejaría el modo «exportando» atascado. aria-disabled y no
-            disabled: así el botón conserva el foco del teclado. */}
+        <DepthFadeToggle enabled={depthFadeOn} onToggle={toggleDepthFade} />
+        {/* aria-disabled, no disabled: así el botón conserva el foco del
+            teclado mientras se exporta. No hace de guarda -- un segundo
+            clic durante la exportación ya no hace nada por su cuenta (ver
+            el comentario junto a handleExport, más arriba); aria-disabled
+            solo muestra ese estado. */}
         <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
           Exportar JPEG
         </button>
@@ -1388,7 +1479,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       // contenido siga en el búfer de dibujo en el momento de leerlo
       // con toBlob/toDataURL (el navegador puede limpiarlo antes del
       // siguiente frame) -- necesario para que la exportación a JPEG
-      // sea fiable en vez de "funciona a veces".
+      // sea fiable en vez de "funciona a veces". Legibilidad del 3D: la
+      // exportación ya no lee este lienzo (se dibuja fuera de pantalla,
+      // logic/capture3d.ts); se deja como estaba para no cambiar cómo se
+      // presenta el lienzo.
       gl={{ preserveDrawingBuffer: true }}
       // Posición inicial de la cámara (30/08/2026, parte de la misma
       // corrección que `camera.up.set(0, 0, 1)` en Controls más arriba):
@@ -1422,7 +1516,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       {painted && <CameraLight />}
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
-      <ExportBridge exportRef={exportRef} exporting={exporting} onExportingChange={setExporting} />
+      <ExportBridge phase={exportPhase} onPhaseEvent={dispatchExport} />
       {/* Malla de fondo (30/08/2026, petición de la usuaria) -- ver
           REFERENCE_SPACE_MESH/resolveMeshUrl más arriba y ReferenceMesh.tsx. Envuelta
           en su propio ErrorBoundary (nunca el mismo que usa App.tsx para

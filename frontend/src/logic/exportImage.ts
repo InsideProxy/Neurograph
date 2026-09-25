@@ -189,11 +189,11 @@ function contentRightEdge(clone: SVGSVGElement): number {
 }
 
 /**
- * Exporta el contenido YA RENDERIZADO de un <canvas> (p. ej. el WebGL del
- * cerebro 3D) como JPEG. Quien llama es responsable de haber dibujado ya
- * un frame con fondo blanco opaco antes de invocar esto -- ver
- * `Brain3D.tsx` (`ExportBridge`), que fuerza ese frame antes de leer el
- * canvas. Esta función solo se encarga de codificar y descargar.
+ * Exporta el contenido YA RENDERIZADO de un <canvas> como JPEG. Quien llama
+ * es responsable de haber dibujado ya un frame con fondo blanco opaco antes
+ * de invocar esto. Esta función solo se encarga de codificar y descargar.
+ * El cerebro 3D ya no lee su lienzo: pasa por exportPixelsAsJpeg
+ * (Legibilidad del 3D).
  */
 export function exportCanvasAsJpeg(canvas: HTMLCanvasElement, filename: string): void {
   canvas.toBlob(
@@ -203,4 +203,30 @@ export function exportCanvasAsJpeg(canvas: HTMLCanvasElement, filename: string):
     "image/jpeg",
     JPEG_QUALITY
   );
+}
+
+/**
+ * Exporta como JPEG, del mismo tamaño, píxeles RGBA ordenados de arriba
+ * abajo: la captura del cerebro 3D, dibujada fuera de pantalla
+ * (logic/capture3d.ts; Legibilidad del 3D). Se copian a un <canvas> 2D y se
+ * codifican como las demás exportaciones.
+ */
+export function exportPixelsAsJpeg(
+  pixels: Uint8Array<ArrayBuffer>,
+  width: number,
+  height: number,
+  filename: string,
+): void {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    // eslint-disable-next-line no-console
+    console.error("No se pudo exportar: el navegador no dio un contexto 2D de canvas.");
+    return;
+  }
+  const data = new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.byteLength);
+  ctx.putImageData(new ImageData(data, width, height), 0, 0);
+  exportCanvasAsJpeg(canvas, filename);
 }
