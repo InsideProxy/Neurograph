@@ -703,3 +703,29 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Botón de acción de un aviso, como «Deshacer». */
 .toast__action { height: 30px; padding: 0 10px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-bg); color: var(--text-h); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
 .toast__action:hover { border-color: var(--accent); }
+
+/* Buscador de regiones (spec 5.8), en Filtros sobre la selección. La lista
+   de sugerencias flota sobre el panel, con su ancho. El anillo de foco lo
+   lleva el recuadro del campo, que incluye la lupa. */
+.region-search { position: relative; margin-bottom: 10px; }
+.region-search__field { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--code-bg); color: var(--text-muted); }
+.region-search__field:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.region-search__icon { flex-shrink: 0; }
+.region-search__input { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0; border: none; background: transparent; color: var(--text-h); font: inherit; font-size: 0.72rem; }
+.region-search__input:focus-visible { outline: none; }
+.region-search__input::placeholder { color: var(--text-muted); opacity: 1; }
+.region-search__list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 18rem; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--panel-bg); box-shadow: var(--shadow); }
+.region-search__option { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 0.72rem; line-height: 1.35; color: var(--text); cursor: pointer; }
+.region-search__option:hover { background: var(--hover); }
+/* El foco se queda en el campo: la sugerencia activa lleva el contorno del
+   foco (spec 8), porque el fondo --hover solo no se distingue lo bastante,
+   y sus textos grises pasan a --text, que sí llega a 4,5:1 sobre él. */
+.region-search__option--active { background: var(--hover); color: var(--text-h); outline: 2px solid var(--accent); outline-offset: -2px; }
+.region-search__option--active .region-search__name, .region-search__option--active .region-search__selected { color: var(--text); }
+.region-search__dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.region-search__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.region-search__label { font-weight: 600; color: var(--text-h); }
+.region-search__name { color: var(--text-muted); overflow-wrap: anywhere; }
+.region-search__selected { flex-shrink: 0; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+.region-search__status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+.region-search__status:not(:empty) { margin-top: 6px; }

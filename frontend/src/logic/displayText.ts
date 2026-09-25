@@ -86,7 +86,7 @@ export function connectionArrow(type: GraphConnection["type"]): string {
 
 // Abreviaturas que ya dicen el lado: \u00abL_SFG_7_1\u00bb (Brainnetome),
 // \u00abl_default_12\u00bb (Gordon 333), \u00abl_amygdala\u00bb (subc\u00f3rtex del HCP).
-const SIDE_IN_ABBREVIATION = /^[lr]_|_[lr]$/i;
+export const SIDE_IN_ABBREVIATION = /^[lr]_|_[lr]$/i;
 
 // Nombre corto de una regi\u00f3n con su lado, \u00abIFJa (der.)\u00bb, porque las
 // abreviaturas de HCP-MMP1.0 no lo llevan. Sin lado si la regi\u00f3n no tiene

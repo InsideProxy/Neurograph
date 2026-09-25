@@ -26,6 +26,7 @@ import { connectionsPassingText, formatCount, networkShortLabel, selectionStatus
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import type { GraphNode } from "../types/domain";
 import { Icon } from "./Icon";
+import { RegionSearch } from "./RegionSearch";
 
 const CONNECTION_TYPES: ConnectionType[] = ["structural", "functional", "effective"];
 
@@ -203,6 +204,10 @@ export function FilterPanel({
           </button>
         )}
       </div>
+
+      {/* Buscador de regiones (D4; spec 5.8), justo encima de la selección,
+          porque ahí se arma el montaje. */}
+      <RegionSearch nodes={nodes} />
 
       <div className="filters__selection">
         <span>{selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}</span>

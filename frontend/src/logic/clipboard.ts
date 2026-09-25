@@ -15,8 +15,15 @@ export async function copyText(text: string, clipboard: ClipboardLike | undefine
   }
 }
 
+// Cómo se escribe un atajo de teclado en cada sistema: «⌘C» en macOS y
+// «Ctrl+C» en los demás. Lo usan el ID científico y el buscador de
+// regiones (Ctrl+K, logic/regionSearch.ts).
+export function shortcutLabel(key: string, userAgent: string): string {
+  return /Mac/i.test(userAgent) ? `⌘${key}` : `Ctrl+${key}`;
+}
+
 // Atajo para copiar a mano lo seleccionado: ⌘C en macOS y Ctrl+C en los
 // demás sistemas.
 export function copyShortcutLabel(userAgent: string): string {
-  return /Mac/i.test(userAgent) ? "⌘C" : "Ctrl+C";
+  return shortcutLabel("C", userAgent);
 }

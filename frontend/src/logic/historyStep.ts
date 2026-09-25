@@ -191,8 +191,27 @@ export function historyButtons(
   };
 }
 
-// Tipos de <input> en los que se escribe: ahí Ctrl+Z es del campo.
+// Tipos de <input> en los que se escribe: ahí los atajos de teclado son
+// del campo.
 const TEXT_INPUT_TYPES = new Set(["text", "search", "email", "number", "password", "tel", "url"]);
+
+// Dónde está el foco cuando llega un atajo de teclado.
+export interface ShortcutTarget {
+  tagName: string;
+  type?: string;
+  isContentEditable?: boolean;
+}
+
+// Si el foco está donde se escribe: ahí los atajos de teclado son del campo.
+// La comparten los del historial y el del buscador de regiones (5.8).
+export function isTextEntry(target: ShortcutTarget | null): boolean {
+  return (
+    target !== null &&
+    (target.isContentEditable === true ||
+      target.tagName === "TEXTAREA" ||
+      (target.tagName === "INPUT" && TEXT_INPUT_TYPES.has(target.type ?? "text")))
+  );
+}
 
 // Atajo de teclado del historial: Ctrl+Z (⌘Z en macOS) deshace; Ctrl+Mayús+Z,
 // ⌘Mayús+Z y Ctrl+Y rehacen. Con distribuciones de teclado sin letras
@@ -201,17 +220,10 @@ const TEXT_INPUT_TYPES = new Set(["text", "search", "email", "number", "password
 // el evento (defaultPrevented).
 export function historyShortcut(
   event: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey" | "repeat" | "defaultPrevented">,
-  target: { tagName: string; type?: string; isContentEditable?: boolean } | null,
+  target: ShortcutTarget | null,
 ): "undo" | "redo" | null {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || event.repeat || event.defaultPrevented) return null;
-  if (
-    target &&
-    (target.isContentEditable ||
-      target.tagName === "TEXTAREA" ||
-      (target.tagName === "INPUT" && TEXT_INPUT_TYPES.has(target.type ?? "text")))
-  ) {
-    return null;
-  }
+  if (isTextEntry(target)) return null;
   const letter = /^[a-z]$/i.test(event.key)
     ? event.key.toLowerCase()
     : event.code === "KeyZ"

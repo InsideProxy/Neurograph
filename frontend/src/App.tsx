@@ -15,6 +15,7 @@ import { Icon } from "./components/Icon";
 import { ToastRegion } from "./components/Toast";
 import { HistoryButtons } from "./components/HistoryButtons";
 import { useHistoryShortcuts } from "./components/useHistoryShortcuts";
+import { focusRegionSearch, useRegionSearchShortcut } from "./components/useRegionSearchShortcut";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
 import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
@@ -286,6 +287,24 @@ export default function App() {
       );
     });
   }, [source]);
+
+  // Ctrl+K (⌘K) lleva al buscador de regiones, en la vista Atlas (D4 de
+  // docs/decisiones-diseno.md; spec 5.8). Con Filtros plegado, primero lo
+  // despliega, y el foco llega cuando el buscador ya está en la página.
+  const focusSearchAfterExpand = useRef(false);
+  useEffect(() => {
+    if (filtersCollapsed || !focusSearchAfterExpand.current) return;
+    focusSearchAfterExpand.current = false;
+    focusRegionSearch(filtersRef.current);
+  }, [filtersCollapsed]);
+  useRegionSearchShortcut(view === "atlas", () => {
+    if (!filtersCollapsed) {
+      focusRegionSearch(filtersRef.current);
+      return;
+    }
+    focusSearchAfterExpand.current = true;
+    setFiltersCollapsed(false);
+  });
 
   const selectedAtlas = ATLASES.find((a) => a.id === selectedAtlasId)!;
 
