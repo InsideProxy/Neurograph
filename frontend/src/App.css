@@ -322,13 +322,13 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    3:1. */
 .settings__section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .settings__palette { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
-.settings__palette-option { position: relative; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 4px 8px; border-radius: 7px; border: 1px solid transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer; }
+.settings__palette-option { position: relative; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 4px 8px; border-radius: 7px; border: 1px solid transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer; -webkit-user-select: none; user-select: none; }
 .settings__palette-option:hover { color: var(--text-h); }
 .settings__palette-option:has(input:checked) { border-color: var(--accent); background: var(--accent-bg); box-shadow: 0 0 0 1px var(--accent); color: var(--text-h); }
 .settings__palette-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.settings__hint { margin: 6px 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+.settings__hint { margin: 6px 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); text-wrap: balance; }
 .settings__palette-sample { display: flex; gap: 4px; margin-top: 10px; }
-.settings__palette-sample span { flex: 1; height: 10px; border-radius: 3px; box-shadow: 0 0 0 1px var(--text-faint); }
+.settings__palette-sample span { flex: 1; height: 10px; border-radius: 3px; box-shadow: 0 0 0 1px var(--text-muted); }
 .settings__note { margin: 10px 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
 
 /* ------------------------------------------------------------------

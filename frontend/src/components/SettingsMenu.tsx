@@ -1,6 +1,7 @@
 // Engranaje de Ajustes (D3 de docs/decisiones-diseno.md; docs/rediseno-interfaz-diseno.md, 5.2):
 // el tema y, desde la fase 2 del rediseño, los colores de las redes.
-import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { nextRadioIndex } from "../logic/radioGroup";
 import { useAppearanceStore } from "../state/appearance";
 import { effectivePaletteMode, resolveNetworkColor, type PaletteMode } from "../theme/colors";
 import { NETWORK_COLORS } from "../theme/networks";
@@ -35,6 +36,7 @@ export function SettingsMenu() {
   const paletteMode = useAppearanceStore((state) => state.paletteMode);
   const setTheme = useAppearanceStore((state) => state.setTheme);
   const setPaletteMode = useAppearanceStore((state) => state.setPaletteMode);
+  const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const dialogTitleId = useId();
@@ -63,12 +65,21 @@ export function SettingsMenu() {
       const target = event.target as Node;
       if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) setOpen(false);
     };
+    // Tras un clic en un texto del panel (la ayuda, la muestra o la nota),
+    // el foco queda en <body>, y Tab lo lleva fuera sin pasar por
+    // handleBlur. Si el foco cae fuera del bloque, el panel se cierra, y el
+    // foco se queda donde ha caído.
+    const onFocusIn = (event: Event) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("focusin", onFocusIn);
     panelRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("focusin", onFocusIn);
     };
   }, [open]);
 
@@ -90,7 +101,7 @@ export function SettingsMenu() {
   };
 
   return (
-    <div className="settings" onBlur={handleBlur}>
+    <div ref={rootRef} className="settings" onBlur={handleBlur}>
       <button
         ref={triggerRef}
         type="button"
@@ -119,6 +130,21 @@ export function SettingsMenu() {
       )}
     </div>
   );
+}
+
+// Flechas del grupo «Colores de las redes», a mano (logic/radioGroup.ts):
+// WebKit, el motor de Tauri en Linux, no da la vuelta en los extremos y deja
+// sin :focus-visible el radio al que llegan, con lo que su anillo de foco se
+// perdía. preventDefault quita el movimiento del navegador, y focusVisible
+// pide el anillo aunque el foco anterior viniera de un clic.
+function onPaletteKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+  const group = event.currentTarget.closest('[role="radiogroup"]');
+  const radios = group ? [...group.querySelectorAll<HTMLInputElement>('input[type="radio"]')] : [];
+  const next = nextRadioIndex(event, radios.indexOf(event.currentTarget), radios.length);
+  if (next === null) return;
+  event.preventDefault();
+  radios[next].focus({ focusVisible: true });
+  radios[next].click();
 }
 
 interface SettingsChoicesProps {
@@ -179,8 +205,8 @@ export function SettingsChoices({ theme, paletteMode, onTheme, onPaletteMode }: 
           );
         })}
       </div>
-      {/* Radios nativos: el navegador da el teclado del grupo (Tab entra en
-          la opción marcada y las flechas cambian de opción). */}
+      {/* Radios nativos: Tab entra en la opción marcada, y las flechas
+          cambian de opción y dan la vuelta en los extremos (onPaletteKeyDown). */}
       <div className="settings__section">
         <p className="settings__label" id={paletteLabelId}>
           Colores de las redes
@@ -196,6 +222,7 @@ export function SettingsChoices({ theme, paletteMode, onTheme, onPaletteMode }: 
                 checked={paletteMode === option.choice}
                 aria-describedby={option.choice === null ? paletteHintId : undefined}
                 onChange={() => onPaletteMode(option.choice)}
+                onKeyDown={onPaletteKeyDown}
               />
               {option.label}
             </label>

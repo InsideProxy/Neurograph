@@ -22,7 +22,8 @@ function radios(html: string): Record<string, string>[] {
   );
 }
 
-const checkedOption = (html: string) => radios(html).find((radio) => "checked" in radio)?.value;
+// Las opciones marcadas: tiene que haber exactamente una.
+const checkedOptions = (html: string) => radios(html).filter((radio) => "checked" in radio).map((radio) => radio.value);
 
 // Colores de los cinco puntos de cada tarjeta de tema, en orden.
 function cardDots(html: string): string[][] {
@@ -60,7 +61,15 @@ describe("Ajustes: «Colores de las redes»", () => {
     );
     const options = radios(html);
     expect(options.map((radio) => radio.value)).toEqual(["auto", "suave", "original"]);
+    expect(options[0].name).toBeTruthy();
     expect(new Set(options.map((radio) => radio.name)).size).toBe(1);
+    // Ocultos sin sacarlos del teclado: .visually-hidden, sin hidden ni
+    // display: none en línea.
+    for (const radio of options) {
+      expect(radio.class, radio.value).toBe("visually-hidden");
+      expect(radio, radio.value).not.toHaveProperty("hidden");
+      expect(radio, radio.value).not.toHaveProperty("style");
+    }
     expect(html).toMatch(/value="auto"[^>]*\/>Automática<\/label>/);
     expect(html).toMatch(/value="suave"[^>]*\/>Suaves<\/label>/);
     expect(html).toMatch(/value="original"[^>]*\/>Originales del atlas<\/label>/);
@@ -75,16 +84,17 @@ describe("Ajustes: «Colores de las redes»", () => {
   });
 
   it("sin elección, marca «Automática» en cualquier tema", () => {
-    expect(checkedOption(render("grafito", null))).toBe("auto");
-    expect(checkedOption(render("original", null))).toBe("auto");
+    expect(checkedOptions(render("grafito", null))).toEqual(["auto"]);
+    expect(checkedOptions(render("original", null))).toEqual(["auto"]);
   });
 
   it("marca la elección guardada", () => {
-    expect(checkedOption(render("original", "suave"))).toBe("suave");
-    expect(checkedOption(render("noche", "original"))).toBe("original");
+    expect(checkedOptions(render("original", "suave"))).toEqual(["suave"]);
+    expect(checkedOptions(render("noche", "original"))).toEqual(["original"]);
   });
 
   it("la muestra enseña las doce redes de Cole-Anticevic con la paleta que se aplica", () => {
+    expect(COLE).toHaveLength(12);
     expect(sample(render("noche", null))).toEqual(COLE.map((key) => SOFT_NETWORK_COLORS.noche[key]));
     expect(sample(render("original", null))).toEqual(COLE.map((key) => NETWORK_COLORS[key]));
     expect(sample(render("noche", "original"))).toEqual(COLE.map((key) => NETWORK_COLORS[key]));
