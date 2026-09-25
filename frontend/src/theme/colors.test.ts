@@ -54,12 +54,12 @@ describe("resolveNetworkColor", () => {
 
   it("una red desconocida usa el «sin clasificar» de la paleta activa", () => {
     expect(resolveNetworkColor("no-existe", "grafito", "original")).toBe("#8a8a8a");
-    expect(resolveNetworkColor("no-existe", "grafito", "suave")).toBe("#a8a8a8");
-    expect(resolveNetworkColor("no-existe", "claro", "suave")).toBe("#7d7d7d");
-    expect(resolveNetworkColor("no-existe", "original", "suave")).toBe("#a8a8a8");
+    expect(resolveNetworkColor("no-existe", "grafito", "suave")).toBe("#a4a4a4");
+    expect(resolveNetworkColor("no-existe", "claro", "suave")).toBe("#6f6f6f");
+    expect(resolveNetworkColor("no-existe", "original", "suave")).toBe("#a4a4a4");
     // Claves que existen en cualquier objeto por su prototipo, no como red.
     expect(resolveNetworkColor("constructor", "noche", "original")).toBe("#8a8a8a");
-    expect(resolveNetworkColor("constructor", "noche", "suave")).toBe("#a8a8a8");
+    expect(resolveNetworkColor("constructor", "noche", "suave")).toBe("#a4a4a4");
   });
 });
 
@@ -80,13 +80,13 @@ describe("exportColorFor", () => {
 
   it("con «Suaves», las redes salen con la columna de Claro en cualquier tema (4.4)", () => {
     for (const theme of THEME_IDS) {
-      expect(exportColorFor("net:cole-anticevic.default", "paint", theme, "suave")).toBe("#c05548");
+      expect(exportColorFor("net:cole-anticevic.default", "paint", theme, "suave")).toBe("#bd3024");
     }
   });
 
   it("una red desconocida en net: usa el «sin clasificar» de la paleta de exportación", () => {
     expect(exportColorFor("net:desconocida", "paint", "claro", "original")).toBe("#8a8a8a");
-    expect(exportColorFor("net:desconocida", "paint", "grafito", "suave")).toBe("#7d7d7d");
+    expect(exportColorFor("net:desconocida", "paint", "grafito", "suave")).toBe("#6f6f6f");
   });
 
   it("con el tema Original y «Originales del atlas», exactamente los colores de hoy", () => {
@@ -127,7 +127,7 @@ describe("exportColorFor", () => {
 
   it("exportResolverFor fija el tema y la paleta", () => {
     expect(exportResolverFor("claro", "suave")("edge", "paint")).toBe(DRAW_TOKENS.claro.edge);
-    expect(exportResolverFor("noche", "suave")("net:cole-anticevic.visual", "paint")).toBe("#294c9f");
+    expect(exportResolverFor("noche", "suave")("net:cole-anticevic.visual", "paint")).toBe("#09309c");
     expect(exportResolverFor("noche", "original")("net:cole-anticevic.visual", "paint")).toBe("#0000ff");
   });
 });
@@ -136,9 +136,9 @@ describe("exportColorFor", () => {
 // store al pulsar «Exportar JPEG» (el único resolvedor de exportación).
 describe("currentExportResolver", () => {
   it.each([
-    ["grafito", null, "#294c9f"],
+    ["grafito", null, "#09309c"],
     ["original", null, "#0000ff"],
-    ["original", "suave", "#294c9f"],
+    ["original", "suave", "#09309c"],
     ["claro", "original", "#0000ff"],
   ] as const)("tema %s con paleta %s: Visual sale %s", (theme, paletteMode, expected) => {
     useAppearanceStore.setState({ theme, paletteMode });
@@ -175,7 +175,7 @@ describe("drawColorsFor", () => {
   it("devuelve los tokens del tema y los colores de red de su paleta", () => {
     const colors = drawColorsFor("noche", "suave");
     expect(colors.edge).toBe(DRAW_TOKENS.noche.edge);
-    expect(colors.networkColor("cole-anticevic.visual")).toBe("#4d76cf");
+    expect(colors.networkColor("cole-anticevic.visual")).toBe("#3364db");
     expect(drawColorsFor("noche", "original").networkColor("cole-anticevic.visual")).toBe("#0000ff");
   });
 

@@ -16,11 +16,20 @@ demostración, que no llevan prefijo.
 2. Luminosidad: se reparte linealmente del mínimo al máximo del grupo sobre la
    banda del tema. Los acromáticos (C < 0,02) no cuentan para el mínimo y el
    máximo, y el resultado se recorta a la banda.
-3. Croma: como mucho, el tope del tema. Si el color no cabe en sRGB, se
-   recorta el croma sin mover L ni el tono.
-4. Separación: mientras dos redes del grupo queden a menos de ΔE_OK 0,085, se
-   sube 0,01 la L de la más clara y se baja 0,01 la de la más oscura, hasta
-   200 pasadas. La L no sale de la banda más de 0,06 por cada lado.
+3. Croma: el original por 0,85 (CHROMA_RATIO), como mucho el tope del tema.
+   Al ser proporcional, conserva las diferencias de croma entre las redes: un
+   rojo saturado y un marrón apagado siguen siéndolo. Si el color no cabe en
+   sRGB, se recorta el croma sin mover L ni el tono.
+4. Separación: mientras dos redes del grupo queden a menos del objetivo,
+   ΔE_OK 0,11 (DELTA_E_TARGET), se sube 0,01 la L de la más clara y se baja
+   0,01 la de la más oscura, hasta 400 pasadas. La L sale de la banda como
+   mucho el margen del tema por abajo y por arriba: en Grafito y Noche, 0,02
+   por abajo, para no bajar de 3:1 con el panel, y 0,06 por arriba; en Claro,
+   0,06 por cada lado.
+   El objetivo no es una garantía: dentro de esos márgenes, algún grupo no
+   llega. Yeo 17 se queda en 0,097 en Grafito y Noche, y sus propios colores
+   del atlas distan solo 0,065. Lo que se garantiza es un suelo más bajo,
+   ΔE_OK 0,095 (DELTA_E_FLOOR): lo exigen la comprobación y las pruebas.
 5. «Sin clasificar» (unclassified): un gris con L = centro de la banda - 0,02.
 
 El orden de las claves dentro de un grupo es parte del método: el paso 4
@@ -31,18 +40,26 @@ Parte del prototipo con el que se hizo la maqueta aprobada (palette.py, en
 rediseno-referencias/generadores, fuera del repositorio), con sus dos
 correcciones: la luminosidad se reparte sobre el mínimo y el máximo reales de
 cada grupo, y el recorte del croma es una bisección de verdad (en el primer
-prototipo, un croma que no cabía acababa en 0, un gris). Con las mismas claves
-da los mismos colores.
+prototipo, un croma que no cabía acababa en 0, un gris).
+
+Los pasos 3 y 4 y las bandas son los de la paleta «intermedia», que eligió el
+usuario al compararla con la primera. Aquella (la de la maqueta) apretaba la
+luminosidad en bandas más estrechas (0,60-0,90 y, en Claro, 0,46-0,76),
+recortaba el croma al tope, de 0,13 a 0,145, sin reducirlo en proporción, y
+separaba a ΔE_OK 0,085: las redes que el atlas distingue sobre todo por el
+croma o la luminosidad se confundían, como el rojo de Por defecto, el marrón
+de Multimodal posterior y el naranja de Multimodal ventral en Cole-Anticevic.
 
 Antes de escribir, muestra la comprobación de cada tema y grupo: distancia
 mínima entre redes, contraste mínimo con el panel (también el del tema
 Original, que con «Suaves» usa la columna de Grafito), deriva del tono y
-luminosidad. Comprueba además el tope del croma y que no se deshaga ninguna
-de las dos correcciones: ninguna red con color queda casi gris, y la más
-oscura y la más clara de cada grupo quedan en los extremos de la banda. Si un
-grupo no cumple lo que piden las pruebas
-(frontend/src/theme/softPalettes.test.ts y themeCss.test.ts), no escribe nada y
-sale con código 1.
+luminosidad. Exige el suelo de la distancia, un contraste de 3:1 en Grafito,
+Noche y Original, que la L no salga de la banda más que los márgenes del tema,
+el tope del croma, el tono y que no se deshaga ninguna de las dos
+correcciones: ninguna red con color queda casi gris, y la más oscura y la más
+clara de cada grupo quedan en los extremos de la banda. Si un grupo no cumple
+lo que piden las pruebas (frontend/src/theme/softPalettes.test.ts y
+themeCss.test.ts), no escribe nada y sale con código 1.
 
 La tabla lleva al final una copia de NETWORK_COLORS (SOFT_PALETTE_SOURCE): así,
 `npm test` avisa si está desfasada, sin tener que ejecutar --check.
@@ -70,21 +87,36 @@ OUTPUT_TS = REPO_ROOT / "frontend" / "src" / "theme" / "softPalettes.ts"
 UNCLASSIFIED = "unclassified"
 DEMO_GROUP = "demostración"
 ACHROMATIC = 0.02  # croma por debajo del cual un color es un gris
-MIN_DELTA_E = 0.085  # distancia mínima entre dos redes de un grupo
-BAND_MARGIN = 0.06  # cuánto puede salir la L de la banda al separar
-MAX_PASSES = 200
+CHROMA_RATIO = 0.85  # paso 3: el croma suave es el original por esta razón
+# Paso 4. La separación apunta al objetivo, pero no todos los grupos llegan
+# dentro de los márgenes (Yeo 17 se queda en 0,097 en Grafito y Noche). La
+# comprobación y las pruebas exigen el suelo, que es lo que se garantiza.
+DELTA_E_TARGET = 0.11
+DELTA_E_FLOOR = 0.095
+MAX_PASSES = 400
+# Cuánto puede meter la separación hacia dentro de la banda a la red con color
+# más oscura o a la más clara de un grupo (la segunda corrección, en check()).
+# Pasa cuando otra red empieza a su misma L y ya no puede salir más de la
+# banda: en Power, el negro de Saliencia, acromático, empieza al pie con
+# Hipocampo y, con 0,02 de margen por abajo en Grafito y Noche, Hipocampo sube
+# 0,070. Si los acromáticos contaran para el mínimo y el máximo de L, Gordon
+# 333 se apartaría 0,118 o más.
+MAX_INWARD_SHIFT = 0.09
 MAX_HUE_DRIFT = 3.0  # grados
 HUE_CHROMA_FLOOR = 0.04  # por debajo, el redondeo a 8 bits ya mueve el tono
-MIN_CONTRAST_DARK = 3.0  # con el panel, en Grafito y Noche
+MIN_CONTRAST_DARK = 3.0  # con el panel, en Grafito, Noche y Original
 L_TOLERANCE = 0.005  # el redondeo a #rrggbb mueve algo la L
-C_TOLERANCE = 0.003  # y también el croma (hoy, como mucho 0,0012 sobre el tope)
+C_TOLERANCE = 0.003  # y también el croma (hoy, como mucho 0,0011 sobre el tope)
 
-# Banda de luminosidad (L de OKLCH) y croma máximo de cada tema. El panel es
-# el --panel-bg de index.css (spec 4.1); solo sirve para la comprobación.
+# De cada tema: la banda de luminosidad (L de OKLCH), el tope del croma y los
+# márgenes, (por abajo, por arriba): cuánto puede sacar la separación la L de
+# la banda. En Grafito y Noche, el de abajo es pequeño para que ninguna red
+# baje de 3:1 con el panel. El panel es el --panel-bg de index.css (spec 4.1);
+# solo sirve para la comprobación.
 THEMES = {
-    "grafito": {"band": (0.60, 0.90), "cmax": 0.13, "panel": "#16191e"},
-    "noche": {"band": (0.60, 0.90), "cmax": 0.145, "panel": "#111726"},
-    "claro": {"band": (0.46, 0.76), "cmax": 0.14, "panel": "#ffffff"},
+    "grafito": {"band": (0.56, 0.92), "cmax": 0.18, "margins": (0.02, 0.06), "panel": "#16191e"},
+    "noche": {"band": (0.56, 0.92), "cmax": 0.19, "margins": (0.02, 0.06), "panel": "#111726"},
+    "claro": {"band": (0.40, 0.72), "cmax": 0.18, "margins": (0.06, 0.06), "panel": "#ffffff"},
 }
 DARK_THEMES = ("grafito", "noche")
 # El tema Original no tiene columna propia: con «Suaves» usa la de Grafito
@@ -242,6 +274,9 @@ def soften(colors: dict[str, str], theme: dict) -> dict[str, str]:
     """Paleta suave de un grupo en un tema: clave -> #rrggbb."""
     lo, hi = theme["band"]
     cmax = theme["cmax"]
+    # Hasta dónde puede llevar la separación (paso 4) la L, fuera de la banda.
+    margin_down, margin_up = theme["margins"]
+    floor, ceiling = lo - margin_down, hi + margin_up
     lch = {key: to_oklch(value) for key, value in colors.items()}
     # 2) Luminosidad: del mínimo al máximo del grupo, sin los acromáticos.
     chromatic = [L for L, C, _ in lch.values() if C > ACHROMATIC] or [0.0, 1.0]
@@ -256,19 +291,20 @@ def soften(colors: dict[str, str], theme: dict) -> dict[str, str]:
         out = {}
         for key in keys:
             _, C0, h = lch[key]
-            C = min(C0, cmax) if C0 > ACHROMATIC else 0.0  # 1) y 3)
+            C = min(C0 * CHROMA_RATIO, cmax) if C0 > ACHROMATIC else 0.0  # 1) y 3)
             out[key] = rgb_to_hex(oklch_to_rgb_clamped(lightness[key], C, h))
         return out
 
-    # 4) Separación.
+    # 4) Separación, hacia el objetivo. Un grupo que no llega se queda como
+    # esté tras MAX_PASSES pasadas; el suelo lo exige check().
     out = build()
     for _ in range(MAX_PASSES):
         moved = False
         for a, b in combinations(keys, 2):
-            if delta_e(out[a], out[b]) < MIN_DELTA_E:
+            if delta_e(out[a], out[b]) < DELTA_E_TARGET:
                 up, down = (a, b) if lightness[a] >= lightness[b] else (b, a)
-                lightness[up] = min(hi + BAND_MARGIN, lightness[up] + 0.01)
-                lightness[down] = max(lo - BAND_MARGIN, lightness[down] - 0.01)
+                lightness[up] = min(ceiling, lightness[up] + 0.01)
+                lightness[down] = max(floor, lightness[down] - 0.01)
                 moved = True
         if not moved:
             break
@@ -297,8 +333,11 @@ def build_palettes(colors: dict[str, str]) -> dict[str, dict[str, str]]:
 
 
 def header() -> str:
-    bands = ", ".join(f"{name} {t['band'][0]:.2f}-{t['band'][1]:.2f}" for name, t in THEMES.items())
-    caps = ", ".join(f"{name} {t['cmax']}" for name, t in THEMES.items())
+    themes = "".join(
+        f"//   {name}: banda {t['band'][0]:.2f}-{t['band'][1]:.2f},"
+        f" margen {t['margins'][0]} y {t['margins'][1]}, tope {t['cmax']}.\n"
+        for name, t in THEMES.items()
+    )
     return (
         "// GENERADO por scripts/generate_soft_palettes.py a partir de NETWORK_COLORS\n"
         "// (theme/networks.ts), que se copia al final (SOFT_PALETTE_SOURCE). No se\n"
@@ -308,10 +347,13 @@ def header() -> str:
         "//\n"
         "// Paleta «suave» de las redes (docs/rediseno-interfaz-diseno.md, 4.3): el\n"
         "// tono de cada red, con la luminosidad (L de OKLCH) en la banda del tema y\n"
-        "// el croma limitado. El tema Original no tiene columna propia: con «Suaves»\n"
+        "// el croma reducido. El tema Original no tiene columna propia: con «Suaves»\n"
         "// usa la de Grafito (theme/colors.ts).\n"
-        f"// Bandas: {bands}.\n"
-        f"// Croma máximo: {caps}.\n"
+        f"// Croma: el original por {CHROMA_RATIO}, como mucho el tope del tema.\n"
+        "// Por tema: banda de L, margen de la separación fuera de la banda (por abajo\n"
+        "// y por arriba) y tope del croma.\n"
+        f"{themes}"
+        f"// Separación: objetivo ΔE_OK {DELTA_E_TARGET}; suelo garantizado {DELTA_E_FLOOR}.\n"
     )
 
 
@@ -352,11 +394,19 @@ def check(colors: dict[str, str], palettes: dict[str, dict[str, str]]) -> list[s
     failures: list[str] = []
     groups = groups_of(colors)
     print(f"NETWORK_COLORS: {len(colors)} claves, {len(groups)} grupos y «{UNCLASSIFIED}».")
+    print(
+        f"ΔE_OK mínimo: se exige el suelo, {DELTA_E_FLOOR}; con *, el grupo no llega al"
+        f" objetivo de la separación, {DELTA_E_TARGET}, y no es un fallo."
+    )
     for name, theme in THEMES.items():
         lo, hi = theme["band"]
-        low, high = lo - BAND_MARGIN - L_TOLERANCE, hi + BAND_MARGIN + L_TOLERANCE
+        down, up = theme["margins"]
+        low, high = lo - down - L_TOLERANCE, hi + up + L_TOLERANCE
         soft, panel = palettes[name], theme["panel"]
-        print(f"\n{name}: banda {lo:.2f}-{hi:.2f}, croma <= {theme['cmax']}, panel {panel}")
+        print(
+            f"\n{name}: banda {lo:.2f}-{hi:.2f} (al separar, {down} por abajo y {up} por arriba),"
+            f" croma <= {theme['cmax']}, panel {panel}"
+        )
         print(
             "  grupo              n  ΔE mín orig -> suave"
             "  contraste orig -> suave  Δh máx  L suave"
@@ -385,32 +435,38 @@ def check(colors: dict[str, str], palettes: dict[str, dict[str, str]]) -> list[s
             # Segunda (paso 2): la luminosidad se reparte sobre el mínimo y el
             # máximo de las redes con color, así que la más oscura queda al pie
             # de la banda y la más clara, arriba. La separación (paso 4) puede
-            # sacarlas de la banda como mucho BAND_MARGIN.
+            # sacarlas de la banda como mucho el margen del tema, y meterlas
+            # hacia dentro como mucho MAX_INWARD_SHIFT.
             by_l = sorted(chromatic, key=lambda k: to_oklch(colors[k])[0])
-            ends_off = (
-                max(abs(to_oklch(soft[by_l[0]])[0] - lo), abs(to_oklch(soft[by_l[-1]])[0] - hi))
-                if len(by_l) >= 2
-                else 0.0
+            dark_off = to_oklch(soft[by_l[0]])[0] - lo if len(by_l) >= 2 else 0.0
+            light_off = to_oklch(soft[by_l[-1]])[0] - hi if len(by_l) >= 2 else 0.0
+            ends_ok = (
+                -(down + L_TOLERANCE) <= dark_off <= MAX_INWARD_SHIFT
+                and -MAX_INWARD_SHIFT <= light_off <= up + L_TOLERANCE
             )
             ls = [to_oklch(soft[k])[0] for k in keys]
             over = max(to_oklch(soft[k])[1] for k in keys) - theme["cmax"]
+            below_target = "*" if de_soft < DELTA_E_TARGET else " "
             print(
-                f"  {group:<16}{len(keys):>3}  {de_orig:.3f} -> {de_soft:.3f}"
-                f"{cr_orig:>18.2f} -> {cr_soft:.2f}{drift:>13.1f}°  {min(ls):.2f}-{max(ls):.2f}"
+                f"  {group:<16}{len(keys):>3}  {de_orig:.3f} -> {de_soft:.3f}{below_target}"
+                f"{cr_orig:>17.2f} -> {cr_soft:.2f}{drift:>13.1f}°  {min(ls):.2f}-{max(ls):.2f}"
             )
             where = f"{name}/{group}"
-            if de_soft < MIN_DELTA_E:
-                failures.append(f"{where}: ΔE_OK {de_soft:.4f} < {MIN_DELTA_E} ({pa} y {pb})")
+            if de_soft < DELTA_E_FLOOR:
+                failures.append(f"{where}: ΔE_OK {de_soft:.4f} < {DELTA_E_FLOOR} ({pa} y {pb})")
             if grayed:
                 failures.append(f"{where}: quedan casi grises (C < {HUE_CHROMA_FLOOR}): {', '.join(grayed)}")
-            if ends_off > BAND_MARGIN + L_TOLERANCE:
+            if not ends_ok:
                 failures.append(
-                    f"{where}: {by_l[0]} y {by_l[-1]} no quedan en los extremos de la banda (se apartan {ends_off:.3f})"
+                    f"{where}: {by_l[0]} y {by_l[-1]} no quedan en los extremos de la banda"
+                    f" (a {dark_off:+.3f} del pie y a {light_off:+.3f} del techo)"
                 )
             if drift > MAX_HUE_DRIFT:
                 failures.append(f"{where}: el tono se mueve {drift:.1f}° (máximo 3°)")
             if min(ls) < low or max(ls) > high:
-                failures.append(f"{where}: L {min(ls):.3f}-{max(ls):.3f} fuera de la banda")
+                failures.append(
+                    f"{where}: L {min(ls):.3f}-{max(ls):.3f} fuera de la banda y sus márgenes"
+                )
             if over > C_TOLERANCE:
                 failures.append(f"{where}: el croma pasa {over:.4f} del tope ({theme['cmax']})")
             if name in DARK_THEMES and cr_soft < MIN_CONTRAST_DARK:

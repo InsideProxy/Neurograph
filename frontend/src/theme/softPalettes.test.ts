@@ -39,16 +39,35 @@ const deltaE = (first: string, second: string) => {
 };
 
 const BANDS: Readonly<Record<SoftPaletteTheme, readonly [number, number]>> = {
-  grafito: [0.6, 0.9],
-  noche: [0.6, 0.9],
-  claro: [0.46, 0.76],
+  grafito: [0.56, 0.92],
+  noche: [0.56, 0.92],
+  claro: [0.4, 0.72],
 };
-const BAND_MARGIN = 0.06;
+// Cuánto puede sacar la separación (paso 4) la L de la banda, por abajo y por
+// arriba. En Grafito y Noche, poco por abajo, para no bajar de 3:1 con el
+// panel.
+const MARGINS: Readonly<Record<SoftPaletteTheme, { readonly down: number; readonly up: number }>> = {
+  grafito: { down: 0.02, up: 0.06 },
+  noche: { down: 0.02, up: 0.06 },
+  claro: { down: 0.06, up: 0.06 },
+};
+// Cuánto puede meter la separación hacia dentro de la banda a la red con
+// color más oscura o a la más clara de un grupo. Pasa cuando otra red empieza
+// a su misma L y ya no puede salir más de la banda: en Power, el negro de
+// Saliencia, acromático, empieza al pie con Hipocampo y, con 0,02 de margen
+// por abajo en Grafito y Noche, Hipocampo sube 0,070. Si los acromáticos
+// contaran para el mínimo y el máximo de L, Gordon 333 se apartaría 0,118 o
+// más.
+const MAX_INWARD_SHIFT = 0.09;
 const L_TOLERANCE = 0.005; // el redondeo a #rrggbb mueve algo la L
 // Tope del croma de cada tema (paso 3). El redondeo a #rrggbb también lo
-// mueve: hoy, como mucho 0,0012 por encima.
-const CHROMA_CAP: Readonly<Record<SoftPaletteTheme, number>> = { grafito: 0.13, noche: 0.145, claro: 0.14 };
+// mueve: hoy, como mucho 0,0011 por encima.
+const CHROMA_CAP: Readonly<Record<SoftPaletteTheme, number>> = { grafito: 0.18, noche: 0.19, claro: 0.18 };
 const C_TOLERANCE = 0.003;
+// Paso 4: la separación apunta a ΔE_OK 0,11, pero dentro de los márgenes no
+// todos los grupos llegan (Yeo 17 se queda en 0,097 en Grafito y Noche; sus
+// colores del atlas distan 0,065). Lo que se garantiza es este suelo.
+const DELTA_E_FLOOR = 0.095;
 const ACHROMATIC = 0.02;
 // Acromáticos: los originales grises, que no tienen tono. Casi grises: los
 // suaves por debajo de este croma, donde el redondeo a #rrggbb ya mueve el
@@ -104,72 +123,81 @@ describe("SOFT_NETWORK_COLORS", () => {
 
   // Segunda (paso 2): la luminosidad se reparte sobre el mínimo y el máximo
   // reales de las redes con color del grupo, sin los acromáticos. La
-  // separación (paso 4) puede sacarlas de la banda como mucho 0,06.
+  // separación (paso 4) puede sacarlas de la banda como mucho el margen del
+  // tema, y meterlas hacia dentro como mucho MAX_INWARD_SHIFT.
   it.each(SOFT_PALETTE_THEMES)(
     "tema %s: en cada grupo, la red con color más oscura queda al pie de la banda y la más clara, arriba",
     (theme) => {
       const [lo, hi] = BANDS[theme];
+      const { down, up } = MARGINS[theme];
       for (const [group, keys] of groups()) {
         const byLightness = keys
           .filter((key) => chroma(NETWORK_COLORS[key]) >= ACHROMATIC)
           .sort((a, b) => lightness(NETWORK_COLORS[a]) - lightness(NETWORK_COLORS[b]));
         if (byLightness.length < 2) continue;
         const [darkest, lightest] = [byLightness[0], byLightness[byLightness.length - 1]];
-        const darkestL = lightness(SOFT_NETWORK_COLORS[theme][darkest]);
-        const lightestL = lightness(SOFT_NETWORK_COLORS[theme][lightest]);
-        expect(Math.abs(darkestL - lo), `${group}: ${darkest}`).toBeLessThanOrEqual(BAND_MARGIN + L_TOLERANCE);
-        expect(Math.abs(lightestL - hi), `${group}: ${lightest}`).toBeLessThanOrEqual(BAND_MARGIN + L_TOLERANCE);
+        const fromFoot = lightness(SOFT_NETWORK_COLORS[theme][darkest]) - lo;
+        const fromTop = lightness(SOFT_NETWORK_COLORS[theme][lightest]) - hi;
+        expect(fromFoot, `${group}: ${darkest}`).toBeGreaterThanOrEqual(-(down + L_TOLERANCE));
+        expect(fromFoot, `${group}: ${darkest}`).toBeLessThanOrEqual(MAX_INWARD_SHIFT);
+        expect(fromTop, `${group}: ${lightest}`).toBeLessThanOrEqual(up + L_TOLERANCE);
+        expect(fromTop, `${group}: ${lightest}`).toBeGreaterThanOrEqual(-MAX_INWARD_SHIFT);
       }
     },
   );
 
   it.each(SOFT_PALETTE_THEMES)(
-    "tema %s: la luminosidad queda en la banda del tema ±0,06 y el croma no pasa del tope",
+    "tema %s: la luminosidad no sale de la banda más que los márgenes del tema, y el croma no pasa del tope",
     (theme) => {
       const [lo, hi] = BANDS[theme];
+      const { down, up } = MARGINS[theme];
       for (const [key, color] of Object.entries(SOFT_NETWORK_COLORS[theme])) {
-        expect(lightness(color), key).toBeGreaterThanOrEqual(lo - BAND_MARGIN - L_TOLERANCE);
-        expect(lightness(color), key).toBeLessThanOrEqual(hi + BAND_MARGIN + L_TOLERANCE);
+        expect(lightness(color), key).toBeGreaterThanOrEqual(lo - down - L_TOLERANCE);
+        expect(lightness(color), key).toBeLessThanOrEqual(hi + up + L_TOLERANCE);
         expect(chroma(color), key).toBeLessThanOrEqual(CHROMA_CAP[theme] + C_TOLERANCE);
       }
     },
   );
 
-  it.each(SOFT_PALETTE_THEMES)("tema %s: dos redes del mismo grupo distan al menos ΔE_OK 0,085", (theme) => {
-    const table = SOFT_NETWORK_COLORS[theme];
-    for (const [group, keys] of groups()) {
-      for (let i = 0; i < keys.length; i++) {
-        for (let j = i + 1; j < keys.length; j++) {
-          const pair = `${group}: ${keys[i]} y ${keys[j]}`;
-          expect(deltaE(table[keys[i]], table[keys[j]]), pair).toBeGreaterThanOrEqual(0.085);
+  it.each(SOFT_PALETTE_THEMES)(
+    "tema %s: dos redes del mismo grupo distan al menos ΔE_OK 0,095, el suelo garantizado (no el objetivo, 0,11)",
+    (theme) => {
+      const table = SOFT_NETWORK_COLORS[theme];
+      for (const [group, keys] of groups()) {
+        for (let i = 0; i < keys.length; i++) {
+          for (let j = i + 1; j < keys.length; j++) {
+            const pair = `${group}: ${keys[i]} y ${keys[j]}`;
+            expect(deltaE(table[keys[i]], table[keys[j]]), pair).toBeGreaterThanOrEqual(DELTA_E_FLOOR);
+          }
         }
       }
-    }
-  });
+    },
+  );
 
   it("«sin clasificar» es un gris a la mitad de la banda menos 0,02", () => {
     expect([SOFT_NETWORK_COLORS.grafito.unclassified, SOFT_NETWORK_COLORS.noche.unclassified]).toEqual([
-      "#a8a8a8",
-      "#a8a8a8",
+      "#a4a4a4",
+      "#a4a4a4",
     ]);
-    expect(SOFT_NETWORK_COLORS.claro.unclassified).toBe("#7d7d7d");
+    expect(SOFT_NETWORK_COLORS.claro.unclassified).toBe("#6f6f6f");
   });
 
-  // La tabla de 4.3, que es la de la maqueta aprobada.
+  // La tabla de 4.3: la paleta «intermedia», que eligió el usuario al
+  // compararla con la de la maqueta.
   it("Cole-Anticevic da los colores de la tabla del spec", () => {
     const expected: Record<string, readonly [string, string, string]> = {
-      "cole-anticevic.visual": ["#4f74c4", "#4d76cf", "#294c9f"],
-      "cole-anticevic.visual2": ["#8a85de", "#8780e3", "#5f56b2"],
-      "cole-anticevic.somatomotor": ["#4cedec", "#19efef", "#00bdbd"],
-      "cole-anticevic.cingulo-opercular": ["#ae66ac", "#b362b0", "#853a83"],
-      "cole-anticevic.dorsal-attention": ["#98e191", "#91e38a", "#67b461"],
-      "cole-anticevic.language": ["#35b3b3", "#35b3b3", "#008686"],
-      "cole-anticevic.frontoparietal": ["#e3e67b", "#e4e66c", "#b7b840"],
-      "cole-anticevic.auditory": ["#db90d8", "#df8cdd", "#b062ae"],
-      "cole-anticevic.default": ["#eb8475", "#f27f6f", "#c05548"],
-      "cole-anticevic.posterior-multimodal": ["#cc7242", "#cc7242", "#9e4812"],
-      "cole-anticevic.ventral-multimodal": ["#f2a958", "#f8a647", "#c77b11"],
-      "cole-anticevic.orbito-affective": ["#6a9e49", "#66a03d", "#3f750d"],
+      "cole-anticevic.visual": ["#3666d5", "#3364db", "#09309c"],
+      "cole-anticevic.visual2": ["#8275f1", "#8273f7", "#533eb6"],
+      "cole-anticevic.somatomotor": ["#4ff1f1", "#4ff1f1", "#00aeae"],
+      "cole-anticevic.cingulo-opercular": ["#b04aae", "#b247b0", "#7c0f7b"],
+      "cole-anticevic.dorsal-attention": ["#81ea7a", "#7bec74", "#40ab3b"],
+      "cole-anticevic.language": ["#48aaa9", "#48aaa9", "#007474"],
+      "cole-anticevic.frontoparietal": ["#edee46", "#edee46", "#acac00"],
+      "cole-anticevic.auditory": ["#e67ee4", "#e97ae7", "#aa45a9"],
+      "cole-anticevic.default": ["#fb6b5a", "#fc6352", "#bd3024"],
+      "cole-anticevic.posterior-multimodal": ["#bb6f48", "#be724b", "#853e14"],
+      "cole-anticevic.ventral-multimodal": ["#f8a544", "#f8a544", "#b56e00"],
+      "cole-anticevic.orbito-affective": ["#61953f", "#61953f", "#326300"],
     };
     for (const [key, columns] of Object.entries(expected)) {
       const actual = SOFT_PALETTE_THEMES.map((theme) => SOFT_NETWORK_COLORS[theme][key]);
