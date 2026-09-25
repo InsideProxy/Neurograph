@@ -1,6 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFiltersStore } from "./filters";
-import { HISTORY_LIMIT, redo, resetForAtlasChange, resetHistory, setPointerHeld, undo, useHistoryStore } from "./history";
+import {
+  HISTORY_LIMIT,
+  applySnapshot,
+  currentSnapshot,
+  loadHistory,
+  pauseRecording,
+  redo,
+  resetForAtlasChange,
+  resetHistory,
+  resumeRecording,
+  setPointerHeld,
+  undo,
+  useHistoryStore,
+} from "./history";
 import { useMarksStore } from "./marks";
 import { useSelectionStore } from "./selection";
 
@@ -22,6 +35,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   setPointerHeld(false);
+  resumeRecording();
 });
 
 describe("historial", () => {
@@ -218,6 +232,90 @@ describe("historial", () => {
     resetHistory();
     expect([...marks().markedIds]).toEqual(["a"]);
     expect([...history().present.markedIds]).toEqual(["a"]);
+  });
+
+  // Tour guiado (D11; spec 5.10): sus acciones no dejan pasos.
+  it("con el registro en pausa, los cambios no son pasos, y al volver todo queda exactamente como estaba", async () => {
+    selection().toggleNode("a");
+    await flush();
+    const saved = pauseRecording();
+    expect(saved.past).toHaveLength(1);
+
+    // El tour cambia la selección, los filtros y las marcas, y vacía el
+    // historial al cambiar de atlas (App).
+    selection().selectNodes(["x", "y", "z"]);
+    filters().setHiddenNetworks(new Set(["red"]));
+    filters().setMinWeight(0.001);
+    marks().toggleMark("x");
+    await flush();
+    expect(history().past).toBe(saved.past);
+    resetForAtlasChange();
+    await flush();
+    expect(history().past).toHaveLength(0);
+
+    // Al salir: los stores con sus mismos Set, el historial tal cual y otra
+    // vez a registrar.
+    applySnapshot(saved.present);
+    loadHistory(saved);
+    resumeRecording();
+    await flush();
+    expect(history().past).toBe(saved.past);
+    expect(history().present).toBe(saved.present);
+    expect(history().future).toBe(saved.future);
+    expect(selection().selectedNodeIds).toBe(saved.present.selectedNodeIds);
+    expect(filters().hiddenNetworks).toBe(saved.present.hiddenNetworks);
+    expect(marks().markedIds).toBe(saved.present.markedIds);
+    expect(filters().minWeight).toBe(0);
+
+    // Lo siguiente que hace el usuario es un paso normal, desde lo restaurado.
+    selection().toggleNode("b");
+    await flush();
+    expect(history().past).toHaveLength(2);
+    expect(history().lastStep?.before).toBe(saved.present);
+    undo();
+    undo();
+    expect(selection().selectedNodeIds.size).toBe(0);
+  });
+
+  it("pausar registra antes lo pendiente: un cambio de peso a medias es un paso del usuario", async () => {
+    vi.useFakeTimers();
+    filters().setMinWeight(0.004);
+    await flush();
+    expect(history().pendingFrom).not.toBeNull();
+    const saved = pauseRecording();
+    expect(saved.past).toHaveLength(1);
+    expect(history().pendingFrom).toBeNull();
+    filters().setMinWeight(0.2);
+    await flush();
+    vi.advanceTimersByTime(1000);
+    expect(history().past).toBe(saved.past);
+  });
+
+  it("un historial cargado se deshace y se rehace como el propio, sin registrar nada con la pausa", async () => {
+    const before = currentSnapshot();
+    marks().toggleMark("v1");
+    await flush();
+    const after = currentSnapshot();
+    pauseRecording();
+    loadHistory({ past: [before], present: after, future: [] });
+    undo();
+    expect(marks().markedIds).toBe(before.markedIds);
+    expect(history().future).toEqual([after]);
+    redo();
+    expect(marks().markedIds).toBe(after.markedIds);
+    expect(history().past).toEqual([before]);
+  });
+
+  it("cargar un historial avisa de un cambio sin paso nuevo: App retira el aviso con «Deshacer»", async () => {
+    selection().selectNodes(["a", "b", "c"]);
+    await flush();
+    selection().clearNodeSelection();
+    await flush();
+    expect(history().lastStep).not.toBeNull();
+    const version = history().version;
+    loadHistory({ past: [], present: currentSnapshot(), future: [] });
+    expect(history().version).toBeGreaterThan(version);
+    expect(history().lastStep).toBeNull();
   });
 
   it("guarda el último paso para el aviso, y deshacer lo retira", async () => {

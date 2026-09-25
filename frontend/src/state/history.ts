@@ -15,6 +15,9 @@
 //   son un store nuestro: marcar, desmarcar y «Quitar marcas» son pasos. Al
 //   cambiar de atlas, App llama a resetForAtlasChange, que las vacía sin
 //   que eso sea un paso.
+// - El tour guiado (D11; spec 5.10) pausa el registro mientras dura: sus
+//   acciones no son pasos. Al salir devuelve los stores y el historial tal
+//   como estaban (pauseRecording, loadHistory y resumeRecording).
 import { create } from "zustand";
 import { changedKinds, type HistorySnapshot } from "../logic/historyStep";
 import { useFiltersStore } from "./filters";
@@ -57,6 +60,8 @@ export const useHistoryStore = create<HistoryState>(() => ({
 }));
 
 let restoring = false;
+// El tour guiado tiene el registro en pausa (pauseRecording).
+let paused = false;
 let batchScheduled = false;
 let pointerHeld = false;
 let settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -111,7 +116,7 @@ function flushBatch() {
 }
 
 function scheduleRecord() {
-  if (restoring || batchScheduled) return;
+  if (restoring || paused || batchScheduled) return;
   batchScheduled = true;
   queueMicrotask(flushBatch);
 }
@@ -193,3 +198,39 @@ export function setPointerHeld(held: boolean) {
   pointerHeld = held;
   if (!held) commitPendingWeight();
 }
+
+// Tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10). Sus acciones no
+// son pasos: el tour pausa el registro al empezar y, al salir, pone en los
+// stores la instantánea que guardó (applySnapshot, con sus mismos Set),
+// devuelve el historial tal cual (loadHistory) y vuelve a registrar.
+export interface HistoryContents {
+  past: HistorySnapshot[];
+  present: HistorySnapshot;
+  future: HistorySnapshot[];
+}
+
+// Registra antes lo pendiente, que es del usuario (un cambio en esta misma
+// tarea, un peso a medias), y devuelve el historial tal como queda.
+export function pauseRecording(): HistoryContents {
+  flushBatch();
+  commitPendingWeight();
+  paused = true;
+  const { past, present, future } = useHistoryStore.getState();
+  return { past, present, future };
+}
+
+// Pone este historial: `present` es lo que ya tienen los stores. Avisa de un
+// cambio sin paso nuevo, como resetHistory: App retira el aviso con
+// «Deshacer». El tour lo usa también para enseñar a deshacer con su propio
+// historial.
+export function loadHistory(contents: HistoryContents) {
+  batchScheduled = false;
+  clearTimeout(settleTimer);
+  bump({ past: contents.past, present: contents.present, future: contents.future, pendingFrom: null, lastStep: null });
+}
+
+export function resumeRecording() {
+  paused = false;
+}
+
+export { apply as applySnapshot, currentSnapshot };
