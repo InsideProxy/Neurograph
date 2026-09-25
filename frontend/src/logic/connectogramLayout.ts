@@ -112,37 +112,7 @@ export function labelReach(labels: readonly (string | null)[], nodeRadius: numbe
   };
 }
 
-export interface RingInput {
-  // Lado del dibujo, en píxeles.
-  size: number;
-  // Las abreviaturas de los nodos que se dibujan; null, sin etiqueta.
-  labels: readonly (string | null)[];
-  // El radio de los nodos y la letra de las etiquetas en reposo, de la regla
-  // según el número de nodos.
-  nodeRadius: number;
-  fontSize: number;
-  // false en la miniatura: el margen de siempre, sin mirar las etiquetas. A
-  // ese tamaño no se leen, y reservarles sitio dejaría el círculo en un
-  // punto.
-  fitLabels: boolean;
-}
-
-export interface RingLayout {
-  // Radio del anillo de los nodos.
-  radius: number;
-}
-
-// El anillo de los nodos: su radio deja entre él y el borde del dibujo el
-// margen de siempre o, si la etiqueta más larga no cabe, lo que esta ocupa,
-// ampliada y con su pastilla. En un dibujo pequeño con etiquetas muy largas,
-// el círculo no baja de la mitad de su radio de siempre: antes de reducirlo a
-// un punto, las más largas se cortan, como antes.
-export function ringLayout({ size, labels, nodeRadius, fontSize, fitLabels }: RingInput): RingLayout {
-  const usual = size / 2 - RING_MARGIN;
-  if (!fitLabels) return { radius: usual };
-  const margin = Math.max(RING_MARGIN, labelReach(labels, nodeRadius, fontSize).enlarged);
-  return { radius: Math.max(usual / 2, size / 2 - margin) };
-}
+// --- Halo de la región seleccionada (6.1) ---
 
 // Un anillo: el radio de su trazo, en el centro del trazo, y su grosor.
 export interface Ring {
@@ -164,4 +134,146 @@ export function selectionHalo(nodeRadius: number, nodeStrokeWidth: number): Ring
     radius: nodeRadius + nodeStrokeWidth / 2 + SELECTION_HALO_GAP + SELECTION_HALO_WIDTH / 2,
     strokeWidth: SELECTION_HALO_WIDTH,
   };
+}
+
+// --- Arcos de hemisferio (6.1) ---
+
+export type Hemisphere = "L" | "R";
+
+export const HEMISPHERE_NAMES: Readonly<Record<Hemisphere, string>> = { L: "IZQUIERDO", R: "DERECHO" };
+
+// Un hemisferio en el orden del círculo: de su nodo `first` a su nodo `last`,
+// los dos incluidos. El círculo se cierra: si el bloque pasa por el principio
+// del orden, `last` es menor que `first`.
+export interface HemisphereBlock {
+  hemisphere: Hemisphere;
+  first: number;
+  last: number;
+}
+
+// Los bloques de los dos hemisferios en el orden actual de los nodos, o null
+// si no se dibujan arcos: algún nodo no tiene hemisferio, falta uno de los
+// dos, o alguno no forma un único bloque seguido. El orden no se toca: solo se
+// mira.
+export function hemisphereBlocks(hemispheres: readonly (Hemisphere | null)[]): HemisphereBlock[] | null {
+  const count = hemispheres.length;
+  if (hemispheres.some((hemisphere) => hemisphere === null)) return null;
+  // Dónde empieza cada bloque: donde cambia el hemisferio respecto al nodo
+  // anterior, contando el paso del último al primero.
+  const starts: number[] = [];
+  for (let i = 0; i < count; i++) {
+    if (hemispheres[i] !== hemispheres[(i - 1 + count) % count]) starts.push(i);
+  }
+  if (starts.length !== 2) return null;
+  return starts.map((first, k) => ({
+    hemisphere: hemispheres[first] as Hemisphere,
+    first,
+    last: (starts[1 - k] - 1 + count) % count,
+  }));
+}
+
+// Separación entre los dos arcos, a cada lado de cada uno: 4°, como en la
+// maqueta.
+export const HEMISPHERE_ARC_GAP = (4 * Math.PI) / 180;
+// Distancia de los arcos al anillo de los nodos, en píxeles: como poco 34,
+// por fuera de las etiquetas de HCP-MMP1.0 en reposo, que acaban a unos 31 px
+// (una larga y ampliada, seleccionada o con el ratón encima, llega a unos 40
+// y lo cruza), y dentro del margen de 40 px del dibujo. Con etiquetas más
+// largas, los arcos se apartan hasta quedar a HEMISPHERE_ARC_CLEARANCE del
+// final de la más larga en reposo, y el margen del anillo crece para que
+// quepan (ringLayout, al final).
+export const HEMISPHERE_ARC_OFFSET = 34;
+export const HEMISPHERE_ARC_CLEARANCE = 3;
+export const HEMISPHERE_ARC_WIDTH = 1.5;
+
+// Ángulos de pantalla, en radianes, en el sentido de las agujas del reloj:
+// los del dibujo de los nodos.
+export interface HemisphereArc {
+  hemisphere: Hemisphere;
+  start: number;
+  end: number;
+}
+
+// El arco de cada bloque va del borde de su primer nodo al de su último (medio
+// paso antes y medio después), menos la separación a cada lado. `angleOf(i)`
+// es el ángulo de pantalla del nodo i, y `step`, el paso entre dos nodos
+// seguidos.
+export function hemisphereArcs(
+  blocks: readonly HemisphereBlock[],
+  count: number,
+  angleOf: (index: number) => number,
+  step: number,
+): HemisphereArc[] {
+  return blocks.map(({ hemisphere, first, last }) => {
+    const from = angleOf(first) - step / 2;
+    const sweep = (((last - first + count) % count) + 1) * step;
+    const gap = Math.min(HEMISPHERE_ARC_GAP, sweep / 4);
+    return { hemisphere, start: from + gap, end: from + sweep - gap };
+  });
+}
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+// Trazado SVG del arco de la circunferencia de centro (cx, cy) y radio r que
+// va de `start` a `end`, en el sentido de las agujas del reloj.
+export function arcPath(cx: number, cy: number, r: number, start: number, end: number): string {
+  const large = end - start > Math.PI ? 1 : 0;
+  const point = (angle: number) => `${round2(cx + r * Math.cos(angle))} ${round2(cy + r * Math.sin(angle))}`;
+  return `M ${point(start)} A ${round2(r)} ${round2(r)} 0 ${large} 1 ${point(end)}`;
+}
+
+// Esquina de arriba en la que va el rótulo de cada arco: la del lado en que
+// queda el punto medio de su arco. Si los dos quedan a la misma distancia del
+// centro, el izquierdo a la izquierda.
+export function arcLabelSides(arcs: readonly HemisphereArc[]): Map<Hemisphere, "left" | "right"> {
+  const middleX = (arc: HemisphereArc) => Math.cos((arc.start + arc.end) / 2);
+  const [a, b] = arcs;
+  const aRight = Math.abs(middleX(a) - middleX(b)) < 1e-9 ? a.hemisphere === "R" : middleX(a) > middleX(b);
+  return new Map([
+    [a.hemisphere, aRight ? "right" : "left"],
+    [b.hemisphere, aRight ? "left" : "right"],
+  ]);
+}
+
+// --- El anillo de los nodos (6.1) ---
+
+export interface RingInput {
+  // Lado del dibujo, en píxeles.
+  size: number;
+  // Las abreviaturas de los nodos que se dibujan; null, sin etiqueta.
+  labels: readonly (string | null)[];
+  // El radio de los nodos y la letra de las etiquetas en reposo, de la regla
+  // según el número de nodos.
+  nodeRadius: number;
+  fontSize: number;
+  // false en la miniatura: el margen de siempre, sin mirar las etiquetas. A
+  // ese tamaño no se leen, y reservarles sitio dejaría el círculo en un
+  // punto.
+  fitLabels: boolean;
+  // Si se dibujan los arcos de hemisferio: el margen los incluye.
+  withArcs?: boolean;
+}
+
+export interface RingLayout {
+  // Radio del anillo de los nodos.
+  radius: number;
+  // Distancia de los arcos de hemisferio al anillo, si se dibujan.
+  arcOffset: number;
+}
+
+// El anillo de los nodos: su radio deja entre él y el borde del dibujo el
+// margen de siempre o, si no caben en él, lo que ocupan la etiqueta más
+// larga, ampliada y con su pastilla, y los arcos de hemisferio, si se
+// dibujan, por fuera de las etiquetas en reposo. En un dibujo pequeño con
+// etiquetas muy largas, el círculo no baja de la mitad de su radio de
+// siempre: antes de reducirlo a un punto, las más largas se cortan, como
+// antes, y los arcos se acercan al anillo para no salirse del dibujo.
+export function ringLayout({ size, labels, nodeRadius, fontSize, fitLabels, withArcs = false }: RingInput): RingLayout {
+  const usual = size / 2 - RING_MARGIN;
+  if (!fitLabels) return { radius: usual, arcOffset: HEMISPHERE_ARC_OFFSET };
+  const reach = labelReach(labels, nodeRadius, fontSize);
+  const arcOffset = Math.max(HEMISPHERE_ARC_OFFSET, reach.rest + HEMISPHERE_ARC_CLEARANCE);
+  const margin = Math.max(RING_MARGIN, reach.enlarged, withArcs ? arcOffset + HEMISPHERE_ARC_WIDTH / 2 : 0);
+  const radius = Math.max(usual / 2, size / 2 - margin);
+  return { radius, arcOffset: Math.min(arcOffset, size / 2 - radius - HEMISPHERE_ARC_WIDTH / 2) };
 }

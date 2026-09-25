@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { GraphNode } from "../types/domain";
 import { DRAW_TOKENS } from "../theme/themes";
-import { RING_MARGIN, estimatedLabelWidth, ringLayout } from "../logic/connectogramLayout";
+import { HEMISPHERE_ARC_WIDTH, RING_MARGIN, estimatedLabelWidth, ringLayout } from "../logic/connectogramLayout";
 import { pillAround } from "../logic/marks";
 import { Connectogram } from "./Connectogram";
 
@@ -193,5 +193,79 @@ describe("halo de la región seleccionada (6.1)", () => {
     expect(Number(ring.r) - Number(ring["stroke-width"]) / 2).toBeGreaterThan(nodeOuter);
     expect(Number(ring.r) + Number(ring["stroke-width"]) / 2).toBeLessThan(Number(halo.r) + Number(halo["stroke-width"]) / 2);
     expect(html.indexOf(`stroke="${TOKENS.mark}"`)).toBeGreaterThan(html.indexOf('stroke-opacity="0.35"'));
+  });
+});
+
+describe("arcos de hemisferio (6.1)", () => {
+  const arcsOf = (html: string) =>
+    [...html.matchAll(/<path d="M ([-\d.]+) ([-\d.]+) A [^"]* ([-\d.]+) ([-\d.]+)" ([^>]*)><\/path>/g)].map((m) => ({
+      ends: [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])],
+      attrs: attributes(m[5]),
+    }));
+  const titlesOf = (html: string) =>
+    [...html.matchAll(/<text ([^>]*)>(IZQUIERDO|DERECHO)<\/text>/g)].map((m) => ({ text: m[2], attrs: attributes(m[1]) }));
+
+  it("con cada hemisferio en un bloque seguido, dos arcos finos por fuera de las etiquetas, uno a cada lado", () => {
+    const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} />);
+    const arcs = arcsOf(html);
+    expect(arcs).toHaveLength(2);
+    // A la distancia del anillo que da ringLayout, con el margen que los
+    // incluye: por fuera de las etiquetas en reposo y dentro del dibujo. Una
+    // ampliada (seleccionada o con el ratón encima) puede cruzar el arco, que
+    // queda debajo.
+    const ring = ringLayout({
+      size: 2 * CENTER,
+      labels: NODES.map((node) => node.abbreviation),
+      nodeRadius: 6,
+      fontSize: 9,
+      fitLabels: true,
+      withArcs: true,
+    });
+    const arcRadius = ring.radius + ring.arcOffset;
+    const labels = nodeLabels(html);
+    const { x, y } = labels.get("FEF")!;
+    expect(Math.hypot(x - CENTER, y - CENTER)).toBeCloseTo(ring.radius, 6);
+    for (const [text, { label }] of labels) {
+      if (label["font-weight"] === "700") continue;
+      const end = Math.hypot(Number(label.x) - CENTER, Number(label.y) - CENTER) + estimatedLabelWidth(text, Number(label["font-size"]));
+      expect(end, text).toBeLessThan(arcRadius - HEMISPHERE_ARC_WIDTH / 2);
+    }
+    expect(arcRadius + HEMISPHERE_ARC_WIDTH / 2).toBeLessThanOrEqual(CENTER);
+    for (const arc of arcs) {
+      expect([arc.attrs.fill, arc.attrs.stroke, arc.attrs["data-ng-stroke"], arc.attrs["stroke-width"]]).toEqual(["none", TOKENS.edge, "edge", "1.5"]);
+      const [x0, y0, x1, y1] = arc.ends;
+      expect(Math.hypot(x0 - CENTER, y0 - CENTER)).toBeCloseTo(arcRadius, 1);
+      expect(Math.hypot(x1 - CENTER, y1 - CENTER)).toBeCloseTo(arcRadius, 1);
+      expect(Math.sign(x0 - CENTER)).toBe(Math.sign(x1 - CENTER));
+    }
+    expect(arcs.map((arc) => Math.sign(arc.ends[0] - CENTER)).sort()).toEqual([-1, 1]);
+  });
+
+  it("rotulados IZQUIERDO y DERECHO en las esquinas de arriba, cada uno del lado de su hemisferio, y se exportan", () => {
+    const titles = titlesOf(renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} />));
+    const byText = new Map(titles.map((title) => [title.text, title.attrs]));
+    expect(titles).toHaveLength(2);
+    expect(Number(byText.get("IZQUIERDO")!.x)).toBeLessThan(CENTER);
+    expect(byText.get("IZQUIERDO")!["text-anchor"]).toBe("start");
+    expect(Number(byText.get("DERECHO")!.x)).toBeGreaterThan(CENTER);
+    expect(byText.get("DERECHO")!["text-anchor"]).toBe("end");
+    for (const { attrs } of titles) expect([attrs.fill, attrs["data-ng-fill"]]).toEqual([TOKENS.label, "label"]);
+  });
+
+  it("en la miniatura, los arcos sin rótulos", () => {
+    const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} compact />);
+    expect(arcsOf(html)).toHaveLength(2);
+    expect(titlesOf(html)).toHaveLength(0);
+  });
+
+  it("no se dibujan si los hemisferios alternan, si alguna región no tiene hemisferio o si solo hay uno", () => {
+    const alternating = [NODES[0], NODES[2], NODES[1], NODES[3]];
+    const withoutSide = [...NODES.slice(0, 3), region("sub_tronco", "BS", null)];
+    const oneSide = NODES.slice(0, 2);
+    for (const nodes of [alternating, withoutSide, oneSide]) {
+      const html = renderToStaticMarkup(<Connectogram nodes={nodes} connections={[]} />);
+      expect(arcsOf(html)).toHaveLength(0);
+      expect(titlesOf(html)).toHaveLength(0);
+    }
   });
 });

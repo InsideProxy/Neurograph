@@ -27,7 +27,19 @@ import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
 import { MARK_ELEMENT, isMarkGesture, markRing, type ClickKeys } from "../logic/marks";
-import { SELECTION_HALO_OPACITY, labelTransform, radialLabel, ringLayout, selectionHalo } from "../logic/connectogramLayout";
+import {
+  HEMISPHERE_ARC_WIDTH,
+  HEMISPHERE_NAMES,
+  SELECTION_HALO_OPACITY,
+  arcLabelSides,
+  arcPath,
+  hemisphereArcs,
+  hemisphereBlocks,
+  labelTransform,
+  radialLabel,
+  ringLayout,
+  selectionHalo,
+} from "../logic/connectogramLayout";
 import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
@@ -163,18 +175,27 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const nodeRadius = nodes.length > 150 ? 3 : nodes.length > 40 ? 4.5 : 6;
   const labelFontSize = nodes.length > 150 ? 5.5 : nodes.length > 40 ? 7 : 9;
 
+  // Arcos de hemisferio (fase 4 del rediseño; spec 6.1): dos arcos finos por
+  // fuera de las etiquetas, rotulados IZQUIERDO y DERECHO. Solo si, en el
+  // orden actual, cada hemisferio forma un único bloque seguido y ningún nodo
+  // tiene el hemisferio sin asignar; si no, no se dibujan. El orden de los
+  // nodos no se toca. Se mira aquí porque el margen del anillo los incluye.
+  const blocks = hemisphereBlocks(nodes.map((node) => node.hemisphere));
+
   // Radio del anillo (fase 4 del rediseño; spec 6.1; decisión del usuario
   // del 25/09/2026). Antes era siempre `size / 2 - 40`. Ahora esos 40 px de
   // margen son el mínimo, y crecen lo justo para que la etiqueta más larga
-  // quepa entera, también ampliada: al ir giradas en dirección radial, las
+  // quepa entera, también ampliada, y los arcos de hemisferio, si se dibujan,
+  // por fuera de las etiquetas: al ir giradas en dirección radial, las
   // etiquetas llegan también al borde de arriba y al de abajo. En la
   // miniatura, el de siempre (logic/connectogramLayout.ts).
-  const { radius } = ringLayout({
+  const { radius, arcOffset } = ringLayout({
     size,
     labels: nodes.map((node) => node.abbreviation),
     nodeRadius,
     fontSize: labelFontSize,
     fitLabels: !compact,
+    withArcs: blocks !== null,
   });
 
   const angleScale = useMemo(
@@ -200,6 +221,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   }, [nodes, angleScale, center, radius]);
 
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+
+  // Los arcos de hemisferio (ver `blocks`, arriba), con los mismos ángulos
+  // que `positions`.
+  const arcs = blocks
+    ? hemisphereArcs(blocks, nodes.length, (index) => (angleScale(nodes[index].id) ?? 0) - Math.PI / 2, angleScale.step())
+    : [];
+  const arcSides = arcs.length === 2 ? arcLabelSides(arcs) : null;
 
   // Lupa (decisión 76, 24/09/2026, propuesta de la usuaria): en las zonas
   // densas del círculo los nodos y sus abreviaturas quedan diminutos. Con
@@ -445,6 +473,45 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           <path d="M 0 0 L 10 5 L 0 10 z" fill={colors.hoverHighlight} {...ngFill("hoverHighlight")} />
         </marker>
       </defs>
+      {/* Arcos de hemisferio (fase 4 del rediseño; spec 6.1), debajo de todo.
+          Sus rótulos van en las esquinas de arriba, cada uno del lado de su
+          arco, y no se ven en la miniatura, como en la maqueta. Se
+          exportan: son parte del dibujo. */}
+      {arcs.length > 0 && (
+        <g style={{ pointerEvents: "none" }}>
+          {arcs.map((arc) => (
+            <path
+              key={arc.hemisphere}
+              d={arcPath(center, center, radius + arcOffset, arc.start, arc.end)}
+              fill="none"
+              stroke={colors.edge}
+              {...ngStroke("edge")}
+              strokeWidth={HEMISPHERE_ARC_WIDTH}
+              strokeLinecap="round"
+            />
+          ))}
+          {!compact &&
+            arcSides &&
+            arcs.map((arc) => {
+              const right = arcSides.get(arc.hemisphere) === "right";
+              return (
+                <text
+                  key={`${arc.hemisphere}-rotulo`}
+                  x={right ? size - 10 : 10}
+                  y={18}
+                  textAnchor={right ? "end" : "start"}
+                  fontSize={10}
+                  fontWeight={600}
+                  letterSpacing={1}
+                  fill={colors.label}
+                  {...ngFill("label")}
+                >
+                  {HEMISPHERE_NAMES[arc.hemisphere]}
+                </text>
+              );
+            })}
+        </g>
+      )}
       <g>
         {visibleConnections.map((conn) => {
           const a = positions.get(conn.source);

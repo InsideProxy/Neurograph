@@ -1,14 +1,24 @@
 import { describe, expect, it } from "vitest";
+import * as d3 from "d3";
 import {
+  HEMISPHERE_ARC_CLEARANCE,
+  HEMISPHERE_ARC_GAP,
+  HEMISPHERE_ARC_OFFSET,
+  HEMISPHERE_ARC_WIDTH,
   RING_MARGIN,
   SELECTION_HALO_GAP,
   SELECTION_HALO_OPACITY,
+  arcLabelSides,
+  arcPath,
   estimatedLabelWidth,
+  hemisphereArcs,
+  hemisphereBlocks,
   labelReach,
   labelTransform,
   radialLabel,
   ringLayout,
   selectionHalo,
+  type Hemisphere,
 } from "./connectogramLayout";
 import { markRing, pillAround } from "./marks";
 
@@ -162,5 +172,115 @@ describe("halo de la región seleccionada", () => {
     const ring = markRing(6, 2.5);
     expect(ring.radius - ring.strokeWidth / 2).toBeGreaterThan(6 + 2.5 / 2);
     expect(ring.radius + ring.strokeWidth / 2).toBeLessThan(halo.radius + halo.strokeWidth / 2);
+  });
+});
+
+// Los ángulos de pantalla de `count` nodos, como en components/Connectogram.tsx.
+function screenAngles(count: number): { angleOf: (index: number) => number; step: number } {
+  const scale = d3.scalePoint<number>().domain(d3.range(count)).range([0, 2 * Math.PI]).padding(0.5);
+  return { angleOf: (index) => (scale(index) ?? 0) - Math.PI / 2, step: scale.step() };
+}
+
+const repeat = (hemisphere: Hemisphere, count: number): Hemisphere[] => Array.from({ length: count }, () => hemisphere);
+
+describe("hemisphereBlocks", () => {
+  it("un bloque seguido por hemisferio, como en HCP-MMP1.0 (primero el derecho)", () => {
+    expect(hemisphereBlocks([...repeat("R", 180), ...repeat("L", 180)])).toEqual([
+      { hemisphere: "R", first: 0, last: 179 },
+      { hemisphere: "L", first: 180, last: 359 },
+    ]);
+  });
+
+  it("el círculo se cierra: un bloque puede pasar por el principio del orden", () => {
+    expect(hemisphereBlocks(["L", "R", "R", "L"])).toEqual([
+      { hemisphere: "R", first: 1, last: 2 },
+      { hemisphere: "L", first: 3, last: 0 },
+    ]);
+  });
+
+  it("sin arcos si los hemisferios alternan, si alguno no tiene hemisferio o si solo hay uno", () => {
+    expect(hemisphereBlocks(["R", "L", "R", "L"])).toBeNull();
+    expect(hemisphereBlocks(["R", "R", null, "L"])).toBeNull();
+    expect(hemisphereBlocks(["R", "R", "R"])).toBeNull();
+    expect(hemisphereBlocks([])).toBeNull();
+  });
+});
+
+describe("hemisphereArcs", () => {
+  it("cada arco va del borde de su primer nodo al de su último, menos 4° a cada lado", () => {
+    const { angleOf, step } = screenAngles(360);
+    const arcs = hemisphereArcs(hemisphereBlocks([...repeat("R", 180), ...repeat("L", 180)])!, 360, angleOf, step);
+    expect(arcs.map((arc) => arc.hemisphere)).toEqual(["R", "L"]);
+    expect(arcs[0].start).toBeCloseTo(-Math.PI / 2 + HEMISPHERE_ARC_GAP);
+    expect(arcs[0].end).toBeCloseTo(Math.PI / 2 - HEMISPHERE_ARC_GAP);
+    expect(arcs[1].start).toBeCloseTo(Math.PI / 2 + HEMISPHERE_ARC_GAP);
+    expect(arcs[1].end).toBeCloseTo((3 * Math.PI) / 2 - HEMISPHERE_ARC_GAP);
+  });
+
+  it("con un bloque que pasa por el principio, su arco también; y con uno muy corto, la separación se acorta", () => {
+    const four = screenAngles(4);
+    const [, left] = hemisphereArcs(hemisphereBlocks(["L", "R", "R", "L"])!, 4, four.angleOf, four.step);
+    expect(left.end - left.start).toBeCloseTo(Math.PI - 2 * HEMISPHERE_ARC_GAP);
+    const many = screenAngles(360);
+    const [single] = hemisphereArcs([{ hemisphere: "R", first: 5, last: 5 }], 360, many.angleOf, many.step);
+    expect(single.end - single.start).toBeCloseTo(many.step / 2);
+  });
+});
+
+describe("arcPath", () => {
+  it("dibuja el arco en el sentido de las agujas del reloj, con la bandera de arco grande cuando pasa de media vuelta", () => {
+    expect(arcPath(100, 100, 50, -Math.PI / 2, Math.PI / 2)).toBe("M 100 50 A 50 50 0 0 1 100 150");
+    expect(arcPath(100, 100, 50, 0, (3 * Math.PI) / 2)).toBe("M 150 100 A 50 50 0 1 1 100 50");
+  });
+});
+
+describe("arcLabelSides", () => {
+  const { angleOf, step } = screenAngles(360);
+  const arcsOf = (hemispheres: Hemisphere[]) => hemisphereArcs(hemisphereBlocks(hemispheres)!, hemispheres.length, angleOf, step);
+
+  it("cada rótulo va en la esquina del lado en que queda su arco", () => {
+    const hcp = arcLabelSides(arcsOf([...repeat("R", 180), ...repeat("L", 180)]));
+    expect([hcp.get("R"), hcp.get("L")]).toEqual(["right", "left"]);
+    const reversed = arcLabelSides(arcsOf([...repeat("L", 180), ...repeat("R", 180)]));
+    expect([reversed.get("L"), reversed.get("R")]).toEqual(["right", "left"]);
+  });
+
+  it("si los dos arcos quedan igual de centrados, el izquierdo a la izquierda", () => {
+    const sides = arcLabelSides([
+      { hemisphere: "R", start: -Math.PI / 2, end: Math.PI / 2 + Math.PI },
+      { hemisphere: "L", start: Math.PI / 2 - 0.1, end: Math.PI / 2 + 0.1 },
+    ]);
+    expect([sides.get("L"), sides.get("R")]).toEqual(["left", "right"]);
+  });
+});
+
+// El margen del anillo incluye los arcos, por fuera de las etiquetas
+// (decisión del usuario del 25/09/2026).
+describe("ringLayout con arcos de hemisferio", () => {
+  it("con las etiquetas de HCP-MMP1.0, a 34 px del anillo, por fuera de las etiquetas en reposo, y el círculo como sin ellos", () => {
+    const withArcs = ringLayout({ size: 666, labels: HCP, nodeRadius: 3, fontSize: 5.5, fitLabels: true, withArcs: true });
+    const without = ringLayout({ size: 666, labels: HCP, nodeRadius: 3, fontSize: 5.5, fitLabels: true });
+    expect(withArcs.arcOffset).toBe(HEMISPHERE_ARC_OFFSET);
+    expect(withArcs.arcOffset - HEMISPHERE_ARC_WIDTH / 2).toBeGreaterThan(labelReach(HCP, 3, 5.5).rest);
+    expect(withArcs.radius).toBe(without.radius);
+  });
+
+  it("con etiquetas largas, se apartan hasta quedar por fuera de ellas, y el margen los incluye", () => {
+    const labels = [...Array.from({ length: 199 }, () => "l_visual_1"), "r_frontoparietal_20"];
+    const ring = ringLayout({ size: 666, labels, nodeRadius: 3, fontSize: 5.5, fitLabels: true, withArcs: true });
+    expect(ring.arcOffset).toBeGreaterThan(HEMISPHERE_ARC_OFFSET);
+    expect(ring.arcOffset).toBeCloseTo(labelReach(labels, 3, 5.5).rest + HEMISPHERE_ARC_CLEARANCE);
+    expect(ring.arcOffset + HEMISPHERE_ARC_WIDTH / 2).toBeLessThanOrEqual(666 / 2 - ring.radius);
+  });
+
+  it("en la miniatura, a 34 px del anillo de siempre", () => {
+    const ring = ringLayout({ size: 200, labels: ["r_frontoparietal_20"], nodeRadius: 6, fontSize: 9, fitLabels: false, withArcs: true });
+    expect(ring).toEqual({ radius: 200 / 2 - RING_MARGIN, arcOffset: HEMISPHERE_ARC_OFFSET });
+  });
+
+  it("con el círculo en su mínimo, los arcos no se salen del dibujo", () => {
+    const ring = ringLayout({ size: 320, labels: ["r_ventraldiencephalon"], nodeRadius: 6, fontSize: 9, fitLabels: true, withArcs: true });
+    expect(ring.radius).toBe((320 / 2 - RING_MARGIN) / 2);
+    expect(ring.radius + ring.arcOffset + HEMISPHERE_ARC_WIDTH / 2).toBeLessThanOrEqual(320 / 2);
   });
 });
