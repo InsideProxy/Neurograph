@@ -26,7 +26,8 @@ import { connectionArrow, regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
-import { MARK_ELEMENT, isMarkGesture, markRing, outwardLabel, type ClickKeys } from "../logic/marks";
+import { MARK_ELEMENT, isMarkGesture, markRing, type ClickKeys } from "../logic/marks";
+import { labelTransform, radialLabel, ringLayout } from "../logic/connectogramLayout";
 import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
@@ -155,13 +156,26 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     }
   };
 
-  const radius = size / 2 - 40;
   const center = size / 2;
 
   // Con muchos nodos, puntos más pequeños evitan que se toquen entre sí
   // alrededor del círculo.
   const nodeRadius = nodes.length > 150 ? 3 : nodes.length > 40 ? 4.5 : 6;
   const labelFontSize = nodes.length > 150 ? 5.5 : nodes.length > 40 ? 7 : 9;
+
+  // Radio del anillo (fase 4 del rediseño; spec 6.1; decisión del usuario
+  // del 25/09/2026). Antes era siempre `size / 2 - 40`. Ahora esos 40 px de
+  // margen son el mínimo, y crecen lo justo para que la etiqueta más larga
+  // quepa entera, también ampliada: al ir giradas en dirección radial, las
+  // etiquetas llegan también al borde de arriba y al de abajo. En la
+  // miniatura, el de siempre (logic/connectogramLayout.ts).
+  const { radius } = ringLayout({
+    size,
+    labels: nodes.map((node) => node.abbreviation),
+    nodeRadius,
+    fontSize: labelFontSize,
+    fitLabels: !compact,
+  });
 
   const angleScale = useMemo(
     () =>
@@ -323,7 +337,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         node,
         pos,
         ring: markRing(currentNodeRadius, isSelected ? 2.5 : 1),
-        label: outwardLabel(pos, (pos.x - center) / radius, (pos.y - center) / radius, currentNodeRadius + 7),
+        label: radialLabel(pos, (pos.x - center) / radius, (pos.y - center) / radius, currentNodeRadius + 7),
         fontSize: isEnlarged ? labelFontSize + 1.5 : labelFontSize,
         fontWeight: isEnlarged ? 700 : 600,
       },
@@ -541,12 +555,13 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           const ux = (pos.x - center) / radius;
           const uy = (pos.y - center) / radius;
           const labelOffset = currentNodeRadius + 7;
-          const labelX = pos.x + ux * labelOffset;
-          const labelY = pos.y + uy * labelOffset;
-          // Cerca de arriba/abajo (ux pequeño) centrado; a los lados,
-          // alineado para que el texto crezca hacia fuera del círculo, no
-          // hacia dentro.
-          const textAnchor = ux > 0.3 ? "start" : ux < -0.3 ? "end" : "middle";
+          // Fase 4 del rediseño (docs/rediseno-interfaz-diseno.md, 6.1): la
+          // etiqueta va además girada en dirección radial. En la mitad
+          // derecha se alinea al principio; en la izquierda se gira 180° más
+          // y se alinea al final, para leerse de izquierda a derecha. Las
+          // dos crecen hacia fuera del círculo. La pastilla de una región
+          // marcada (markedLayout, arriba) usa la misma cuenta.
+          const label = radialLabel(pos, ux, uy, labelOffset);
 
           return (
             <g key={node.id}>
@@ -581,9 +596,10 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               </g>
               {node.abbreviation && (
                 <text
-                  x={labelX}
-                  y={labelY}
-                  textAnchor={textAnchor}
+                  x={label.x}
+                  y={label.y}
+                  transform={labelTransform(label)}
+                  textAnchor={label.anchor}
                   dominantBaseline="central"
                   fontSize={isSelected || isHovered ? labelFontSize + 1.5 : labelFontSize}
                   fontWeight={isSelected || isHovered ? 700 : 600}
@@ -621,6 +637,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   anchor={label.anchor}
                   fontSize={fontSize}
                   fontWeight={fontWeight}
+                  transform={labelTransform(label)}
                   colors={colors}
                 />
               )}

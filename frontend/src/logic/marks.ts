@@ -53,8 +53,9 @@ export type TextAnchor = "start" | "middle" | "end";
 
 // Dónde va la etiqueta de un nodo: a `offset` en la dirección (ux, uy), que
 // apunta hacia fuera, y alineada para que el texto crezca hacia fuera. Es la
-// regla de las etiquetas del connectograma y de los hemisferios, que cada
-// vista aplica con su dirección y su separación.
+// regla de las etiquetas de los hemisferios. Las del connectograma van
+// además giradas en dirección radial desde la fase 4 del rediseño
+// (radialLabel, en logic/connectogramLayout.ts).
 export function outwardLabel(
   position: { x: number; y: number },
   ux: number,
