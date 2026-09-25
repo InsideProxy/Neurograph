@@ -16,24 +16,57 @@
 // Ahora la lista se calcula a partir de `nodes` (los nodos realmente
 // cargados para el atlas/fuente activa, real o demo): solo aparecen
 // redes que de verdad tienen al menos un nodo, nunca una lista fija.
-import { useMemo } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { CONNECTION_TYPE_LABELS, NETWORK_LABELS } from "../theme/networks";
 import { resolveNetworkColor } from "../theme/colors";
 import { useFiltersStore, type ConnectionType } from "../state/filters";
 import { useSelectionStore } from "../state/selection";
 import { formatMinWeight, sliderPositionToWeight, weightToSliderPosition } from "../logic/weightScale";
+import { connectionsPassingText, formatCount, networkShortLabel, selectionStatusText } from "../logic/displayText";
+import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import type { GraphNode } from "../types/domain";
+import { Icon } from "./Icon";
 
 const CONNECTION_TYPES: ConnectionType[] = ["structural", "functional", "effective"];
+
+// Título de una sección plegable (D4 de docs/decisiones-diseno.md; spec
+// 5.3): un botón con aria-expanded que controla el cuerpo de la sección.
+// Va dentro del encabezado; los demás botones de la cabecera («Todas»,
+// «Ninguna») van fuera de él.
+function SectionToggle({
+  open,
+  controls,
+  onToggle,
+  children,
+}: {
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className="filters__disclosure" aria-expanded={open} aria-controls={controls} onClick={onToggle}>
+      <Icon name="chevronDown" size={14} className="filters__chevron" />
+      {children}
+    </button>
+  );
+}
 
 interface FilterPanelProps {
   nodes: GraphNode[];
   // Decisión 74: el panel se puede plegar para dejar más sitio a la vista
   // principal. Sin esto, no se muestra el botón de plegar.
   onCollapse?: () => void;
+  // D4 de docs/decisiones-diseno.md (spec 5.3). Las calcula App con
+  // logic/filterCounts.ts: cuántas conexiones de cada tipo pasan los
+  // filtros de redes y peso, sin contar su casilla...
+  connectionCountsByType: Record<ConnectionType, number>;
+  // ...y «N de M conexiones pasan los filtros»: N, las que pasan todos
+  // los filtros; M, las cargadas para el atlas.
+  connectionTotals: { visible: number; loaded: number };
 }
 
-export function FilterPanel({ nodes, onCollapse }: FilterPanelProps) {
+export function FilterPanel({ nodes, onCollapse, connectionCountsByType, connectionTotals }: FilterPanelProps) {
   const {
     hiddenNetworks,
     hiddenConnectionTypes,
@@ -124,30 +157,48 @@ export function FilterPanel({ nodes, onCollapse }: FilterPanelProps) {
 
   const hasSelection = selectedNodeIds.size > 0 || selectedConnectionId !== null;
 
-  // Decisión 74 (24/09/2026): mismo contenido y mismas acciones que
-  // antes, en menos espacio -- secciones plegables, una sola línea por
-  // red (el nombre completo sigue disponible al pasar el ratón) y la
-  // explicación del deslizador de peso plegada bajo "¿Cómo funciona?".
+  const headingId = useId();
+  // Secciones plegables (decisión 74): las tres empiezan abiertas, como
+  // con los <details open> de antes.
+  const [openSections, setOpenSections] = useState({ networks: true, types: true, weight: true });
+  const toggleSection = (section: keyof typeof openSections) =>
+    setOpenSections((current) => ({ ...current, [section]: !current[section] }));
+
+  // D4 de docs/decisiones-diseno.md (spec 5.3): el mismo contenido y las
+  // mismas acciones de la decisión 74 (D1), con otra jerarquía. Las
+  // secciones siguen siendo plegables, pero su título es un botón con
+  // aria-expanded y no un <summary>: la cabecera de «Redes» lleva además
+  // «Todas» y «Ninguna», que no pueden ir dentro de un <summary>. Hay una
+  // fila por red con su número de regiones: ◎ y + aparecen al pasar el
+  // ratón o al llegar a la fila con el teclado. Junto a cada tipo de
+  // conectividad va su recuento, y bajo el peso mínimo, «N de M
+  // conexiones pasan los filtros». Los números a la vista van con
+  // aria-hidden y su unidad en texto oculto: «Estructural, 3
+  // conexiones» y no «Estructural 3». Cada sección es un grupo con el
+  // nombre de su título (role="group"), no un <section>: tres puntos de
+  // referencia más en un panel lateral estorbarían al navegar por ellos.
   return (
-    <aside className="filter-panel">
-      <div className="filter-panel__header">
-        <h2>Filtros</h2>
+    <aside className="filter-panel filters" aria-labelledby={`${headingId}-title`}>
+      <div className="filters__header">
+        <h2 id={`${headingId}-title`}>Filtros</h2>
         {onCollapse && (
-          <button type="button" className="icon-btn" title="Plegar el panel de filtros" aria-label="Plegar el panel de filtros" onClick={onCollapse}>
-            «
+          <button
+            type="button"
+            className="filters__collapse"
+            title="Plegar el panel de filtros"
+            aria-label="Plegar el panel de filtros"
+            onClick={onCollapse}
+          >
+            <Icon name="chevronsLeft" />
           </button>
         )}
       </div>
 
-      <div className="filter-panel__selection-status">
-        <span>
-          {selectedNodeIds.size > 0
-            ? `${selectedNodeIds.size} nodo${selectedNodeIds.size === 1 ? "" : "s"} resaltado${selectedNodeIds.size === 1 ? "" : "s"}`
-            : "Ningún nodo resaltado"}
-        </span>
+      <div className="filters__selection">
+        <span>{selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}</span>
         <button
           type="button"
-          className="filter-panel__bulk-btn"
+          className="filters__text-btn filters__text-btn--strong"
           disabled={!hasSelection}
           title="Quita el resaltado actual (nodos o conexión seleccionada) en las tres vistas"
           onClick={clearNodeSelection}
@@ -156,103 +207,184 @@ export function FilterPanel({ nodes, onCollapse }: FilterPanelProps) {
         </button>
       </div>
 
-      <details className="filter-section" open>
-        <summary>
-          Redes <span className="filter-section__count">({networkKeys.length})</span>
-        </summary>
-        <div className="filter-panel__bulk-actions">
-          <button type="button" className="filter-panel__bulk-btn" title="Marcar todas las redes" onClick={markAllNetworks}>
-            Marcar todas
-          </button>
-          <button type="button" className="filter-panel__bulk-btn" title="Desmarcar todas las redes" onClick={unmarkAllNetworks}>
-            Desmarcar todas
-          </button>
+      <div className="filters__section" role="group" aria-labelledby={`${headingId}-networks`}>
+        <div className="filters__section-header">
+          <h3 className="filters__heading" id={`${headingId}-networks`}>
+            <SectionToggle
+              open={openSections.networks}
+              controls={`${headingId}-networks-body`}
+              onToggle={() => toggleSection("networks")}
+            >
+              Redes{" "}
+              <span className="filters__heading-count" aria-hidden="true">
+                {networkKeys.length}
+              </span>
+              <span className="visually-hidden">
+                , {networkKeys.length === 1 ? "1 red" : `${networkKeys.length} redes`}
+              </span>
+            </SectionToggle>
+          </h3>
+          <span className="filters__bulk">
+            <button type="button" className="filters__text-btn" title="Marcar todas las redes" onClick={markAllNetworks}>
+              Todas
+            </button>
+            <button type="button" className="filters__text-btn" title="Desmarcar todas las redes" onClick={unmarkAllNetworks}>
+              Ninguna
+            </button>
+          </span>
         </div>
-        {networkKeys.length > 0 && (
-          <p className="filter-panel__hint">◎ resalta solo esa red · + la añade a lo ya resaltado</p>
-        )}
-        {networkKeys.length === 0 && (
-          <p className="filter-panel__empty">Sin redes cargadas todavía.</p>
-        )}
-        {networkKeys.map((network) => {
-          const label = NETWORK_LABELS[network] ?? network;
-          // En la lista, sin el paréntesis final de la fuente ("(Cole-
-          // Anticevic)", "(Yeo 2011, 7 redes)"...): la clasificación ya se
-          // elige y se ve en el selector "Redes" de arriba. El nombre
-          // completo sigue en el texto emergente.
-          const shortLabel = label.replace(/\s*\([^()]*\)\s*$/, "") || label;
-          const count = nodeIdsByNetwork.get(network)?.length ?? 0;
-          return (
-            <div key={network} className="filter-row filter-row--network">
-              <label title={`${label} — ${count} región${count === 1 ? "" : "es"}`}>
-                <input
-                  type="checkbox"
-                  checked={!hiddenNetworks.has(network)}
-                  onChange={() => toggleNetwork(network)}
-                />
-                <span
-                  className="legend-swatch"
-                  style={{ backgroundColor: resolveNetworkColor(network) }}
-                />
-                <span className="filter-row__name">{shortLabel}</span>
-              </label>
-              <div className="filter-row__actions">
-                <button
-                  type="button"
-                  className="filter-panel__select-network-btn"
-                  aria-label={`Resaltar solo ${label}`}
-                  title={`Seleccionar y resaltar los ${count} nodos de esta red, reemplazando cualquier selección anterior (se refleja en todas las vistas)`}
-                  onClick={() => selectWholeNetwork(network)}
-                >
-                  ◎
-                </button>
-                <button
-                  type="button"
-                  className="filter-panel__select-network-btn"
-                  aria-label={`Añadir ${label} a lo resaltado`}
-                  title={`Añadir los ${count} nodos de esta red a la selección actual, sin quitar lo ya resaltado -- para comprobar conectividad compartida entre varias redes`}
-                  onClick={() => addNetworkToSelection(network)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </details>
+        <div id={`${headingId}-networks-body`} hidden={!openSections.networks}>
+          {networkKeys.length === 0 ? (
+            <p className="filter-panel__empty">Sin redes cargadas todavía.</p>
+          ) : (
+            <ul className="filters__networks">
+              {networkKeys.map((network) => {
+                const label = NETWORK_LABELS[network] ?? network;
+                const shortLabel = networkShortLabel(network);
+                const count = nodeIdsByNetwork.get(network)?.length ?? 0;
+                const regions = `${count} región${count === 1 ? "" : "es"}`;
+                // ◎ y + (spec 5.3): su nombre dice qué hacen, también si
+                // ◎ sustituye la selección entera.
+                const highlight = `Resaltar solo la red ${shortLabel} (sustituye la selección)`;
+                const add = `Añadir la red ${shortLabel} a la selección`;
+                return (
+                  <li key={network} className="filters__network">
+                    {/* En la lista, el nombre sin la clasificación, que ya se
+                        ve en el botón «Redes» de la barra. El nombre completo
+                        sigue en el texto emergente. */}
+                    <label title={`${label} — ${regions}`}>
+                      <input
+                        type="checkbox"
+                        checked={!hiddenNetworks.has(network)}
+                        onChange={() => toggleNetwork(network)}
+                      />
+                      <span className="filters__swatch" style={{ backgroundColor: resolveNetworkColor(network) }} />
+                      <span className="filters__name">{shortLabel}</span>
+                      <span className="visually-hidden">, {regions}</span>
+                    </label>
+                    <span className="filters__count" aria-hidden="true">
+                      {formatCount(count)}
+                    </span>
+                    <span className="filters__actions">
+                      <button
+                        type="button"
+                        className="filters__icon-btn"
+                        aria-label={highlight}
+                        title={highlight}
+                        onClick={() => selectWholeNetwork(network)}
+                      >
+                        <Icon name="target" size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="filters__icon-btn"
+                        aria-label={add}
+                        title={add}
+                        onClick={() => addNetworkToSelection(network)}
+                      >
+                        <Icon name="plus" size={14} />
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
 
-      <details className="filter-section" open>
-        <summary>Tipo de conectividad</summary>
-        {CONNECTION_TYPES.map((type) => (
-          <label key={type} className="filter-row">
-            <input
-              type="checkbox"
-              checked={!hiddenConnectionTypes.has(type)}
-              onChange={() => toggleConnectionType(type)}
-            />
-            {CONNECTION_TYPE_LABELS[type]}
-          </label>
-        ))}
-      </details>
+      <div className="filters__section" role="group" aria-labelledby={`${headingId}-types`}>
+        <div className="filters__section-header">
+          <h3 className="filters__heading" id={`${headingId}-types`}>
+            <SectionToggle
+              open={openSections.types}
+              controls={`${headingId}-types-body`}
+              onToggle={() => toggleSection("types")}
+            >
+              Tipo de conectividad
+            </SectionToggle>
+          </h3>
+        </div>
+        <div id={`${headingId}-types-body`} hidden={!openSections.types}>
+          <ul className="filters__types">
+            {CONNECTION_TYPES.map((type) => (
+              <li key={type}>
+                <label
+                  className="filters__type"
+                  title="Conexiones de este tipo que pasan los filtros de redes y de peso mínimo, aunque su casilla esté desmarcada"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!hiddenConnectionTypes.has(type)}
+                    onChange={() => toggleConnectionType(type)}
+                  />
+                  <span className="filters__name">{CONNECTION_TYPE_LABELS[type]}</span>
+                  <span className="filters__count" aria-hidden="true">
+                    {formatCount(connectionCountsByType[type])}
+                  </span>
+                  <span className="visually-hidden">
+                    ,{" "}
+                    {connectionCountsByType[type] === 1
+                      ? "1 conexión"
+                      : `${formatCount(connectionCountsByType[type])} conexiones`}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
-      <details className="filter-section" open>
-        <summary>Peso mínimo: {formatMinWeight(minWeight)}</summary>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.001}
-          value={weightToSliderPosition(minWeight)}
-          onChange={(event) => setMinWeight(sliderPositionToWeight(Number(event.target.value)))}
-          aria-label="Peso mínimo de conectividad"
-        />
-        <details className="filter-panel__weight-help">
-          <summary>¿Cómo funciona?</summary>
-          Escala logarítmica: el peso real de conectividad se concentra en
-          varios órdenes de magnitud por debajo de 0.01, así que cada tramo
-          del deslizador multiplica el peso en vez de sumarle una cantidad
+      <div className="filters__section" role="group" aria-labelledby={`${headingId}-weight`}>
+        <div className="filters__section-header">
+          <h3 className="filters__heading" id={`${headingId}-weight`}>
+            <SectionToggle
+              open={openSections.weight}
+              controls={`${headingId}-weight-body`}
+              onToggle={() => toggleSection("weight")}
+            >
+              Peso mínimo
+            </SectionToggle>
+          </h3>
+          <span className="filters__weight-value">{formatMinWeight(minWeight)}</span>
+        </div>
+        <div id={`${headingId}-weight-body`} hidden={!openSections.weight}>
+          <input
+            type="range"
+            className="filters__slider"
+            min={0}
+            max={1}
+            step={0.001}
+            value={weightToSliderPosition(minWeight)}
+            onChange={(event) => setMinWeight(sliderPositionToWeight(Number(event.target.value)))}
+            aria-label="Peso mínimo de conectividad"
+            aria-valuetext={formatMinWeight(minWeight)}
+          />
+          <p className="filters__visible">
+            {connectionsPassingText(connectionTotals.visible, connectionTotals.loaded)}
+          </p>
+        </div>
+      </div>
+
+      <details className="filters__help">
+        <summary>
+          <Icon name="help" size={15} />
+          ¿Cómo funcionan los filtros?
+        </summary>
+        <p>◎ resalta solo esa red · + la añade a lo ya resaltado.</p>
+        <p>
+          El número junto a cada tipo de conectividad cuenta sus conexiones que pasan los filtros de redes y de
+          peso mínimo, aunque su casilla esté desmarcada: así se ve cuántas añadiría al marcarla.
+        </p>
+        <p>
+          Las vistas pueden dibujar menos conexiones de las que pasan los filtros: con dos o más regiones
+          seleccionadas, solo las que hay entre ellas, y si pasan de {formatCount(MAX_RENDERED_CONNECTIONS)}, ninguna.
+        </p>
+        <p>
+          Peso mínimo: escala logarítmica. El peso real de conectividad se concentra en varios órdenes de magnitud
+          por debajo de 0.01, así que cada tramo del deslizador multiplica el peso en vez de sumarle una cantidad
           fija. En el extremo izquierdo (0) no se filtra nada.
-        </details>
+        </p>
       </details>
     </aside>
   );

@@ -88,7 +88,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 /* Botones "marcar todas"/"desmarcar todas" (30/08/2026, petición de la
    usuaria) -- mismo estilo que .export-btn (botón secundario neutro) para
    no introducir un tercer estilo de botón en la aplicación. */
-.filter-panel__bulk-actions { display: flex; gap: 8px; margin: 0.4rem 0 0.6rem; }
 .filter-panel__bulk-btn { font-size: 0.76rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text); cursor: pointer; }
 .filter-panel__bulk-btn:hover { border-color: var(--text-muted); background: var(--code-bg); }
 
@@ -101,9 +100,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    fijo del panel. */
 .filter-row--network { justify-content: space-between; flex-wrap: wrap; cursor: default; }
 .filter-row--network label { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1 1 auto; min-width: 0; }
-.filter-panel__select-network-btn { font-size: 0.68rem; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text-muted); cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
-.filter-panel__select-network-btn:hover { border-color: var(--text-muted); background: var(--code-bg); color: var(--text); }
-.filter-row__actions { display: flex; gap: 4px; flex: 0 0 auto; }
 .filter-panel__selection-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 0.6rem; font-size: 0.76rem; color: var(--text-muted); }
 .filter-panel__bulk-btn:disabled { opacity: 0.5; cursor: default; }
 .filter-panel__bulk-btn:disabled:hover { border-color: var(--border); background: var(--panel-bg); }
@@ -227,8 +223,9 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .workspace--filters-collapsed { grid-template-columns: 34px minmax(0, 1fr) 300px; }
 .ws-filters { grid-area: filters; min-height: 0; display: flex; }
 .ws-filters .filter-panel { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
-.ws-filters__expand { writing-mode: vertical-rl; flex: 1 1 auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg); color: var(--text); cursor: pointer; font-size: 0.8rem; padding: 8px 0; }
-.ws-filters__expand:hover { border-color: var(--text-muted); background: var(--code-bg); }
+.ws-filters__expand { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-bg); color: var(--text-muted); font: inherit; font-size: 0.72rem; cursor: pointer; }
+.ws-filters__expand > span { writing-mode: vertical-rl; }
+.ws-filters__expand:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
 .ws-detail { grid-area: detail; min-height: 0; display: flex; }
 .ws-detail .detail-panel { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 
@@ -258,25 +255,17 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .ws-view .brain3d-focus-placeholder { height: auto; min-height: 0; flex: 1 1 0; padding: 1rem; }
 .ws-view--thumb .brain3d-focus-placeholder { font-size: 0.75rem; padding: 0.5rem; }
 
-/* Panel de filtros compacto. */
-.filter-panel__header { display: flex; align-items: center; justify-content: space-between; }
-.filter-panel__header h2 { font-size: 0.95rem; margin: 0; font-weight: 600; }
+/* Panel de filtros compacto (decisión 74). Estas reglas quedan para el
+   botón de icono de Ajustes y para los paneles de las vistas de
+   tractografía, que reutilizan sus clases. El panel de filtros de la
+   vista Atlas usa las de la D4, al final de este archivo. */
 .icon-btn { font-size: 0.85rem; line-height: 1; padding: 3px 7px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--text-muted); cursor: pointer; }
 .icon-btn:hover { border-color: var(--text-muted); color: var(--text-h); background: var(--code-bg); }
-.filter-section { border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.4rem; }
-.filter-section > summary { font-weight: 600; font-size: 0.82rem; color: var(--text-h); cursor: pointer; padding: 2px 0; }
-.filter-section__count { font-weight: 400; color: var(--text-muted); }
-.filter-panel__hint { font-size: 0.7rem; color: var(--text-muted); margin: 0 0 0.3rem; }
-.filter-panel .filter-panel__bulk-actions { margin: 0.3rem 0 0.4rem; }
 .filter-panel .filter-panel__selection-status { margin: 0.4rem 0 0; }
 .filter-row--network { flex-wrap: nowrap; padding: 1px 0; }
 .filter-row--network label { overflow: hidden; }
-.filter-row__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .filter-row--network .legend-swatch { flex: 0 0 auto; }
 .filter-row--network input { flex: 0 0 auto; margin: 0; }
-.filter-panel__select-network-btn { min-width: 20px; }
-.filter-panel__weight-help > summary { cursor: pointer; color: var(--text-muted); font-size: 0.72rem; }
-.filter-panel input[type="range"] { width: 100%; }
 
 /* Panel de detalle en la columna derecha. */
 .ws-detail .detail-panel h2 { font-size: 0.9rem; margin: 0 0 4px; font-weight: 600; }
@@ -516,3 +505,77 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .toast__buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .toast__close { height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--code-bg); color: var(--text); font: inherit; font-size: 0.7rem; font-weight: 600; cursor: pointer; }
 .toast__close:hover { border-color: var(--border-strong); background: var(--hover); color: var(--text-h); }
+
+/* Panel de filtros de la vista Atlas (spec 5.3). position: relative: el
+   texto para lectores de pantalla (.visually-hidden) se coloca respecto
+   a este panel, que se desplaza por dentro, y no alarga la página. */
+.ws-filters .filter-panel { position: relative; border-radius: 12px; padding: 14px; }
+.filters__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.filters__header h2 { margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-h); }
+.filters__collapse { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: none; border-radius: 7px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.filters__collapse:hover { background: var(--hover); color: var(--text-h); }
+.filters__selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 16px; padding: 8px 10px; border-radius: 9px; background: var(--code-bg); font-size: 0.72rem; color: var(--text); }
+.filters__text-btn { padding: 0; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 0.7rem; cursor: pointer; }
+.filters__text-btn:hover:not(:disabled) { color: var(--text-h); }
+.filters__text-btn:disabled { opacity: 0.5; cursor: default; }
+.filters__text-btn--strong { font-weight: 600; color: var(--text-h); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--text-faint); }
+.filters__section + .filters__section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.filters__section-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 6px; }
+.filters__heading { margin: 0 0 6px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.filters__section-header .filters__heading { margin: 0; }
+.filters__heading-count { margin-left: 6px; font-weight: 400; letter-spacing: 0; }
+/* Título plegable de cada sección (decisión 74): el chevron apunta
+   abajo con la sección abierta y a la derecha con ella plegada. */
+.filters__disclosure { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: none; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.filters__disclosure:hover { color: var(--text-h); }
+.filters__chevron { transition: transform 0.15s ease; }
+.filters__disclosure[aria-expanded="false"] .filters__chevron { transform: rotate(-90deg); }
+.filters [hidden] { display: none; }
+.filters__bulk { display: flex; gap: 10px; }
+.filters__networks, .filters__types { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.filters__networks { margin: 0 -6px; }
+.filters__network { position: relative; display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 6px; border-radius: 7px; }
+/* La fila se marca con el ratón encima o con el foco del teclado dentro
+   (:focus-visible, no :focus-within: un clic en la casilla no debe dejar
+   la fila como si tuviera el ratón encima). Reglas separadas: sin :has(),
+   solo se pierde la del teclado. */
+.filters__network:hover { background: var(--code-bg); }
+.filters__network:has(:focus-visible) { background: var(--code-bg); }
+.filters__network label, .filters__type { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0; font-size: 0.72rem; color: var(--text); cursor: pointer; }
+.filters__type { min-height: 26px; }
+.filters input[type="checkbox"] { flex-shrink: 0; width: 14px; height: 14px; margin: 0; }
+/* Anillo neutro alrededor del color (principio 6): así se ven también los
+   colores extremos, como el negro de la saliencia de Gordon 333. */
+.filters__swatch { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--text-faint); }
+.filters__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filters__count { flex-shrink: 0; font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* ◎ y + se ven al pasar el ratón por la fila o al llegar a ella con el
+   teclado, en el sitio del número de regiones. El resto del tiempo
+   quedan fuera de la vista, pero no con display: none: siguen en el
+   orden del tabulador, así que Mayús+Tab llega a ellos desde la fila
+   siguiente, y los lectores de pantalla los encuentran. */
+.filters__actions { display: flex; flex-shrink: 0; gap: 2px; }
+.filters__network:not(:hover):not(:has(:focus-visible)) .filters__actions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.filters__network:hover .filters__count { display: none; }
+.filters__network:has(:focus-visible) .filters__count { display: none; }
+.filters__icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: none; border-radius: 6px; background: var(--hover); color: var(--text); cursor: pointer; }
+.filters__icon-btn:hover { background: var(--border); color: var(--text-h); }
+/* El valor del peso va en una sola línea: junto al título si cabe y, si
+   no, en la suya. Con la letra de ancho fijo, «0 (sin filtro, se
+   muestra todo)» mide 252 px y no cabe en los 220 del panel; con la
+   normal, 172. */
+.filters__weight-value { font-size: 0.7rem; font-weight: 500; color: var(--text-h); white-space: nowrap; }
+.filters__slider { display: block; width: 100%; margin: 10px 0 6px; }
+.filters__visible { margin: 0; font-size: 0.7rem; color: var(--text-muted); }
+.filters__help { margin-top: 16px; font-size: 0.7rem; color: var(--text-muted); }
+.filters__help > summary { display: flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; }
+.filters__help > summary::-webkit-details-marker { display: none; }
+.filters__help > summary:hover { color: var(--text-h); }
+.filters__help p { margin: 8px 0 0; line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) {
+  .filters__chevron { transition: none; }
+}
+/* El mismo anillo en las muestras de las vistas de tractografía, que
+   siguen con .legend-swatch: en Claro, los amarillos casi no se veían
+   sobre el blanco (D3, «Limitaciones conocidas»). */
+.legend-swatch { box-shadow: 0 0 0 1px var(--text-faint); }

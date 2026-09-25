@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { Hemisferios } from "./components/Hemisferios";
@@ -11,6 +11,7 @@ import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
 import { DataContextMenu } from "./components/DataContextMenu";
 import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
+import { Icon } from "./components/Icon";
 import { ToastRegion } from "./components/Toast";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
@@ -19,6 +20,8 @@ import { pickAndReadSynthesisFile, type PickedSynthesisFile } from "./logic/synt
 import { validateSynthesisFile } from "./logic/synthesisValidation";
 import { IMPORT_DESKTOP_ONLY_MESSAGE, runInDesktop } from "./logic/desktopOnly";
 import { dismissToast, showToast, type ToastContent, type ToastEntry } from "./logic/toastQueue";
+import { countConnections, type ConnectionCounts } from "./logic/filterCounts";
+import { useFiltersStore } from "./state/filters";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -77,6 +80,12 @@ type View = "atlas" | "species" | "tractography" | "tractography-nodes" | "synth
 // anterior del mismo origen.
 const IMPORT_TOAST = "importar";
 const NETWORK_TOAST = "redes";
+
+const NO_CONNECTION_COUNTS: ConnectionCounts = {
+  byType: { structural: 0, functional: 0, effective: 0 },
+  visible: 0,
+  loaded: 0,
+};
 
 export default function App() {
   const [view, setView] = useState<View>("atlas");
@@ -183,6 +192,37 @@ export default function App() {
   // elegida si todavía está cargando): es la que necesita Brain3D.
   const shownNetworkSource = source.kind === "real" ? (source.networkSource ?? defaultNetworkSource) : null;
   const networkSourcePending = source.kind === "real" && source.networkSource !== networkSource;
+
+  // Recuentos del panel de filtros (D4 de docs/decisiones-diseno.md; spec
+  // 5.3): por tipo de conectividad con los demás filtros, y cuántas
+  // conexiones pasan todos. Se calculan aquí porque el panel solo recibe
+  // los nodos.
+  const hiddenNetworks = useFiltersStore((state) => state.hiddenNetworks);
+  const hiddenConnectionTypes = useFiltersStore((state) => state.hiddenConnectionTypes);
+  const minWeight = useFiltersStore((state) => state.minWeight);
+  const connectionCounts = useMemo(
+    () =>
+      source.kind === "loading"
+        ? NO_CONNECTION_COUNTS
+        : countConnections(source.nodes, source.connections, { hiddenNetworks, hiddenConnectionTypes, minWeight }),
+    [source, hiddenNetworks, hiddenConnectionTypes, minWeight],
+  );
+
+  // Plegar y desplegar Filtros (D4 de docs/decisiones-diseno.md): el foco
+  // pasa al botón que sustituye al que se ha pulsado.
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const focusFiltersToggle = useRef(false);
+  useEffect(() => {
+    if (!focusFiltersToggle.current) return;
+    focusFiltersToggle.current = false;
+    filtersRef.current
+      ?.querySelector<HTMLButtonElement>(filtersCollapsed ? ".ws-filters__expand" : ".filters__collapse")
+      ?.focus();
+  }, [filtersCollapsed]);
+  const toggleFilters = (collapsed: boolean) => {
+    focusFiltersToggle.current = true;
+    setFiltersCollapsed(collapsed);
+  };
 
   const selectedAtlas = ATLASES.find((a) => a.id === selectedAtlasId)!;
 
@@ -484,18 +524,25 @@ export default function App() {
         </>,
       )}
       <div className={`workspace${filtersCollapsed ? " workspace--filters-collapsed" : ""}`}>
-        <div className="ws-filters">
+        <div className="ws-filters" ref={filtersRef}>
           {filtersCollapsed ? (
             <button
               type="button"
               className="ws-filters__expand"
               title="Desplegar el panel de filtros"
-              onClick={() => setFiltersCollapsed(false)}
+              aria-label="Desplegar el panel de filtros"
+              onClick={() => toggleFilters(false)}
             >
-              Filtros »
+              <Icon name="chevronsRight" />
+              <span>Filtros</span>
             </button>
           ) : (
-            <FilterPanel nodes={source.nodes} onCollapse={() => setFiltersCollapsed(true)} />
+            <FilterPanel
+              nodes={source.nodes}
+              onCollapse={() => toggleFilters(true)}
+              connectionCountsByType={connectionCounts.byType}
+              connectionTotals={{ visible: connectionCounts.visible, loaded: connectionCounts.loaded }}
+            />
           )}
         </div>
 
