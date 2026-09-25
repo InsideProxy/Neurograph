@@ -5,11 +5,11 @@ fecha: 2026-09-24
 
 # NeuroGraph — Decisiones de instalación y herramientas auxiliares
 
-Documento hijo de `docs/analisis-arquitectura.md`. El principal recoge los criterios funcionales de la app: datos, criterio científico, API y MCP. Aquí se anotan las decisiones sobre cómo se instala, se pone en marcha y se mantiene: instaladores, Docker, reconstrucción de la base de datos, recuperación de datos y scripts auxiliares. Las de interfaz van en `docs/decisiones-diseno.md`.
+Log de las decisiones sobre cómo se instala, se pone en marcha y se mantiene NeuroGraph: instaladores, Docker, reconstrucción de la base de datos, recuperación de datos y scripts auxiliares. Cada entrada cuenta qué se decidió, por qué y cómo se verificó. Las reglas vigentes que salen de aquí están resumidas en `docs/criterios-herramientas.md`.
 
-**Numeración.** H1, H2… Las que vienen del principal llevan su número antiguo entre paréntesis. El principal conserva una línea con ese número que remite aquí, así que las referencias a "decisión 75" siguen llevando al sitio correcto. Un número sin letra (49, 53…) es una decisión del principal.
+**Numeración.** H1, H2… La H1 empezó en el log general (`docs/analisis-arquitectura.md`) como 75 y lleva ese número entre paréntesis: las referencias a «decisión 75» se encuentran buscándolo aquí. Un número sin letra (49, 53…) es una entrada del log general.
 
-**Antecedentes.** Se quedan en el principal: la 52 y la 53 (volcado de la base de datos) y de la 54 a la 70 (ejecutable de Windows con Tauri y Postgres embebido, firma y publicación en GitHub).
+**Antecedentes.** Están en el log general: la 52 y la 53 (volcado de la base de datos) y de la 54 a la 70 (ejecutable de Windows con Tauri y Postgres embebido, firma y publicación en GitHub).
 
 **Diseños en curso.** `docs/instalador-linux-diseno.md`: instalador para Linux basado en Docker (borrador).
 

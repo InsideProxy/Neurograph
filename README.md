@@ -219,7 +219,8 @@ no aparece, revisa `%APPDATA%\Claude\logs\mcp-server-neurograph.log`.
   distinguen siempre explícitamente (sección 11, sección 24).
 - La IA nunca inventa conexiones, homologías ni evidencia (sección 1).
 
-Ver `docs/analisis-arquitectura.md` para el detalle completo.
+Ver `docs/principios.md` para la lista completa de principios vigentes y
+`docs/analisis-arquitectura.md` para el razonamiento de cada decisión.
 
 ## Licencia
 
