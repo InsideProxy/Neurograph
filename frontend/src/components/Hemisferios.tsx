@@ -61,6 +61,7 @@ import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks
 import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { useDrawColors } from "../theme/useDrawColors";
 import { useAppearanceStore } from "../state/appearance";
+import { RegionSummary } from "./NetworkTag";
 import type { GraphConnection } from "../types/domain";
 
 interface Props {
@@ -328,13 +329,8 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
 
   let readout: ReactNode;
   if (hoveredNode) {
-    readout = (
-      <span>
-        <RegionReadoutText node={hoveredNode} />
-        {" · "}
-        {hoveredNode.hemisphere === "L" ? "hemisferio izquierdo" : hoveredNode.hemisphere === "R" ? "hemisferio derecho" : "sin hemisferio asignado"}
-      </span>
-    );
+    // Región, hemisferio y red con su color (D4 de docs/decisiones-diseno.md; spec 5.4).
+    readout = <RegionSummary node={hoveredNode} />;
   } else if (selectedConnection) {
     const source = nodeById.get(selectedConnection.source);
     const target = nodeById.get(selectedConnection.target);
@@ -370,12 +366,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
       </span>
     );
   } else if (selectedNodesList.length === 1) {
-    const node = selectedNodesList[0];
-    readout = (
-      <span>
-        <RegionReadoutText node={node} />
-      </span>
-    );
+    readout = <RegionSummary node={selectedNodesList[0]} />;
   } else if (selectedNodesList.length > 1) {
     readout = (
       <span className="hemisferios-readout__legend">

@@ -22,6 +22,7 @@ import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
+import { regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
@@ -30,6 +31,7 @@ import { exportResolverFor, ngFill, ngStroke, ngStrokeOpacity } from "../theme/c
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { useAppearanceStore } from "../state/appearance";
 import { Icon } from "./Icon";
+import { RegionSummary } from "./NetworkTag";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
 // por la usuaria): antes siempre se mostraba "abreviatura — nombre",
@@ -232,11 +234,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
 
   let readout: ReactNode;
   if (hoveredNode) {
-    readout = (
-      <span>
-        <RegionReadoutText node={hoveredNode} />
-      </span>
-    );
+    // Región, hemisferio y red con su color (D4 de docs/decisiones-diseno.md; spec 5.4).
+    readout = <RegionSummary node={hoveredNode} />;
   } else if (selectedConnection) {
     const source = nodeById.get(selectedConnection.source);
     const target = nodeById.get(selectedConnection.target);
@@ -261,9 +260,16 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     );
   } else if (selectedNodesList.length === 1) {
     const node = selectedNodesList[0];
+    // Con una sola región seleccionada, cuántas de sus conexiones pasan
+    // los filtros, con el umbral, y una pista (D4 de
+    // docs/decisiones-diseno.md; spec 5.4, como en la maqueta).
+    const single = selectedNodeIds.size === 1;
+    const passing = single ? filteredConnections.filter((c) => c.source === node.id || c.target === node.id).length : 0;
     readout = (
-      <span>
-        <RegionReadoutText node={node} />
+      <span className="readout-selection">
+        <RegionSummary node={node} />
+        {single && <span className="readout-selection__count">{regionPassingText(passing, filters.minWeight)}</span>}
+        {single && <span className="readout-selection__hint">pasa el ratón por otra región para verla</span>}
       </span>
     );
   } else if (selectedNodesList.length > 1) {
