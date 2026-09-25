@@ -110,6 +110,8 @@ Lo que hoy son constantes en `theme/networks.ts` y valores sueltos en los compon
 | `label3dText` texto de las etiquetas 3D | `#c7c5d0` | `#c9ced6` | `#cbd5e6` | `#3a3d43` |
 | `label3dStrong` el de la región seleccionada | `#f3f2f7` | `#f1f3f6` | `#f2f5fb` | `#14161a` |
 | `label3dBackground` su pastilla | `rgba(29, 30, 38, 0.84)` | `rgba(22, 25, 30, 0.84)` | `rgba(17, 23, 38, 0.84)` | `rgba(255, 255, 255, 0.88)` |
+| `mark` marcas: pastilla y anillo (5.9, D9) | `#2563eb` | `#2563eb` | `#2563eb` | `#1d4ed8` |
+| `markText` texto sobre la pastilla de marca | `#ffffff` | `#ffffff` | `#ffffff` | `#ffffff` |
 
 Otros detalles del dibujo:
 
