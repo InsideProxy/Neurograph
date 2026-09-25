@@ -812,15 +812,17 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 
 /* Marcas de regiones (spec 5.9). En Filtros, una línea bajo la selección,
    con su mismo recuadro, a 6 px de ella: «Marcadas: N» y «Quitar marcas» en
-   la primera fila, y debajo los nombres, o cómo marcar si no hay ninguna.
-   Tiene siempre el mismo alto, para que la lista de redes no salte:
-   - La fila no se parte. En sus 200 px caben «Sin marcas», o «Marcadas: 99»,
-     y el botón, que ni se parte ni se encoge.
+   la primera fila, y debajo los nombres. Contextual (decisión del usuario,
+   25/09/2026): sin marcas no se dibuja nada, para aprovechar el espacio.
+   Mientras hay marcas, tiene siempre el mismo alto, para que la lista de
+   redes no salte al marcar más regiones ni al quitar alguna:
+   - La fila no se parte. En sus 200 px caben «Marcadas: 99» y el botón, que
+     ni se parte ni se encoge.
    - Debajo, dos líneas justas (2,8em con line-height 1,4), también con una
-     sola región. Los nombres, o cómo marcar, se cortan con «…» al final de
-     la segunda. Si los filtros ocultan alguna, cuántas va en su propia
-     línea, entera, y los nombres se cortan en la primera. Los nombres de
-     todas están en la etiqueta emergente.
+     sola región. Los nombres se cortan con «…» al final de la segunda. Si
+     los filtros ocultan alguna, cuántas va en su propia línea, entera, y
+     los nombres se cortan en la primera. Los nombres de todas están en la
+     etiqueta emergente.
    La muestra y la etiqueta «marcada» del buscador llevan el color de marca,
    el de la pastilla de los dibujos, con su texto (4,5:1 sobre ella). */
 .filters__selection + .filters__marks { margin-top: -10px; }
@@ -833,7 +835,6 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
 .filters__marks-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .filters__marks-text:not(:last-child) { -webkit-line-clamp: 1; }
 .filters__marks-hidden { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.filters__text-btn[aria-disabled="true"] { opacity: 0.5; cursor: default; }
 .region-search__marked { flex-shrink: 0; padding: 0 6px; border-radius: 999px; background: var(--mark); color: var(--mark-text); font-size: 0.7rem; font-weight: 600; line-height: 1.5; }
 /* «seleccionada» y «marcada», una sobre otra a la derecha de la sugerencia:
    una junto a otra dejaban entre 20 y 30 px para el texto, y el nombre se

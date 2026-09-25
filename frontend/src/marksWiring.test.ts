@@ -91,10 +91,11 @@ describe("marcas: exportación y estilos", () => {
     }
   });
 
-  // Para que la lista de redes no salte: sin marcas, «Quitar marcas» y el
-  // rótulo se partían, y el recuadro pasaba de 4 líneas a 2 con una marca y
-  // a 3 con varias.
-  it("la línea de las marcas tiene siempre el mismo alto: la fila no se parte y debajo van dos líneas justas", () => {
+  // Para que la lista de redes no salte mientras hay marcas: el recuadro no
+  // cambia de alto al marcar más regiones, al quitar alguna ni al mostrar u
+  // ocultar una red con los filtros. Sin marcas no se dibuja nada (decisión
+  // del usuario, 25/09/2026): no hay recuadro que estabilizar.
+  it("mientras hay marcas, la línea tiene siempre el mismo alto: la fila no se parte y debajo van dos líneas justas", () => {
     const button = declarations(".filters__marks-row > .filters__text-btn");
     expect(button).toContain("flex-shrink: 0;");
     expect(button).toContain("white-space: nowrap;");
