@@ -52,17 +52,15 @@ import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPh
 import { getLabelTexture } from "../logic/textSprite";
 import { markerSize } from "../logic/markerSize";
 import {
-  createDepthFade,
-  depthBounds,
-  fadeKey,
-  fadeMaterialProps,
-  tuplePoints,
-  updateDepthFadeUniforms,
-  type DepthBounds,
-  type DepthFade,
-} from "../logic/depthFade";
-import { readDepthFadePreference, writeDepthFadePreference } from "../logic/depthFadePreference";
-import { browserStorage } from "../state/appearance";
+  OCCLUSION_PASS_PRIORITY,
+  createCortexOcclusion,
+  createOcclusionOverrideMaterial,
+  createOcclusionTarget,
+  detachCortexOcclusion,
+  occlusionMaterialProps,
+  renderCortexDepth,
+  type CortexOcclusion,
+} from "../logic/cortexOcclusion";
 import { NETWORK_LABELS } from "../theme/networks";
 import { hasNetworkColor } from "../theme/colors";
 import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
@@ -70,7 +68,6 @@ import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ReferenceMesh } from "./ReferenceMesh";
-import { DepthFadeToggle } from "./DepthFadeToggle";
 import {
   PaintedCortex,
   type HemisphereVisibility,
@@ -348,12 +345,35 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
   return null;
 }
 
-// Tramo de la atenuación por profundidad (Legibilidad del 3D;
-// logic/depthFade.ts), en cada fotograma: después de que los controles
-// coloquen la cámara, que se suscribieron antes, y antes de dibujar.
-// `bounds` es la caja del cerebro que se ve.
-function DepthFadeUpdater({ fade, bounds }: { fade: DepthFade; bounds: DepthBounds | null }) {
-  useFrame(({ camera }) => updateDepthFadeUniforms(fade.uniforms, camera, bounds));
+// Pasada de la oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts):
+// en cada fotograma dibuja la profundidad de la corteza pintada en su propio
+// destino, fuera de pantalla, y enciende la oclusión con ella. Solo se monta
+// con la corteza pintada (renderFocus); al desmontarse, apaga la oclusión y
+// libera su destino y su material.
+//
+// Orden en el fotograma: react-three-fiber llama a los useFrame por
+// prioridad, de menor a mayor. Controls coloca la cámara con prioridad 0,
+// esta pasada va con OCCLUSION_PASS_PRIORITY (0,5) y ExportBridge dibuja el
+// lienzo con prioridad 1. Así la profundidad es siempre la de la cámara con
+// la que se dibuja. La captura de la exportación (logic/capture3d.ts) dibuja
+// la escena con la misma cámara, en su propio requestAnimationFrame, después
+// de este: usa la profundidad de la corteza de este fotograma y reproduce la
+// oclusión tal como se ve.
+function CortexOcclusionPass({ occlusion }: { occlusion: CortexOcclusion }) {
+  const [target] = useState(createOcclusionTarget);
+  const [overrideMaterial] = useState(createOcclusionOverrideMaterial);
+  useEffect(
+    () => () => {
+      detachCortexOcclusion(occlusion);
+      target.dispose();
+      overrideMaterial.dispose();
+    },
+    [occlusion, target, overrideMaterial],
+  );
+  useFrame(
+    ({ gl, scene, camera }) => renderCortexDepth(gl, scene, camera, target, occlusion, overrideMaterial),
+    OCCLUSION_PASS_PRIORITY,
+  );
   return null;
 }
 
@@ -446,12 +466,12 @@ function ExportBridge({
 function NodeLabel({
   node,
   offset,
-  fade,
+  occlusion,
   overlay = false,
 }: {
   node: GraphNode;
   offset: number;
-  fade: DepthFade | null;
+  occlusion: CortexOcclusion;
   overlay?: boolean;
 }) {
   // useMemo va antes que cualquier retorno condicional (regla de los
@@ -487,13 +507,12 @@ function NodeLabel({
   return (
     <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
       <spriteMaterial
-        key={fadeKey(fade)}
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
-        {...fadeMaterialProps(fade, false)}
+        {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
       />
     </sprite>
   );
@@ -511,7 +530,7 @@ function NodeMesh({
   node,
   isHomologyHighlighted,
   colors,
-  fade,
+  occlusion,
   overlay = false,
 }: {
   node: GraphNode;
@@ -529,8 +548,10 @@ function NodeMesh({
   // concreto no tiene ninguna fila de homología real hacia ella).
   isHomologyHighlighted: boolean;
   colors: DrawColors;
-  // Atenuación por profundidad (Legibilidad del 3D); null, desactivada.
-  fade: DepthFade | null;
+  // Oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts): el parche
+  // y los uniforms que comparten los materiales de la capa de foco de este
+  // lienzo.
+  occlusion: CortexOcclusion;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
   const isSelected = selectedNodeIds.has(node.id);
@@ -574,11 +595,10 @@ function NodeMesh({
       <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
-          key={fadeKey(fade)}
           color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
-          {...fadeMaterialProps(fade, true)}
+          {...occlusionMaterialProps(occlusion, { opaque: true, overlay })}
         />
       </mesh>
       <mesh position={node.position3d} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
@@ -587,12 +607,11 @@ function NodeMesh({
             nodos. Sigue viéndose redondo a esta escala. */}
         <sphereGeometry args={[size.radius, 14, 14]} />
         <meshStandardMaterial
-          key={fadeKey(fade)}
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
           depthTest={!overlay}
-          {...fadeMaterialProps(fade, true)}
+          {...occlusionMaterialProps(occlusion, { opaque: true, overlay })}
         />
       </mesh>
       {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
@@ -612,7 +631,7 @@ function NodeMesh({
           <meshBasicMaterial />
         </mesh>
       )}
-      <NodeLabel node={node} offset={size.labelOffset} fade={fade} overlay={overlay} />
+      <NodeLabel node={node} offset={size.labelOffset} occlusion={occlusion} overlay={overlay} />
     </>
   );
 }
@@ -621,13 +640,13 @@ function DirectionArrow({
   from,
   to,
   color,
-  fade,
+  occlusion,
   overlay = false,
 }: {
   from: THREE.Vector3;
   to: THREE.Vector3;
   color: string;
-  fade: DepthFade | null;
+  occlusion: CortexOcclusion;
   overlay?: boolean;
 }) {
   // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
@@ -646,7 +665,7 @@ function DirectionArrow({
   return (
     <mesh position={position} quaternion={quaternion} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
       <coneGeometry args={[0.035, 0.09, 12]} />
-      <meshBasicMaterial key={fadeKey(fade)} color={color} depthTest={!overlay} {...fadeMaterialProps(fade, true)} />
+      <meshBasicMaterial color={color} depthTest={!overlay} {...occlusionMaterialProps(occlusion, { opaque: true, overlay })} />
     </mesh>
   );
 }
@@ -659,7 +678,7 @@ function ConnectionLine({
   isDirected,
   onClick,
   colors,
-  fade,
+  occlusion,
   overlay = false,
 }: {
   a: [number, number, number];
@@ -669,7 +688,7 @@ function ConnectionLine({
   isDirected: boolean;
   onClick: () => void;
   colors: DrawColors;
-  fade: DepthFade | null;
+  occlusion: CortexOcclusion;
   overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
@@ -705,27 +724,25 @@ function ConnectionLine({
       >
         {isDashed ? (
           <lineDashedMaterial
-            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             dashSize={0.08}
             gapSize={0.06}
             depthTest={!overlay}
-            {...fadeMaterialProps(fade, false)}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
           />
         ) : (
           <lineBasicMaterial
-            key={fadeKey(fade)}
             color={color}
             transparent
             opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             depthTest={!overlay}
-            {...fadeMaterialProps(fade, false)}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
           />
         )}
       </threeLine>
-      {isDirected && <DirectionArrow from={from} to={to} color={color} fade={fade} overlay={overlay} />}
+      {isDirected && <DirectionArrow from={from} to={to} color={color} occlusion={occlusion} overlay={overlay} />}
     </>
   );
 }
@@ -1013,24 +1030,12 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   const colors = useDrawColors(exportPhase === "capturing");
   const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
 
-  // «Atenuar lo que queda detrás» (Legibilidad del 3D; spec 6.3): activado
-  // por defecto y guardado en este navegador. `depthFade` guarda el parche y
-  // los uniforms que comparten los materiales de la capa de foco, uno por
-  // lienzo; `activeFade` es null con el interruptor desactivado.
-  const [depthFadeOn, setDepthFadeOn] = useState(() => readDepthFadePreference(browserStorage()));
-  const [depthFade] = useState(createDepthFade);
-  const activeFade = depthFadeOn ? depthFade : null;
-  const toggleDepthFade = () => {
-    const next = !depthFadeOn;
-    setDepthFadeOn(next);
-    writeDepthFadePreference(browserStorage(), next);
-  };
-  // Caja de todos los nodos del atlas: con ella se mide la atenuación cuando
-  // los marcadores van en su posición real (sin corteza pintada).
-  const nodeBounds = useMemo(
-    () => depthBounds(tuplePoints(allNodes.map((n) => n.position3d)), 0, allNodes.length),
-    [allNodes],
-  );
+  // Oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts): con la
+  // corteza pintada, lo que ella tapa se ve tenue. Sustituye a «Atenuar lo
+  // que queda detrás» de la D5, y no tiene interruptor: es como se dibuja.
+  // `occlusion` guarda el parche y los uniforms que comparten los materiales
+  // de la capa de foco, uno por lienzo; CortexOcclusionPass la enciende.
+  const [occlusion] = useState(createCortexOcclusion);
 
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
@@ -1362,14 +1367,14 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     const overlay = helpers !== null;
     return (
       <>
-        {activeFade && <DepthFadeUpdater fade={activeFade} bounds={helpers ? helpers.visibleBounds : nodeBounds} />}
+        {helpers && <CortexOcclusionPass occlusion={occlusion} />}
         {[...placed.values()].map((node) => (
           <NodeMesh
             key={node.id}
             node={node}
             isHomologyHighlighted={homologyNodeIds.has(node.id)}
             colors={colors}
-            fade={activeFade}
+            occlusion={occlusion}
             overlay={overlay}
           />
         ))}
@@ -1397,7 +1402,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               isDirected={conn.type === "effective"}
               onClick={() => selectConnection(conn.id)}
               colors={colors}
-              fade={activeFade}
+              occlusion={occlusion}
               overlay={overlay}
             />
           );
@@ -1439,7 +1444,6 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
-        <DepthFadeToggle enabled={depthFadeOn} onToggle={toggleDepthFade} />
         {/* aria-disabled, no disabled: así el botón conserva el foco del
             teclado mientras se exporta. No hace de guarda -- un segundo
             clic durante la exportación ya no hace nada por su cuenta (ver
