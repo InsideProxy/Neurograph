@@ -27,7 +27,7 @@ import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
 import { MARK_ELEMENT, isMarkGesture, markRing, type ClickKeys } from "../logic/marks";
-import { labelTransform, radialLabel, ringLayout } from "../logic/connectogramLayout";
+import { SELECTION_HALO_OPACITY, labelTransform, radialLabel, ringLayout, selectionHalo } from "../logic/connectogramLayout";
 import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
@@ -344,6 +344,16 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     ];
   });
 
+  // Halo de las regiones seleccionadas (fase 4 del rediseño; spec 6.1): un
+  // anillo del color de selección al 35 % por fuera de su contorno. Una
+  // región seleccionada siempre se dibuja ampliada (radio + 3) y con el
+  // contorno de 2,5 px, como en el dibujo de los nodos, más abajo.
+  const halo = selectionHalo(nodeRadius + 3, 2.5);
+  const haloCenters = [...selectedNodeIds].flatMap((id) => {
+    const pos = positions.get(id);
+    return pos ? [{ id, pos }] : [];
+  });
+
   return (
     <div className="viz-panel">
     {!compact && (
@@ -614,6 +624,27 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           );
         })}
       </g>
+      {/* Halo de las regiones seleccionadas (fase 4 del rediseño; spec 6.1),
+          encima de los nodos vecinos, como en la maqueta, y debajo del anillo
+          de una marca, que no se mueve. Es parte del dibujo: se exporta, con
+          el color de selección de la exportación. */}
+      {haloCenters.length > 0 && (
+        <g style={{ pointerEvents: "none" }}>
+          {haloCenters.map(({ id, pos }) => (
+            <circle
+              key={id}
+              cx={pos.x}
+              cy={pos.y}
+              r={halo.radius}
+              fill="none"
+              stroke={colors.selected}
+              {...ngStroke("selected")}
+              strokeOpacity={SELECTION_HALO_OPACITY}
+              strokeWidth={halo.strokeWidth}
+            />
+          ))}
+        </g>
+      )}
       {/* Marcas (spec 5.9), encima de los nodos y de las etiquetas, para que
           ninguna vecina las tape: el anillo del color de marca y la etiqueta
           sobre su pastilla (MarkedLabel). */}
@@ -855,6 +886,9 @@ function ConnectogramLens({
           const leftHalf = ux < 0;
           const rotation = leftHalf ? angle + 180 : angle;
           const textAnchor = leftHalf ? "start" : "end";
+          // Halo de una región seleccionada (fase 4 del rediseño; spec 6.1),
+          // como en el dibujo principal: debajo del anillo de una marca.
+          const lensHalo = selectionHalo(r, 2.5);
           // Región marcada (spec 5.9): el anillo, con el hueco del color del
           // fondo, detrás del nodo, y la etiqueta sobre su pastilla, girada
           // con ella.
@@ -862,6 +896,17 @@ function ConnectogramLens({
           const markedRing = markRing(r, isSelected || isHovered ? 2.5 : 1);
           return (
             <g key={node.id}>
+              {isSelected && (
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={lensHalo.radius}
+                  fill="none"
+                  stroke={colors.selected}
+                  strokeOpacity={SELECTION_HALO_OPACITY}
+                  strokeWidth={lensHalo.strokeWidth}
+                />
+              )}
               {isMarked && (
                 <circle
                   {...MARK_ELEMENT}

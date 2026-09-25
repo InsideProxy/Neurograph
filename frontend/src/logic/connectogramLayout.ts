@@ -143,3 +143,25 @@ export function ringLayout({ size, labels, nodeRadius, fontSize, fitLabels }: Ri
   const margin = Math.max(RING_MARGIN, labelReach(labels, nodeRadius, fontSize).enlarged);
   return { radius: Math.max(usual / 2, size / 2 - margin) };
 }
+
+// Un anillo: el radio de su trazo, en el centro del trazo, y su grosor.
+export interface Ring {
+  radius: number;
+  strokeWidth: number;
+}
+
+// Halo de una región seleccionada (6.1): un anillo del color de selección al
+// 35 %, en todos los temas, por fuera de su contorno de 2,5 px y separado de
+// él por un hueco, como en la maqueta. Si la región está marcada, el anillo
+// de la marca (markRing, 5.9) no se mueve: va encima y tapa la parte de
+// dentro del halo, y el borde de fuera del halo sigue viéndose.
+export const SELECTION_HALO_GAP = 2;
+export const SELECTION_HALO_WIDTH = 2;
+export const SELECTION_HALO_OPACITY = 0.35;
+
+export function selectionHalo(nodeRadius: number, nodeStrokeWidth: number): Ring {
+  return {
+    radius: nodeRadius + nodeStrokeWidth / 2 + SELECTION_HALO_GAP + SELECTION_HALO_WIDTH / 2,
+    strokeWidth: SELECTION_HALO_WIDTH,
+  };
+}

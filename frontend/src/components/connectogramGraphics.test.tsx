@@ -166,3 +166,32 @@ describe("espacio de las etiquetas (6.1)", () => {
     expect(ringOf(html)).toBeCloseTo(CENTER - RING_MARGIN, 6);
   });
 });
+
+describe("halo de la región seleccionada (6.1)", () => {
+  const html = renderToStaticMarkup(<Connectogram nodes={NODES} connections={[]} />);
+  const halos = [...html.matchAll(/<circle ([^>]*stroke-opacity="0.35"[^>]*)><\/circle>/g)].map((m) => attributes(m[1]));
+  const ifja = nodeLabels(html).get("IFJa")!;
+  const node = attributes(/<g transform="translate\([^)]*\)"><circle ([^>]*)><\/circle><\/g><text [^>]*>IFJa</.exec(html)![1]);
+
+  it("solo la región seleccionada lo lleva: un anillo del color de selección al 35 %, que se exporta", () => {
+    expect(halos).toHaveLength(1);
+    const [halo] = halos;
+    expect([Number(halo.cx), Number(halo.cy)]).toEqual([ifja.x, ifja.y]);
+    expect(halo.fill).toBe("none");
+    expect(halo.stroke).toBe(TOKENS.selected);
+    expect(halo["data-ng-stroke"]).toBe("selected");
+    expect(halo["data-ng-mark"]).toBeUndefined();
+  });
+
+  it("va por fuera del contorno de 2,5 px del nodo; el anillo de su marca, donde estaba y encima, deja ver su borde de fuera", () => {
+    const [halo] = halos;
+    expect(node["stroke-width"]).toBe("2.5");
+    const nodeOuter = Number(node.r) + Number(node["stroke-width"]) / 2;
+    expect(Number(halo.r) - Number(halo["stroke-width"]) / 2).toBeGreaterThan(nodeOuter);
+    const ring = attributes(new RegExp(`<circle ([^>]*stroke="${TOKENS.mark}"[^>]*)></circle>`).exec(html)![1]);
+    expect(Number(ring.cx)).toBe(ifja.x);
+    expect(Number(ring.r) - Number(ring["stroke-width"]) / 2).toBeGreaterThan(nodeOuter);
+    expect(Number(ring.r) + Number(ring["stroke-width"]) / 2).toBeLessThan(Number(halo.r) + Number(halo["stroke-width"]) / 2);
+    expect(html.indexOf(`stroke="${TOKENS.mark}"`)).toBeGreaterThan(html.indexOf('stroke-opacity="0.35"'));
+  });
+});

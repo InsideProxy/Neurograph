@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   RING_MARGIN,
+  SELECTION_HALO_GAP,
+  SELECTION_HALO_OPACITY,
   estimatedLabelWidth,
   labelReach,
   labelTransform,
   radialLabel,
   ringLayout,
+  selectionHalo,
 } from "./connectogramLayout";
-import { pillAround } from "./marks";
+import { markRing, pillAround } from "./marks";
 
 // Geometría del connectograma de la fase 4 del rediseño
 // (docs/rediseno-interfaz-diseno.md, 6.1).
@@ -144,5 +147,20 @@ describe("ringLayout", () => {
   it("en un dibujo pequeño con etiquetas muy largas, el círculo no baja de la mitad de su radio de siempre", () => {
     const { radius } = ringLayout({ size: 320, labels: ["r_ventraldiencephalon"], nodeRadius: 6, fontSize: 9, fitLabels: true });
     expect(radius).toBe(usual(320) / 2);
+  });
+});
+
+describe("halo de la región seleccionada", () => {
+  it("es un anillo al 35 %, por fuera del contorno de 2,5 px y separado de él", () => {
+    const halo = selectionHalo(6, 2.5);
+    expect(SELECTION_HALO_OPACITY).toBe(0.35);
+    expect(halo.radius - halo.strokeWidth / 2 - (6 + 2.5 / 2)).toBeCloseTo(SELECTION_HALO_GAP);
+  });
+
+  it("con una marca, el anillo de la marca no se mueve y deja ver el borde de fuera del halo", () => {
+    const halo = selectionHalo(6, 2.5);
+    const ring = markRing(6, 2.5);
+    expect(ring.radius - ring.strokeWidth / 2).toBeGreaterThan(6 + 2.5 / 2);
+    expect(ring.radius + ring.strokeWidth / 2).toBeLessThan(halo.radius + halo.strokeWidth / 2);
   });
 });
