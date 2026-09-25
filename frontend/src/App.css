@@ -856,3 +856,49 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    una junto a otra dejaban entre 20 y 30 px para el texto, y el nombre se
    partía en una columna alta. Así le quedan unos 90 o 100. */
 .region-search__tags { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+/* Tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10).
+   El botón «?» de la barra, junto al engranaje y del mismo tamaño. Es solo
+   un icono, así que no se pliega; su nombre sale con el foco del teclado
+   bajo el botón, hacia la izquierda para no salirse de la barra, como el de
+   «Importar» plegado, y tampoco cuenta mientras TopBar mide. */
+.topbar__help { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; }
+.topbar__help:focus-visible::after { content: attr(data-tip); content: attr(data-tip) / ""; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel-bg); box-shadow: var(--shadow); color: var(--text-h); font-size: 0.7rem; font-weight: 500; line-height: 1.35; white-space: nowrap; pointer-events: none; }
+.topbar[data-measuring] .topbar__help:focus-visible::after { content: none; }
+
+/* La caja del tour (components/tourDriver.ts): la de driver.js
+   (driver.js/dist/driver.css) con los tokens del tema, que sustituyen a sus
+   colores fijos, la tipografía de la app y su anillo de foco. Los selectores
+   llevan una clase de más para ganar a los de driver.js sin depender del
+   orden de las hojas. Lo que no se ilumina se atenúa con --bg (overlayColor),
+   que oscurece en los temas oscuros y aclara en Claro. Mide 300 px: así, al
+   lado de la vista grande, cabe en la columna de la derecha. */
+.driver-popover.tour-popover { box-sizing: border-box; width: min(300px, calc(100vw - 24px)); min-width: 0; max-width: none; padding: 12px 14px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel-bg); color: var(--text); box-shadow: var(--shadow); font-family: var(--sans); font-size: 0.76rem; line-height: 1.45; letter-spacing: 0.18px; text-align: left; }
+.tour-popover .tour-popover__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-popover .driver-popover-progress-text { color: var(--text-muted); font-family: var(--mono); font-size: 0.7rem; }
+.tour-popover .driver-popover-title { margin: 6px 0 0; color: var(--text-h); font: inherit; font-size: 0.89rem; font-weight: 600; line-height: 1.3; }
+.tour-popover .driver-popover-description { margin: 6px 0 0; color: var(--text); font-size: 0.76rem; line-height: 1.5; }
+.tour-popover .tour-popover__status { margin: 8px 0 0; color: var(--text-muted); font-size: 0.7rem; }
+/* «Salir»: un botón de texto, como «Limpiar» en Filtros. */
+.tour-popover .driver-popover-close-btn { position: static; width: auto; height: auto; padding: 0; color: var(--text-h); font: inherit; font-size: 0.7rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--text-faint); cursor: pointer; }
+.tour-popover .driver-popover-close-btn:hover, .tour-popover .driver-popover-close-btn:focus { color: var(--text-h); }
+.tour-popover .driver-popover-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.tour-popover .driver-popover-navigation-btns { display: flex; justify-content: flex-end; gap: 6px; }
+.tour-popover .driver-popover-navigation-btns button + button { margin-left: 0; }
+.tour-popover button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tour-popover button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* La flecha: el lado que se ve, del color de la caja. */
+.tour-popover .driver-popover-arrow-side-left { border-left-color: var(--panel-bg); }
+.tour-popover .driver-popover-arrow-side-right { border-right-color: var(--panel-bg); }
+.tour-popover .driver-popover-arrow-side-top { border-top-color: var(--panel-bg); }
+.tour-popover .driver-popover-arrow-side-bottom { border-bottom-color: var(--panel-bg); }
+/* Mientras el tour señala la fila de una red, ◎ y + se ven, como con el
+   ratón encima: son lo que explica. Mismo selector que el que los esconde,
+   con una clase de más. */
+.filters .filters__network.driver-active-element { background: var(--code-bg); }
+.filters .filters__network.driver-active-element:not(:hover):not(:has(:focus-visible)) .filters__actions { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
+.filters .filters__network.driver-active-element .filters__count { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .driver-fade .driver-overlay, .driver-fade .driver-popover { animation: none; }
+  .tour-popover .driver-popover-close-btn { transition: none; }
+}

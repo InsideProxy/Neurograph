@@ -27,6 +27,7 @@ import { useDrawColors } from "../theme/useDrawColors";
 import type { GraphNode } from "../types/domain";
 import { Icon } from "./Icon";
 import { useMouseMoved } from "./useMouseMoved";
+import { useTourControl } from "./useTourControl";
 
 interface RegionSearchViewProps {
   baseId: string;
@@ -66,7 +67,7 @@ export function RegionSearchView(props: RegionSearchViewProps) {
   const optionId = (index: number) => `${baseId}-option-${index}`;
   const hint = result.hidden;
   return (
-    <div className="region-search">
+    <div className="region-search" data-tour="buscador">
       <label className="visually-hidden" htmlFor={inputId}>Buscar una región</label>
       <div className="region-search__field">
         <Icon name="search" size={14} className="region-search__icon" />
@@ -213,6 +214,9 @@ export function RegionSearch({ nodes }: { nodes: readonly GraphNode[] }) {
     setActive(null);
     setDismissed(false);
   };
+  // El tour guiado (D11; spec 5.10) escribe «TE1m» como si fuera el usuario
+  // y, al salir, deja el texto que había.
+  useTourControl("buscador", query, restart);
 
   // Elegir una región la añade a la selección (spec 5.8). Si ya estaba, no
   // cambia nada: ni siquiera se llama a addNodes, que crearía otro Set.

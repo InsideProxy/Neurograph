@@ -45,6 +45,20 @@ describe("FilterPanel", () => {
     expect(html).toContain(">Ninguna</button>");
   });
 
+  it("«Todas» y «Ninguna» dicen que muestran u ocultan las redes: «marcar» es ahora otra cosa (spec 5.9 y 5.10)", () => {
+    expect(html).toContain('title="Mostrar todas las redes">Todas</button>');
+    expect(html).toContain('title="Ocultar todas las redes">Ninguna</button>');
+    expect(html).not.toMatch(/title="(Des)?[mM]arcar todas/);
+  });
+
+  it("lleva las anclas del tour guiado (D11): la selección, la sección de redes, cada red con su clave y el peso mínimo", () => {
+    expect(html).toContain('<div class="filters__selection" data-tour="seleccion">');
+    expect(html).toMatch(/<div class="filters__section" role="group" aria-labelledby="[^"]+-networks" data-tour="redes">/);
+    expect(html).toContain('<li class="filters__network" data-tour="red" data-network="cole-anticevic.visual">');
+    expect(html).toContain('<li class="filters__network" data-tour="red" data-network="cole-anticevic.default">');
+    expect(html).toMatch(/<div class="filters__section" role="group" aria-labelledby="[^"]+-weight" data-tour="peso">/);
+  });
+
   it("◎ y + dicen qué hacen, en su nombre y en su etiqueta emergente", () => {
     expect(html).toContain(
       'aria-label="Resaltar solo la red Visual (sustituye la selección)" title="Resaltar solo la red Visual (sustituye la selección)"',

@@ -31,7 +31,14 @@ interface TopBarProps {
   // El botón «Importar», para devolverle el foco al cerrar el último aviso
   // (Task 3).
   importRef?: Ref<HTMLButtonElement>;
+  // Ayuda (D11 de docs/decisiones-diseno.md; spec 5.10): el botón «?», junto al
+  // engranaje, abre el tour guiado, y al salir de él el foco vuelve aquí.
+  onHelp?: () => void;
+  helpRef?: Ref<HTMLButtonElement>;
 }
+
+// Su nombre y su etiqueta emergente, también con el teclado (data-tip).
+const HELP_LABEL = "Ayuda: tour de 2 minutos";
 
 // Logotipo de la maqueta (decisión del usuario, 24/09/2026; principio 4
 // del spec): un anillo con cuatro nodos unidos. El anillo y las uniones
@@ -121,7 +128,7 @@ function refit(bar: HTMLElement | null, force = false) {
   document.documentElement.style.setProperty("--topbar-bottom", `${barBottom(bar)}px`);
 }
 
-export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProps) {
+export function TopBar({ tabs, onImport, context = null, importRef, onHelp, helpRef }: TopBarProps) {
   const barRef = useRef<HTMLElement>(null);
   // Pestaña que recibe el foco tras cerrar una síntesis (tabAfterClosing):
   // el botón que lo tenía desaparece en el render siguiente.
@@ -237,6 +244,20 @@ export function TopBar({ tabs, onImport, context = null, importRef }: TopBarProp
           <Icon name="upload" />
           <span className="topbar__import-label">Importar</span>
         </button>
+        {onHelp && (
+          <button
+            ref={helpRef}
+            type="button"
+            className="icon-btn topbar__help"
+            aria-label={HELP_LABEL}
+            title={HELP_LABEL}
+            data-tip={HELP_LABEL}
+            data-tour="ayuda"
+            onClick={onHelp}
+          >
+            <Icon name="help" size={18} />
+          </button>
+        )}
         <SettingsMenu />
       </div>
     </header>

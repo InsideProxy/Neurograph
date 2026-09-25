@@ -32,6 +32,10 @@ describe("RegionSearch", () => {
     expect(html).not.toContain('role="listbox"');
   });
 
+  it("lleva el ancla del tour guiado (D11): el campo con su línea de avisos", () => {
+    expect(renderToStaticMarkup(<RegionSearch nodes={[]} />)).toMatch(/^<div class="region-search" data-tour="buscador">/);
+  });
+
   it("abierto, el campo controla la lista y apunta a la sugerencia activa", () => {
     const html = view({ suggestions: TE1M, hidden: null, noMatch: false }, true, ["l_te1m"]);
     expect(html).toContain('aria-expanded="true" aria-controls="busca-list" aria-activedescendant="busca-option-0"');

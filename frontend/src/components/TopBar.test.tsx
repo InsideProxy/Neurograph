@@ -59,6 +59,28 @@ describe("TopBar", () => {
     expect(html).toContain('data-tab-id="synthesis-1"');
   });
 
+  it("sin onHelp no hay botón de ayuda", () => {
+    expect(html).not.toContain("topbar__help");
+  });
+
+  it("el botón «?» (spec 5.10) va junto al engranaje, con su nombre y su etiqueta emergente, también con el teclado", () => {
+    const withHelp = renderToStaticMarkup(<TopBar tabs={TABS} onImport={noop} onHelp={noop} />);
+    const button = withHelp.match(/<button[^>]*class="icon-btn topbar__help"[^>]*>/)?.[0] ?? "";
+    expect(button).toContain('type="button"');
+    expect(button).toContain('aria-label="Ayuda: tour de 2 minutos"');
+    expect(button).toContain('title="Ayuda: tour de 2 minutos"');
+    expect(button).toContain('data-tip="Ayuda: tour de 2 minutos"');
+    // Es el ancla del último paso del tour. driver.js quita aria-haspopup,
+    // aria-expanded y aria-controls de lo que ha señalado: no los lleva.
+    expect(button).toContain('data-tour="ayuda"');
+    expect(button).not.toMatch(/aria-(haspopup|expanded|controls)/);
+    // Entre «Importar» y el engranaje de Ajustes.
+    const help = withHelp.indexOf("topbar__help");
+    expect(withHelp.indexOf("topbar__import")).toBeLessThan(help);
+    expect(help).toBeLessThan(withHelp.indexOf("settings__trigger"));
+    expect(maxButtonDepth(withHelp)).toBe(1);
+  });
+
   it("--active y --closable solo aparecen cuando toca, nunca juntas aquí", () => {
     expect(html).toContain('class="topbar__tab topbar__tab--active"'); // atlas: activa, no cerrable
     expect(html).toContain('class="topbar__tab"'); // species: ni activa ni cerrable

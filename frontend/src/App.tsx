@@ -11,6 +11,7 @@ import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
 import { DataContextMenu } from "./components/DataContextMenu";
 import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
+import { GuidedTour } from "./components/GuidedTour";
 import { Icon } from "./components/Icon";
 import { ToastRegion } from "./components/Toast";
 import { HistoryButtons } from "./components/HistoryButtons";
@@ -27,6 +28,7 @@ import { countConnections, type ConnectionCounts } from "./logic/filterCounts";
 import { stepNotice } from "./logic/historyStep";
 import { useFiltersStore } from "./state/filters";
 import { resetForAtlasChange, resetHistory, undo, useHistoryStore } from "./state/history";
+import type { TourHost } from "./state/tourRunner";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -455,6 +457,30 @@ export default function App() {
       />
     ) : null;
 
+  // Tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10): se abre con el
+  // botón «?» de la barra y hace el ejemplo con el estado y los manejadores
+  // de aquí, los mismos que usa la interfaz. Al salir, lo devuelve todo como
+  // estaba y el foco vuelve a «?». El tour solo devuelve a setView una
+  // pestaña que ya estaba en `view`, o «atlas».
+  const [tourOpen, setTourOpen] = useState(false);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const tourHost: TourHost = {
+    view,
+    setView: (value) => setView(value as View),
+    atlasId: selectedAtlasId,
+    changeAtlas: handleChangeAtlas,
+    networkSource,
+    setNetworkSource: (value) => {
+      setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
+      setNetworkSource(value);
+    },
+    data: source,
+    mainView,
+    setMainView,
+    filtersCollapsed,
+    setFiltersCollapsed,
+  };
+
   // Pestañas de la barra (D4 de docs/decisiones-diseno.md; spec 5.1): las
   // cuatro vistas y las pestañas de síntesis de IA ya abiertas (decisión
   // 71). Estas nunca se pierden al cambiar de vista; solo se quitan al
@@ -510,11 +536,24 @@ export default function App() {
   // pierde y el estado de los datos no se anuncia.
   const renderHeader = (context: ReactNode = null) => (
     <Fragment key="barra">
-      <TopBar tabs={tabs} context={context} onImport={handleImportSynthesis} importRef={importButtonRef} />
+      <TopBar
+        tabs={tabs}
+        context={context}
+        onImport={handleImportSynthesis}
+        importRef={importButtonRef}
+        onHelp={() => setTourOpen(true)}
+        helpRef={helpButtonRef}
+      />
       <ToastRegion
         toasts={toasts}
         onDismiss={(key) => setToasts((queue) => dismissToast(queue, key))}
         onEmptied={() => importButtonRef.current?.focus()}
+      />
+      <GuidedTour
+        open={tourOpen}
+        host={tourHost}
+        onExit={() => helpButtonRef.current?.focus()}
+        onFinished={() => setTourOpen(false)}
       />
     </Fragment>
   );
@@ -633,7 +672,7 @@ export default function App() {
     <div className="app app--workspace">
       {renderHeader(
         <>
-          <div className="data-context">
+          <div className="data-context" data-tour="contexto-datos">
             {atlasMenu}
             {networkMenu}
           </div>
@@ -777,6 +816,7 @@ function WorkspaceView({
     <section
       className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`}
       data-view={id}
+      data-tour="vista"
       style={{ gridArea: area }}
       aria-label={title}
     >

@@ -65,7 +65,7 @@ export interface TourStep {
 export const EXPLAIN_ONLY_TEXT = "Ahora no hay datos reales cargados, así que solo te lo explico, sin tocar nada.";
 
 // El espacio duro de las cifras, como en formatCount (logic/displayText.ts).
-const NBSP = " ";
+const NBSP = "\u00a0";
 
 export const TOUR_STEPS: readonly TourStep[] = [
   {
@@ -225,6 +225,17 @@ export function progressText(index: number, total: number): string {
 // Lo que anuncia la región viva al cambiar de paso.
 export function stepAnnouncement(index: number, total: number, title: string): string {
   return `Paso ${progressText(index, total)}: ${title}.`;
+}
+
+// Los atajos de la app que no actúan mientras dura el tour, porque la página
+// está atenuada: deshacer y rehacer (Ctrl+Z, Ctrl+Mayús+Z y Ctrl+Y) y el
+// buscador (Ctrl+K), también con ⌘ y con la tecla física en un teclado sin
+// letras latinas, como en sus propios atajos (logic/historyStep.ts y
+// logic/regionSearch.ts).
+export function blocksAppShortcut(event: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey" | "altKey">): boolean {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return false;
+  const letter = /^[a-z]$/i.test(event.key) ? event.key.toLowerCase() : /^Key[A-Z]$/.test(event.code) ? event.code.slice(3).toLowerCase() : "";
+  return letter === "z" || letter === "y" || letter === "k";
 }
 
 // Una clave de red que puede ir tal cual dentro de un selector de atributo.

@@ -49,6 +49,7 @@ import { ConnectogramLegend } from "./ConnectogramLegend";
 import { Icon } from "./Icon";
 import { MarkedLabel } from "./MarkedLabel";
 import { RegionSummary } from "./NetworkTag";
+import { useTourControl } from "./useTourControl";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
 // por la usuaria): antes siempre se mostraba "abreviatura — nombre",
@@ -254,6 +255,9 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   // (logic/magnifier.ts): no hace falta acertar con el círculo de 3 px.
   const [lensEnabled, setLensEnabled] = useState(false);
   const lensPickDistance = 12;
+  // El tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10) la
+  // enciende y, al salir, la deja como estaba.
+  useTourControl("lupa", lensEnabled, setLensEnabled);
 
   const lensPointer = (event: MouseEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();

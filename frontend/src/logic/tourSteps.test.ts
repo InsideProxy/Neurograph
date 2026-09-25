@@ -3,6 +3,7 @@ import {
   TOUR_ANCHORS,
   TOUR_STEPS,
   anchorSelectors,
+  blocksAppShortcut,
   platformShortcuts,
   progressText,
   stepAnnouncement,
@@ -99,7 +100,7 @@ describe("pasos del tour guiado (spec 5.10)", () => {
   });
 
   it("dice «más de 64 000 conexiones» con el espacio duro de las cifras de la app", () => {
-    expect(byId("mostrar-ocultar").demo).toContain("64 000");
+    expect(byId("mostrar-ocultar").demo).toContain("64\u00a0000");
   });
 
   it("en tono cercano y corto: unos dos minutos de lectura en total, sin pasos larguísimos", () => {
@@ -162,6 +163,34 @@ describe("texto de cada caja", () => {
   it("el progreso es «3 de 13», y el anuncio del cambio de paso lo dice con el título", () => {
     expect(progressText(2, 13)).toBe("3 de 13");
     expect(stepAnnouncement(2, 13, "Mostrar u ocultar redes")).toBe("Paso 3 de 13: Mostrar u ocultar redes.");
+  });
+});
+
+describe("atajos de la app durante el tour", () => {
+  const key = (key: string, code: string, extra: Partial<KeyboardEvent> = {}) => ({
+    key,
+    code,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    ...extra,
+  });
+
+  it("deshacer, rehacer y el buscador no actúan: la página está atenuada", () => {
+    expect(blocksAppShortcut(key("z", "KeyZ", { ctrlKey: true }))).toBe(true);
+    expect(blocksAppShortcut(key("Z", "KeyZ", { ctrlKey: true, shiftKey: true }))).toBe(true);
+    expect(blocksAppShortcut(key("y", "KeyY", { ctrlKey: true }))).toBe(true);
+    expect(blocksAppShortcut(key("k", "KeyK", { metaKey: true }))).toBe(true);
+    // Un teclado sin letras latinas: la tecla física.
+    expect(blocksAppShortcut(key("я", "KeyZ", { ctrlKey: true }))).toBe(true);
+  });
+
+  it("las demás teclas siguen: las flechas, Escape, Tab, y Ctrl con otras letras o con Alt", () => {
+    expect(blocksAppShortcut(key("ArrowRight", "ArrowRight"))).toBe(false);
+    expect(blocksAppShortcut(key("Escape", "Escape"))).toBe(false);
+    expect(blocksAppShortcut(key("z", "KeyZ"))).toBe(false);
+    expect(blocksAppShortcut(key("c", "KeyC", { ctrlKey: true }))).toBe(false);
+    expect(blocksAppShortcut(key("z", "KeyZ", { ctrlKey: true, altKey: true }))).toBe(false);
   });
 });
 

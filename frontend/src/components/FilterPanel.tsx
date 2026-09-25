@@ -28,6 +28,7 @@ import type { GraphNode } from "../types/domain";
 import { Icon } from "./Icon";
 import { MarksLine } from "./MarksLine";
 import { RegionSearch } from "./RegionSearch";
+import { useTourControl } from "./useTourControl";
 
 const CONNECTION_TYPES: ConnectionType[] = ["structural", "functional", "effective"];
 
@@ -178,6 +179,9 @@ export function FilterPanel({
   const [openSections, setOpenSections] = useState({ networks: true, types: true, weight: true });
   const toggleSection = (section: keyof typeof openSections) =>
     setOpenSections((current) => ({ ...current, [section]: !current[section] }));
+  // El tour guiado (D11; spec 5.10) las abre para señalar lo de dentro y, al
+  // salir, las deja como estaban.
+  useTourControl("secciones", openSections, setOpenSections);
 
   // D4 de docs/decisiones-diseno.md (spec 5.3): el mismo contenido y las
   // mismas acciones de la decisión 74 (D1), con otra jerarquía. Las
@@ -213,7 +217,7 @@ export function FilterPanel({
           porque ahí se arma el montaje. */}
       <RegionSearch nodes={nodes} />
 
-      <div className="filters__selection">
+      <div className="filters__selection" data-tour="seleccion">
         <span className="filters__selection-text">
           {selectionStatusText(selectedNodeIds.size, selectedConnectionId !== null)}
         </span>
@@ -235,7 +239,7 @@ export function FilterPanel({
           aparte de ella. */}
       <MarksLine nodes={nodes} />
 
-      <div className="filters__section" role="group" aria-labelledby={`${headingId}-networks`}>
+      <div className="filters__section" role="group" aria-labelledby={`${headingId}-networks`} data-tour="redes">
         <div className="filters__section-header">
           <h3 className="filters__heading" id={`${headingId}-networks`}>
             <SectionToggle
@@ -252,11 +256,13 @@ export function FilterPanel({
               </span>
             </SectionToggle>
           </h3>
+          {/* «Mostrar» y «Ocultar», no «marcar»: marcar es ahora otra cosa
+              (spec 5.9 y 5.10; D11). */}
           <span className="filters__bulk">
-            <button type="button" className="filters__text-btn" title="Marcar todas las redes" onClick={markAllNetworks}>
+            <button type="button" className="filters__text-btn" title="Mostrar todas las redes" onClick={markAllNetworks}>
               Todas
             </button>
-            <button type="button" className="filters__text-btn" title="Desmarcar todas las redes" onClick={unmarkAllNetworks}>
+            <button type="button" className="filters__text-btn" title="Ocultar todas las redes" onClick={unmarkAllNetworks}>
               Ninguna
             </button>
           </span>
@@ -276,7 +282,7 @@ export function FilterPanel({
                 const highlight = `Resaltar solo la red ${shortLabel} (sustituye la selección)`;
                 const add = `Añadir la red ${shortLabel} a la selección`;
                 return (
-                  <li key={network} className="filters__network">
+                  <li key={network} className="filters__network" data-tour="red" data-network={network}>
                     {/* En la lista, el nombre sin la clasificación, que ya se
                         ve en el botón «Redes» de la barra. El nombre completo
                         sigue en el texto emergente. */}
@@ -364,7 +370,7 @@ export function FilterPanel({
         </div>
       </div>
 
-      <div className="filters__section" role="group" aria-labelledby={`${headingId}-weight`}>
+      <div className="filters__section" role="group" aria-labelledby={`${headingId}-weight`} data-tour="peso">
         <div className="filters__section-header">
           <h3 className="filters__heading" id={`${headingId}-weight`}>
             <SectionToggle
