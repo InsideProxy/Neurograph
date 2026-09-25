@@ -26,10 +26,13 @@ import { connectionArrow, regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
 import { nearestNodeId } from "../logic/magnifier";
+import { MARK_ELEMENT, isMarkGesture, markRing, outwardLabel, type ClickKeys } from "../logic/marks";
+import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { currentExportResolver, useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { Icon } from "./Icon";
+import { MarkedLabel } from "./MarkedLabel";
 import { RegionSummary } from "./NetworkTag";
 
 // Recuadro de lectura (30/08/2026, corrige un problema real reportado
@@ -63,6 +66,14 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const colors = useDrawColors();
+
+  // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): una capa
+  // aparte de la selección, para encontrar regiones de un vistazo.
+  // Ctrl+clic (⌘+clic en macOS) en un nodo, también con la lupa, lo marca o
+  // lo desmarca; el clic normal sigue seleccionando.
+  const markedIds = useMarksStore((state) => state.markedIds);
+  const toggleMark = useMarksStore((state) => state.toggleMark);
+  const clickNode = (id: string, keys: ClickKeys) => (isMarkGesture(keys) ? toggleMark(id) : toggleNode(id));
 
   // Con dos o más regiones seleccionadas a la vez, el dibujo deja de
   // mostrar TODAS las conexiones filtradas y pasa a mostrar solo la
@@ -208,7 +219,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
     const id = nearestNodeId(positions, x, y, lensPickDistance);
     if (id) {
       event.stopPropagation();
-      toggleNode(id);
+      clickNode(id, event);
     }
   };
 
@@ -295,6 +306,29 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   } else {
     readout = <span className="connectogram-readout__placeholder">Pasa el ratón o selecciona una región.</span>;
   }
+
+  // Lo que las marcas (spec 5.9) necesitan de cada región marcada que se
+  // dibuja: su nodo, con su radio y su trazo, para el anillo, y su etiqueta,
+  // para la pastilla. Son las mismas cuentas que el dibujo de los nodos, más
+  // abajo. Una región marcada que ocultan los filtros no está en `nodes`: no
+  // se dibuja, y Filtros lo dice.
+  const markedLayout = nodes.flatMap((node) => {
+    const pos = positions.get(node.id);
+    if (!pos || !markedIds.has(node.id)) return [];
+    const isSelected = selectedNodeIds.has(node.id);
+    const isEnlarged = isSelected || hoveredNodeId === node.id;
+    const currentNodeRadius = isEnlarged ? nodeRadius + 3 : nodeRadius;
+    return [
+      {
+        node,
+        pos,
+        ring: markRing(currentNodeRadius, isSelected ? 2.5 : 1),
+        label: outwardLabel(pos, (pos.x - center) / radius, (pos.y - center) / radius, currentNodeRadius + 7),
+        fontSize: isEnlarged ? labelFontSize + 1.5 : labelFontSize,
+        fontWeight: isEnlarged ? 700 : 600,
+      },
+    ];
+  });
 
   return (
     <div className="viz-panel">
@@ -434,7 +468,12 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   : undefined
               }
               style={{ cursor: "pointer" }}
-              onClick={() => selectConnection(conn.id)}
+              // Un Ctrl+clic que no acierta con el nodo y cae en una línea
+              // no hace nada (spec 5.9): seleccionar la conexión vaciaría la
+              // selección de regiones.
+              onClick={(event) => {
+                if (!isMarkGesture(event)) selectConnection(conn.id);
+              }}
             />
           );
         })}
@@ -465,6 +504,18 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
               />
             );
           })}
+        </g>
+      )}
+      {/* Marcas (spec 5.9), bajo los nodos: el hueco del color del fondo
+          entre cada nodo marcado y su anillo, que tapa las líneas que pasan
+          por debajo. Ni esto ni el anillo y la pastilla, encima de los nodos,
+          se exportan: llevan data-ng-mark, y exportSvgAsJpeg los quita del
+          clon. */}
+      {markedLayout.length > 0 && (
+        <g {...MARK_ELEMENT} style={{ pointerEvents: "none" }}>
+          {markedLayout.map(({ node, pos, ring }) => (
+            <circle key={node.id} cx={pos.x} cy={pos.y} r={ring.radius} fill={colors.sceneBg} />
+          ))}
         </g>
       )}
       <g>
@@ -525,7 +576,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
                   {...ngStroke(nodeStrokeRef)}
                   strokeWidth={isSelected ? 2.5 : 1}
                   style={{ cursor: "pointer" }}
-                  onClick={() => toggleNode(node.id)}
+                  onClick={(event) => clickNode(node.id, event)}
                 />
               </g>
               {node.abbreviation && (
@@ -547,6 +598,36 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           );
         })}
       </g>
+      {/* Marcas (spec 5.9), encima de los nodos y de las etiquetas, para que
+          ninguna vecina las tape: el anillo del color de marca y la etiqueta
+          sobre su pastilla (MarkedLabel). */}
+      {markedLayout.length > 0 && (
+        <g {...MARK_ELEMENT} style={{ pointerEvents: "none" }}>
+          {markedLayout.map(({ node, pos, ring, label, fontSize, fontWeight }) => (
+            <g key={node.id}>
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={ring.radius}
+                fill="none"
+                stroke={colors.mark}
+                strokeWidth={ring.strokeWidth}
+              />
+              {node.abbreviation && (
+                <MarkedLabel
+                  text={node.abbreviation}
+                  x={label.x}
+                  y={label.y}
+                  anchor={label.anchor}
+                  fontSize={fontSize}
+                  fontWeight={fontWeight}
+                  colors={colors}
+                />
+              )}
+            </g>
+          ))}
+        </g>
+      )}
       {lensEnabled && !compact && (
         <ConnectogramLens
           svgRef={svgRef}
@@ -559,6 +640,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           labelFontSize={labelFontSize}
           hoveredNodeId={hoveredNodeId}
           selectedNodeIds={selectedNodeIds}
+          markedIds={markedIds}
           connections={visibleConnections}
           selectedConnectionId={selectedConnectionId}
           isInducedView={isInducedView}
@@ -603,6 +685,8 @@ interface LensProps {
   labelFontSize: number;
   hoveredNodeId: string | null;
   selectedNodeIds: Set<string>;
+  // Marcas (spec 5.9): en la lupa, también con su anillo y su pastilla.
+  markedIds: ReadonlySet<string>;
   connections: GraphConnection[];
   selectedConnectionId: string | null;
   isInducedView: boolean;
@@ -620,6 +704,7 @@ function ConnectogramLens({
   labelFontSize,
   hoveredNodeId,
   selectedNodeIds,
+  markedIds,
   connections,
   selectedConnectionId,
   isInducedView,
@@ -753,8 +838,24 @@ function ConnectogramLens({
           const leftHalf = ux < 0;
           const rotation = leftHalf ? angle + 180 : angle;
           const textAnchor = leftHalf ? "start" : "end";
+          // Región marcada (spec 5.9): el anillo, con el hueco del color del
+          // fondo, detrás del nodo, y la etiqueta sobre su pastilla, girada
+          // con ella.
+          const isMarked = markedIds.has(node.id);
+          const ring = markRing(r, isSelected || isHovered ? 2.5 : 1);
           return (
             <g key={node.id}>
+              {isMarked && (
+                <circle
+                  {...MARK_ELEMENT}
+                  cx={p.x}
+                  cy={p.y}
+                  r={ring.radius}
+                  fill={colors.sceneBg}
+                  stroke={colors.mark}
+                  strokeWidth={ring.strokeWidth}
+                />
+              )}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -777,6 +878,18 @@ function ConnectogramLens({
                 >
                   {node.abbreviation}
                 </text>
+              )}
+              {isMarked && node.abbreviation && (
+                <MarkedLabel
+                  text={node.abbreviation}
+                  x={lx}
+                  y={ly}
+                  anchor={textAnchor}
+                  fontSize={zoomedFontSize}
+                  fontWeight={isHovered || isSelected ? 700 : 600}
+                  transform={`rotate(${rotation} ${lx} ${ly})`}
+                  colors={colors}
+                />
               )}
             </g>
           );

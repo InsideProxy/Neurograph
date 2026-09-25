@@ -57,9 +57,12 @@ import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
+import { MARK_ELEMENT, isMarkGesture, markRing, outwardLabel, type ClickKeys } from "../logic/marks";
+import { useMarksStore } from "../state/marks";
 import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
 import { ngFill, ngStroke, ngStrokeOpacity } from "../theme/colors";
 import { currentExportResolver, useDrawColors } from "../theme/useDrawColors";
+import { MarkedLabel } from "./MarkedLabel";
 import { RegionSummary } from "./NetworkTag";
 import { connectionArrow } from "../logic/displayText";
 import type { GraphConnection } from "../types/domain";
@@ -108,6 +111,13 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
   const { nodes, connections: filteredConnections } = filterGraph(allNodes, allConnections, filters);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const colors = useDrawColors();
+
+  // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9), como en el
+  // connectograma: Ctrl+clic (⌘+clic en macOS) en un nodo lo marca o lo
+  // desmarca; el clic normal sigue seleccionando.
+  const markedIds = useMarksStore((state) => state.markedIds);
+  const toggleMark = useMarksStore((state) => state.toggleMark);
+  const clickNode = (id: string, keys: ClickKeys) => (isMarkGesture(keys) ? toggleMark(id) : toggleNode(id));
 
   // Fix del 30/08/2026 (bug real reportado por la usuaria: "las líneas de
   // unión [...] son demasiado gruesas, no entiendo por qué"). Causa: este
@@ -380,6 +390,34 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
     readout = <span className="hemisferios-readout__placeholder">Pasa el ratón o selecciona una región.</span>;
   }
 
+  // Lo que las marcas (spec 5.9) necesitan de cada región marcada que se
+  // dibuja: su nodo, con su radio y su trazo, para el anillo, y su etiqueta,
+  // para la pastilla. Son las mismas cuentas que el dibujo de los nodos, más
+  // abajo, con la dirección normalizada por los semiejes de la elipse de su
+  // hemisferio. El hueco entre el nodo y el anillo es del color de la elipse,
+  // o del panel si la elipse no tiene relleno (tema Original).
+  const markGap = colors.hemiFill === "none" ? colors.sceneBg : colors.hemiFill;
+  const markedLayout = visibleLateralized.flatMap((node) => {
+    const pos = positions.get(node.id);
+    if (!pos || !markedIds.has(node.id)) return [];
+    const isSelected = selectedNodeIds.has(node.id);
+    const isEnlarged = isSelected || hoveredNodeId === node.id;
+    const r = isEnlarged ? nodeRadius + 1.5 : nodeRadius;
+    const dx = (pos.x - (node.hemisphere === "L" ? LEFT_CX : RIGHT_CX)) / ELLIPSE_RX;
+    const dy = (pos.y - ELLIPSE_CY) / ELLIPSE_RY;
+    const dMag = Math.hypot(dx, dy) || 1e-6;
+    return [
+      {
+        node,
+        pos,
+        ring: markRing(r, isSelected ? 2.5 : 1),
+        label: outwardLabel(pos, dx / dMag, dy / dMag, r + 5),
+        fontSize: isEnlarged ? labelFontSize + 1.5 : labelFontSize,
+        fontWeight: isEnlarged ? 700 : 600,
+      },
+    ];
+  });
+
   return (
     <div className="viz-panel">
       {!compact && (
@@ -572,11 +610,28 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                     : undefined
                 }
                 style={{ cursor: "pointer" }}
-                onClick={() => selectConnection(conn.id)}
+                // Un Ctrl+clic que no acierta con el nodo y cae en una línea
+                // no hace nada (spec 5.9): seleccionar la conexión vaciaría
+                // la selección de regiones.
+                onClick={(event) => {
+                  if (!isMarkGesture(event)) selectConnection(conn.id);
+                }}
               />
             );
           })}
         </g>
+
+        {/* Marcas (spec 5.9), bajo los nodos: el hueco del color del fondo
+            entre cada nodo marcado y su anillo. Ni esto ni el anillo y la
+            pastilla, encima de los nodos, se exportan: llevan data-ng-mark, y
+            exportSvgAsJpeg los quita del clon. */}
+        {markedLayout.length > 0 && (
+          <g {...MARK_ELEMENT} style={{ pointerEvents: "none" }}>
+            {markedLayout.map(({ node, pos, ring }) => (
+              <circle key={node.id} cx={pos.x} cy={pos.y} r={ring.radius} fill={markGap} />
+            ))}
+          </g>
+        )}
 
         <g>
           {visibleLateralized.map((node) => {
@@ -622,7 +677,7 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
                   style={{ cursor: "pointer" }}
                   onMouseEnter={() => setHoveredNodeId(node.id)}
                   onMouseLeave={() => setHoveredNodeId((current) => (current === node.id ? null : current))}
-                  onClick={() => toggleNode(node.id)}
+                  onClick={(event) => clickNode(node.id, event)}
                 />
                 {node.abbreviation && (
                   <text
@@ -643,6 +698,37 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
             );
           })}
         </g>
+
+        {/* Marcas (spec 5.9), encima de los nodos y de las etiquetas: el
+            anillo del color de marca y la etiqueta sobre su pastilla
+            (MarkedLabel). */}
+        {markedLayout.length > 0 && (
+          <g {...MARK_ELEMENT} style={{ pointerEvents: "none" }}>
+            {markedLayout.map(({ node, pos, ring, label, fontSize, fontWeight }) => (
+              <g key={node.id}>
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={ring.radius}
+                  fill="none"
+                  stroke={colors.mark}
+                  strokeWidth={ring.strokeWidth}
+                />
+                {node.abbreviation && (
+                  <MarkedLabel
+                    text={node.abbreviation}
+                    x={label.x}
+                    y={label.y}
+                    anchor={label.anchor}
+                    fontSize={fontSize}
+                    fontWeight={fontWeight}
+                    colors={colors}
+                  />
+                )}
+              </g>
+            ))}
+          </g>
+        )}
       </svg>
       </div>
 

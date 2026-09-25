@@ -7,6 +7,7 @@
 // exportación, pensada para leerse sobre ese blanco (D3 de
 // docs/decisiones-diseno.md).
 import { applyExportColors, EXPORT_FONT_FAMILY, type ColorResolver } from "./exportPalette";
+import { removeMarkElements } from "./marks";
 
 // Calidad JPEG y factor de sobre-muestreo: una figura de paper necesita
 // más resolución que la pantalla. 3x el tamaño en pantalla da un
@@ -80,6 +81,10 @@ export function exportSvgAsJpeg(
   }
 
   const clone = svg.cloneNode(true) as SVGSVGElement;
+
+  // Las marcas de regiones solo existen en pantalla (spec 5.9): el JPEG sale
+  // como sin ellas.
+  removeMarkElements(clone);
 
   // Paleta de exportación (D3 de docs/decisiones-diseno.md): colores legibles sobre el blanco
   // de la exportación, sea cual sea el tema de pantalla. En desarrollo se

@@ -126,6 +126,10 @@ main { flex: 1 1 auto; display: flex; gap: 2rem; flex-wrap: wrap; min-width: 0; 
    exportImage.ts queda intacto. */
 .viz-svg { background: var(--panel-bg); }
 .legend-svg { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; }
+/* Marcas de regiones (spec 5.9): al arrastrar sobre un dibujo, el navegador
+   seleccionaba las etiquetas como texto y las pintaba de azul. Los dibujos
+   no seleccionan texto; para resaltar una región está Ctrl+clic. */
+.viz-svg, .legend-svg { -webkit-user-select: none; user-select: none; }
 
 /* Recuadro de lectura fijo bajo el connectograma (30/08/2026): el nombre
    de la región nunca flota junto al ratón/nodo -- vive aquí, con altura
