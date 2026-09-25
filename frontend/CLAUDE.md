@@ -10,7 +10,7 @@ Reglas para trabajar en `frontend/`. Las generales están en el CLAUDE.md de la 
 ## Reglas
 
 - **Colores de datos.** `NETWORK_COLORS` (`src/theme/networks.ts`) son datos extraídos de cada atlas y no se modifican. El amarillo `HOVER_HIGHLIGHT_COLOR` queda reservado para el resaltado al pasar el ratón.
-- **Lógica pura.** Va en `src/logic/`, separada de React y three.js, y es lo único que lleva tests (vitest). Los componentes se comprueban visualmente.
+- **Lógica pura y tests.** La lógica pura va en `src/logic/`, separada de React y three.js, con sus tests (vitest). Los componentes pueden llevar tests de marcado (`react-dom/server`) o de conexión (que leen su código) donde protejan una regla. Lo visual se comprueba en un navegador headless (ver «Verificar»).
 - **Clientes de la API** (`src/data/*Api.ts`): `fetch`, error si `!response.ok` y conversión a camelCase. El estado de cada petición es una unión discriminada: cargando, error o resultado.
 - **Efectos.** Lo que tiene efectos secundarios (por ejemplo `OrbitControls`) se crea en `useEffect` con su `dispose()`, nunca en `useMemo`, porque `StrictMode` duplica las factorías. Los elementos `threeXxx` se registran con `extend`.
 - **Estilos.** Se reutilizan las variables CSS y los patrones existentes; no se añaden colores sueltos.
