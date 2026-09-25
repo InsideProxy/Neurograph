@@ -35,7 +35,8 @@ export function MarkedLabel({ text, x, y, anchor, fontSize, fontWeight, transfor
 
   // En cada pintado, porque el texto, su tamaño o su sitio pueden haber
   // cambiado (al pasar el ratón, el nodo crece). Son pocas etiquetas: las de
-  // las regiones marcadas.
+  // las regiones marcadas. Solo se escribe lo que cambia: cada cambio obliga
+  // al navegador a volver a calcular el dibujo antes de medir la siguiente.
   useLayoutEffect(() => {
     const pill = pillRef.current;
     const label = textRef.current;
@@ -50,11 +51,10 @@ export function MarkedLabel({ text, x, y, anchor, fontSize, fontWeight, transfor
     }
     if (box.width === 0) return;
     const measured = pillAround(box, fontSize);
-    pill.setAttribute("x", String(measured.x));
-    pill.setAttribute("y", String(measured.y));
-    pill.setAttribute("width", String(measured.width));
-    pill.setAttribute("height", String(measured.height));
-    pill.setAttribute("rx", String(measured.rx));
+    for (const name of ["x", "y", "width", "height", "rx"] as const) {
+      const value = String(measured[name]);
+      if (pill.getAttribute(name) !== value) pill.setAttribute(name, value);
+    }
   });
 
   return (
