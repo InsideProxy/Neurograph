@@ -22,6 +22,18 @@ export function isMarkGesture(keys: ClickKeys): boolean {
   return (keys.ctrlKey || keys.metaKey) && !keys.altKey && !keys.shiftKey;
 }
 
+// En el 3D, un Ctrl+clic que llega al soltar un arrastre no marca.
+// OrbitControls no hace nada con Ctrl+arrastre (no desplaza la vista), pero
+// el navegador envía igualmente el clic al soltar, y react-three-fiber no lo
+// descarta: da en `delta` cuántos píxeles se movió el puntero entre pulsar y
+// soltar. Hasta MARK_CLICK_MAX_DRAG es un clic, porque al pulsar, sobre todo
+// en un panel táctil, el puntero se mueve uno o dos píxeles.
+export const MARK_CLICK_MAX_DRAG = 4;
+
+export function isDragRelease(delta: number): boolean {
+  return delta > MARK_CLICK_MAX_DRAG;
+}
+
 // --- Connectograma y hemisferios ---
 
 // Anillo exterior de un nodo marcado: del color de marca y separado del
@@ -144,9 +156,10 @@ export function marksSummary(
   };
 }
 
-// «Marcadas: 5», o «Ninguna región marcada».
+// «Marcadas: 5», o «Sin marcas»: corto, para que quepa en la fila con
+// «Quitar marcas».
 export function marksHeading(count: number): string {
-  return count === 0 ? "Ninguna región marcada" : `Marcadas: ${formatCount(count)}`;
+  return count === 0 ? "Sin marcas" : `Marcadas: ${formatCount(count)}`;
 }
 
 // «TE1m (izq.), IFJa (der.), V1 (izq.) y 2 más», o todas si son pocas:
@@ -163,14 +176,14 @@ export function marksHiddenText(hidden: number): string | null {
 }
 
 // Lo que anuncia la región viva de la línea al cambiar las marcas: «5
-// regiones marcadas: TE1m (izq.), …; 1 oculta por los filtros». El número va
-// con los dígitos seguidos, como los de Filtros para los lectores de
-// pantalla.
-export function marksAnnouncement(summary: MarksSummary): string {
-  if (summary.count === 0) return marksHeading(0);
-  const hidden = marksHiddenText(summary.hidden);
+// regiones marcadas: TE1m (izq.), …». Solo cuántas y cuáles, sin las que
+// ocultan los filtros: así no se vuelve a anunciar cada vez que se muestra o
+// se oculta una red. El número va con los dígitos seguidos, como los de
+// Filtros para los lectores de pantalla.
+export function marksAnnouncement(summary: Pick<MarksSummary, "count" | "names">): string {
+  if (summary.count === 0) return "Ninguna región marcada";
   const counted = summary.count === 1 ? "1 región marcada" : `${summary.count} regiones marcadas`;
-  return `${counted}: ${marksNamesText(summary)}${hidden ? `; ${hidden}` : ""}`;
+  return `${counted}: ${marksNamesText(summary)}`;
 }
 
 // Sin marcas, la línea explica el gesto: Ctrl+clic, o ⌘+clic en macOS, como

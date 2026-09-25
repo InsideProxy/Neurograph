@@ -198,13 +198,9 @@ describe("searchKey: Ctrl+Intro", () => {
     expect(searchKey("Enter", open, { ...NO_KEYS, ctrlKey: true, altKey: true })).toEqual({ kind: "choose", index: 1 });
   });
 
-  it("la línea de avisos lo recuerda, con el atajo como en cada sistema", () => {
-    expect(markKeyHint("Mozilla/5.0 (X11; Linux x86_64)")).toBe(
-      "Intro añade la región a la selección · Ctrl+Intro la marca o la desmarca",
-    );
-    expect(markKeyHint("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe(
-      "Intro añade la región a la selección · ⌘Intro la marca o la desmarca",
-    );
+  it("la línea de avisos lo recuerda, corto y con el atajo como en cada sistema", () => {
+    expect(markKeyHint("Mozilla/5.0 (X11; Linux x86_64)")).toBe("Ctrl+Intro la marca o la desmarca");
+    expect(markKeyHint("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe("⌘Intro la marca o la desmarca");
   });
 });
 

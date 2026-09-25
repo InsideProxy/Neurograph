@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { GraphNode } from "../types/domain";
 import {
   MARK_ATTRIBUTE,
+  MARK_CLICK_MAX_DRAG,
   MARK_ELEMENT,
   MARK_RING_GAP,
   estimatedTextBox,
+  isDragRelease,
   isMarkGesture,
   markGestureHint,
   markRing,
@@ -37,6 +39,19 @@ describe("isMarkGesture", () => {
     expect(isMarkGesture(keys({ ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(isMarkGesture(keys({ metaKey: true, shiftKey: true }))).toBe(false);
     expect(isMarkGesture(keys({ altKey: true }))).toBe(false);
+  });
+});
+
+// En el 3D, el navegador envía el clic también al soltar un Ctrl+arrastre;
+// react-three-fiber da en `delta` cuánto se movió el puntero.
+describe("isDragRelease", () => {
+  it("hasta unos pocos píxeles es un clic, y marca; más, es el final de un arrastre, y no marca", () => {
+    expect(MARK_CLICK_MAX_DRAG).toBeGreaterThanOrEqual(2);
+    expect(MARK_CLICK_MAX_DRAG).toBeLessThanOrEqual(5);
+    expect(isDragRelease(0)).toBe(false);
+    expect(isDragRelease(MARK_CLICK_MAX_DRAG)).toBe(false);
+    expect(isDragRelease(MARK_CLICK_MAX_DRAG + 1)).toBe(true);
+    expect(isDragRelease(40)).toBe(true);
   });
 });
 
@@ -140,7 +155,7 @@ describe("línea de las marcas", () => {
   });
 
   it("dice cuántas hay, o que no hay ninguna, y cuántas ocultan los filtros", () => {
-    expect(marksHeading(0)).toBe("Ninguna región marcada");
+    expect(marksHeading(0)).toBe("Sin marcas");
     expect(marksHeading(5)).toBe("Marcadas: 5");
     expect(marksHiddenText(0)).toBeNull();
     expect(marksHiddenText(1)).toBe("1 oculta por los filtros");
