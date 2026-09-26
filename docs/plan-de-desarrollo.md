@@ -3,6 +3,24 @@
 Basado en la sección 28 de la especificación maestra, con los ajustes
 señalados en `docs/analisis-arquitectura.md` (sección 5).
 
+## Criterios a revisar
+
+- **Grosor de las líneas según el peso** (26/09/2026, criterio funcional
+  10, decisión 21). Hoy es `max(1, 6·peso)` en el connectograma y
+  `max(1, 5·peso)` en Hemisferios, y el 3D no lo codifica. En HCP-MMP1.0,
+  el atlas por defecto, ninguna de las 64 620 conexiones de Rosen & Halgren
+  pasa de 1 px: su peso máximo es 0,144 y la mediana, 1e-4, así que el
+  grosor no informa. En Brainnetome sí informa, en 3725 de sus 30 135.
+  Quitar el mínimo de 1 px no lo arregla: el navegador pinta más tenue lo
+  más fino y lo de 1e-4 desaparecería. Propuesta: conservar la escala real
+  y ofrecer, como alternativa de presentación, una escala adaptable (por
+  ejemplo, logarítmica dentro del rango real de cada atlas, como el
+  deslizador «Peso mínimo»), con leyenda que se exporte, igual que la
+  paleta «Suaves» convive con los colores originales (D7). Más grueso
+  sigue siendo más fuerte (principio 24) y el rango sale del dato, sin
+  umbrales elegidos a mano (principio 6). Se revisa con el usuario, y la
+  decisión 21 es del desarrollador principal.
+
 - **Fase 0 — Entorno.** Repositorio, estructura de módulos, base de datos,
   ontología inicial, sistema de biblioteca SSD, configuración. **(hecho)**
 - **Fase 1 — Arquitectura (hecho).** Stack de interfaz confirmado (web

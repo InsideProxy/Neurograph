@@ -14,8 +14,8 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 
   (§1, §4.5, 1, 54)
 - **Una sola lógica por consulta.** Vive en `backend/api/services/` y la usan los routers HTTP, las herramientas MCP y los scripts. Cada servicio separa una función pura, probada sin base de datos, de la función que solo añade la consulta. Un servicio nunca importa de un router. (27, 46, 62)
-- **Todo pasa por la API.** El frontend no accede a los datos por otra vía. Si la API no responde, muestra datos de demostración etiquetados como tales. (38, 49)
-- **El backend solo dibuja para el MCP y las imágenes de la API.** `backend/visualization/` genera PNG con matplotlib para los endpoints y herramientas `render_*`. El frontend dibuja sus propias vistas. (36)
+- **Los datos de la base pasan siempre por la API.** Las mallas y los mapas por vértice son archivos estáticos del frontend (`frontend/public/meshes/` y `frontend/public/parcels/`), generados por scripts. Si la API no responde, o no tiene regiones del atlas, el frontend muestra datos de demostración etiquetados como tales. (22, 38, 49, 72, 73)
+- **El backend solo dibuja para el MCP y las imágenes de la API.** `backend/visualization/` genera PNG con matplotlib para los endpoints y herramientas `render_*`, con su propia paleta de redes (tab20), no con `NETWORK_COLORS`. El frontend dibuja sus propias vistas, salvo «Comparar especies», que muestra las imágenes de `GET /render/species/*`. (36, 39)
 - **Respuestas de la API:** cada endpoint devuelve su propio modelo. El sobre común `{status, data, evidence, provenance, warnings}` que proponía la §4.4 no se implementó.
 - **Identificadores:**
   - forma `<tipo>.<especie>.<fuente>.<código>`, en minúsculas (`build_id`), estables e independientes del nombre;
@@ -23,15 +23,15 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 
   (§4.5, 13, 47, 51)
 - **Claves foráneas e índices:**
-  - hay FK de especie, atlas, estudio, tracto y de las pertenencias a red;
-  - `connections`, `homologies` y `source_dataset_id` no tienen FK, y su integridad se comprueba con consultas;
+  - hay FK de especie, atlas, estudio y tracto (también `connections.tract_id`), de las pertenencias a red y de las aristas de tractografía a sus nodos;
+  - los extremos de `connections` y `homologies`, el `entity_id` de `coordinates` y `evidence` y `source_dataset_id` no tienen FK, y su integridad se comprueba con consultas;
   - los índices se crean cuando una consulta real los necesita.
 
   (47, H1)
 
 ## 2. Biblioteca y datasets
 
-- **La biblioteca de datos va aparte de la instalación** (`docs/portabilidad.md`): `original/` guarda los archivos intactos, tal como se descargaron, y `derived/` los derivados. (22)
+- **La biblioteca de datos va aparte de la instalación** (`docs/portabilidad.md`): `original/` guarda los archivos intactos, tal como se descargaron, y `derived/` los derivados. (3, 22)
 - **Cada carpeta lleva su `dataset.yaml`** (`DatasetManifest`) con:
   - formato: una etiqueta del catálogo cerrado o `unsupported_pending_adapter`;
   - archivos por rol;
@@ -65,7 +65,7 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
   - el macaco, en INIA19;
   - Cheng 2021, en el espacio de cada especie.
 
-  La vista principal muestra un atlas a la vez. (22, 25, 28, 29)
+  La vista «Atlas» muestra un atlas a la vez, de los cuatro humanos; el macaco y Cheng 2021 solo se ven en «Comparar especies». (22, 25, 28, 29, 39)
 - **Nombres:**
   - en HCP-MMP1.0, `name` es el nombre anatómico largo de Glasser 2016 (tomado de la tabla de Huang 2022) más el hemisferio;
   - Gordon 333 no tiene nombres anatómicos, porque no se han publicado;
@@ -100,14 +100,15 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
   - por región, con el voto mayoritario de vértices (la confianza es la fracción real);
   - vértice a vértice sobre la corteza;
   - en Power se usa el mapa sin rellenar huecos y las etiquetas inciertas (`u…`) no cuentan;
-  - se avisa de su procedencia: el HCP las remuestreó a fs_LR con el registro de FreeSurfer, no con MSMAll.
+  - en el modo vértice a vértice del 3D se avisa de su procedencia: el HCP las remuestreó a fs_LR sin documentar cómo, y las redes originales no se definieron con el registro MSMAll.
 
   (73)
 - **Cambiar de clasificación:**
   - la clasificación por defecto es la original del atlas;
   - una región sin pertenencia en la clasificación elegida es `unclassified`;
   - el cambio se aplica a la vez en todas las vistas;
-  - Cole-Anticevic y Gordon 333 no tienen mapa vértice a vértice.
+  - Cole-Anticevic y Gordon 333 no tienen mapa vértice a vértice;
+  - si falla la carga de una clasificación, se avisa y se vuelve a la original del atlas, nunca a datos de demostración.
 
   (73)
 
@@ -140,13 +141,13 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 ## 6. Tractografía
 
 - **Yeh 2022** da la probabilidad tracto→región: 52 tractos sin geometría. (9, 48)
-- **ORG-800FC-100HCP** (Zhang 2018) tiene su propia pestaña, en su espacio propio (groupwise) y sin mezclarse con otros atlas:
+- **ORG-800FC-100HCP** (Zhang 2018) tiene dos pestañas, «Tractografía 3D» y «Nodos de tractografía», en su espacio propio (groupwise) y sin mezclarse con otros atlas. No está en la carga inicial: la instala `scripts/install_tractography.sh`.
   - 41 tractos con nombre (510 clusters);
   - se excluyen siempre los clusters `FalsePositive` y los que no tienen etiqueta;
   - como máximo 300 streamlines por tracto, guardando el recuento real y el mostrado;
   - la malla de fondo sale del wmparc del mismo espacio.
 
-  (49, 62, 63)
+  (49, 62, 63, 66, H4)
 - **Nodos de tractografía:**
   - cada etiqueta con nombre verificado del wmparc es un nodo, situado en el centroide real de sus vóxeles;
   - una arista es una streamline real cuyos dos extremos caen en etiquetas distintas;
@@ -191,25 +192,26 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
   - hoy la tabla está vacía.
 
   (20, 47)
-- **Citas de los tractos:** salen de `Dataset.study_id → Study`. Si no hay estudio enlazado, la lista va vacía con un aviso, nunca con una cita genérica. (13)
+- **Citas de los tractos:** las de Yeh salen de `Dataset.study_id → Study` y las de ORG, de `Tract.study_id → Study`. Si no hay estudio enlazado, la lista va vacía con un aviso, nunca con una cita genérica. (13, 49)
 - **Síntesis de IA:**
   - es un JSON con el formato de `docs/protocolo-sintesis-ia.md`, con `region_id` reales resueltos con `search_region`;
   - al importarlo se valida todo o nada contra el atlas activo;
+  - solo se importa en la aplicación de escritorio: en el navegador, «Importar» avisa de que no funciona;
   - se abre en una pestaña temporal aislada, que no comparte selección ni filtros;
   - no se guarda en la base.
 
-  (71)
+  (71, D4)
 - **Genes:** `genes` y `expressions` tienen solo el esquema, sin datos; `method` y `donor_count` son obligatorios. (50)
 - **PDFs:** se consultan de la biblioteca personal o institucional, sin redistribuirlos. (riesgo 2)
 
 ## 9. API y MCP
 
-- **Acceso:** la API solo escucha en local, con CORS para cualquier puerto de localhost. (riesgo 11)
+- **Acceso:** el backend del ejecutable solo escucha en local (127.0.0.1). En desarrollo, Docker publica la API y Postgres en todas las interfaces del equipo, algo que se acepta en una red local de confianza. CORS admite cualquier puerto de localhost. (riesgo 11, 55, H6)
 - **Errores:**
-  - una entidad que no existe da 404, nunca una respuesta vacía;
+  - una entidad que no existe da 404, nunca una respuesta vacía, también cuando es un filtro (`atlas_id`, `region_id`); un atlas que existe sin datos da 200 con la lista vacía;
   - pedir una clasificación que el atlas no tiene da 400.
 
-  (27, 35, 62, 73)
+  (27, 35, 62, 73, 77)
 - **Un filtro decide qué elementos aparecen**, nunca recorta lo que se cuenta de cada uno. (27, 34)
 - **Herramientas MCP:**
   - `search_region`, `get_connectivity`, `search_tract`, `calculate_laplacian`, `calculate_spectrum`, `find_path`, `find_homologues`, `compare_species`, `render_network`, `render_brain`, `compare_species_images` y `propose_dataset_ingestion`;
@@ -227,19 +229,19 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 
 - **Color del nodo:**
   - es la red, con los colores de cada atlas (`NETWORK_COLORS`): son datos y no se cambian por estética;
-  - es idéntico en todas las vistas;
+  - es idéntico en todas las vistas del frontend;
   - con la paleta «Suaves», cada red se ve con una versión de su color que conserva el tono, calculada a partir de `NETWORK_COLORS` sin cambiarlo;
   - lo no clasificado va en gris: `#8a8a8a` con los colores del atlas, y el gris de la paleta suave de cada tema con «Suaves».
 
   (18, 72, 73, D7)
 - **Líneas:**
-  - el grosor es proporcional al peso;
+  - el grosor es proporcional al peso, con un mínimo de 1 px: por debajo de un peso de ~0,17 (0,2 en Hemisferios) todas las líneas miden lo mismo; el 3D no codifica el peso;
   - el trazo discontinuo indica evidencia no directa o hipotética;
   - la flecha indica conectividad efectiva.
 
   (15, 16, 21, 71)
 - **Hemisferios:**
-  - verde para lo intrahemisférico, rojo para lo interhemisférico y gris si no se puede clasificar;
+  - verde para lo intrahemisférico y rojo para lo interhemisférico; las regiones sin hemisferio y sus conexiones no se dibujan: se cuentan aparte y se avisa;
   - el lado sale de `hemisphere`, y las posiciones son |x| e y reales.
 
   (15)
@@ -267,4 +269,4 @@ Qué hace la aplicación y con qué reglas, por área. Solo recoge lo vigente; l
 
 ## 11. Exportación
 
-- **JPEG en color sobre fondo blanco**, sea cual sea el tema en pantalla, en todas las vistas. El JPEG no incluye la lupa ni el resaltado del ratón. Con selección múltiple, la leyenda abreviatura→nombre también se exporta. (11, 14, 18, D2)
+- **JPEG en color sobre fondo blanco**, sea cual sea el tema en pantalla, en las tres vistas de «Atlas». No incluye la lupa, el resaltado del ratón, las marcas ni la leyenda del connectograma. Con selección múltiple, la leyenda abreviatura→nombre también se exporta. (11, 14, 18, D2, D9, D10)

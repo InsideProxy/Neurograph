@@ -18,7 +18,7 @@ Reglas para trabajar en `scripts/`. Las generales están en el CLAUDE.md de la r
 
 ## Scripts de PowerShell (`*.ps1`)
 
-- Se guardan en UTF-8 con BOM.
+- Los que tienen caracteres no ASCII (tildes, eñes, «¿») se guardan en UTF-8 con BOM.
 - El SQL nunca se redirige con `>`, que escribe UTF-16, ni se pasa por tubería a `docker exec`. Se copia con `docker cp` y se aplica con `psql -f`.
 
 ## Scripts de un solo uso

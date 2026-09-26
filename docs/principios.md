@@ -34,7 +34,7 @@ Reglas transversales que se aplican a todo el proyecto: datos, ingesta, API, MCP
 
 ## Base de datos y reproducibilidad
 
-19. **El SQL lo genera el código del proyecto y nunca se aplica a la base real sin revisión humana.** Ningún script, herramienta MCP, IA ni botón sustituye esa revisión. (17, 41, 46)
+19. **El SQL lo genera el código del proyecto y nunca se aplica a la base real sin revisión humana.** Ningún script, herramienta MCP, IA ni botón sustituye esa revisión. La excepción son los pasos de instalación (`scripts/rebuild_db_from_sql.sh`, `scripts/install_tractography.sh`): aplican SQL ya revisado en git o regenerado de sus originales con md5, lo verifican con recuentos, y lanzarlos es decisión del usuario. (17, 41, 46, H1, H4, H6)
 20. **Reproducible:** SQL idempotente (`ON CONFLICT DO UPDATE`), esquema solo por migraciones y nunca tablas editadas a mano. (sección 23, 26)
 21. **Se verifica el contenido real, no el mensaje de éxito.** Un artefacto (SQL, volcado, carga) se comprueba con recuentos. El estado de la base se consulta; no se da por bueno lo que diga la documentación. (51, 53, 59)
 

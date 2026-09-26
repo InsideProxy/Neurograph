@@ -57,7 +57,7 @@ fn resource_snapshot(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("No se encuentra el volcado de datos empaquetado: {e}"))
 }
 
-/// Primer arranque: initdb -> arrancar -> crear la base de datos -> las 13
+/// Primer arranque: initdb -> arrancar -> crear la base de datos -> todas las
 /// migraciones en orden -> el volcado de datos real (decisión 53). Cada
 /// paso se comprueba antes de seguir al siguiente -- ningún fallo se
 /// disfraza de éxito.
