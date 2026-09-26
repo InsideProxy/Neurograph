@@ -127,7 +127,7 @@ describe("pendingPackages: qué falta por instalar", () => {
   });
 });
 
-describe("installLine: la línea del paso al instalar, con el aviso de H6 si hace falta", () => {
+describe("installLine: la línea del paso al instalar, con el aviso de H9 si hace falta", () => {
   it("con un npm que ya aplica min-release-age, o sin user-agent, solo la línea de instalación", () => {
     expect(installLine("npm/11.10.0 node/v22.12.0 linux x64 workspaces/false")).toBe(
       "Instalando las dependencias de npm que faltan…",

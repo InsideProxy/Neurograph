@@ -13,7 +13,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Miniaturas:** un clic en ellas, o su botón «Ampliar», las pasa a la grande. La capa que recibe ese clic evita seleccionar nada por accidente y queda fuera del orden del tabulador: con el teclado se usa «Ampliar». (D1, D4)
 - **Cambiar de vista no desmonta nada.** Las tres vistas se montan siempre y solo cambia su zona de la rejilla, así que se conservan la cámara, el modo de corteza y la especie de comparación. En miniatura solo se ve el dibujo. (D1)
 - **Barra superior, en una fila:** el logotipo, las pestañas de vista con icono, el contexto y el estado de los datos, «Importar», el botón «?» del tour guiado y el engranaje de Ajustes. (D1, D4, D11)
-- **Si la barra no cabe**, pliega lo secundario por este orden, y solo lo que haga falta: «Datos reales» se queda en su punto, «Importar» y las síntesis inactivas en su icono y, al final, las vistas inactivas. Lo plegado conserva su nombre en la etiqueta emergente, también con el teclado. (D4)
+- **Si la barra no cabe**, pliega lo secundario por este orden, y solo lo que haga falta: «Datos reales» se queda en su punto, «Importar» y las síntesis inactivas en su icono y, al final, las vistas inactivas. Lo plegado conserva su nombre en la etiqueta emergente, también con el teclado, salvo el punto de «Datos reales», que no recibe el foco: su texto queda para los lectores de pantalla. (D4)
 - **Contexto de datos:** «Atlas» y «Redes» son listas desplegables que se manejan con el teclado, con el nombre corto en el botón y la etiqueta completa en la lista. «Redes» solo aparece si el atlas tiene más de una clasificación. (73, D4)
 - **Estado de los datos:** un punto de color con «Datos reales» o «Datos de demostración», con las cifras o el aviso en la etiqueta emergente. «Datos de demostración» nunca se pliega. (D4)
 - **Otras pestañas:** «Comparar especies», las dos de tractografía y las de síntesis son vistas aparte, con su propia maquetación. Comparten la barra superior y heredan los temas, la tipografía y los controles. (39, 62, 66, 71, D1, D3)
@@ -27,11 +27,11 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Ajustes:** el engranaje abre un panel con los cuatro temas en tarjetas, cada una con la paleta que tendría su tema, y «Colores de las redes». Los cambios se aplican en el acto. Se cierra con Escape, con un clic fuera o cuando el foco sale del panel. (D3, D7)
 - **Todo color sale de un token:** los de interfaz, de las variables CSS de cada tema; los de dibujo (SVG y 3D), de `DRAW_TOKENS`, a través de `useDrawColors()`. Solo quedan fijos el blanco de la exportación y de las imágenes de Comparar especies, el brillo del nodo seleccionado en el 3D y los colores de los tractos. (D3, D10)
 - **Contraste medido (WCAG) en cada tema:** el texto supera 4,5:1 sobre el panel, y los controles y gráficos de interfaz, 3:1. El tono tenue (`faint`) queda para separadores, iconos decorativos y controles desactivados. Los colores de dibujo de cada tema se eligen para leerse sobre su fondo, y los de exportación, sobre blanco. (18, 50, D3)
-- **El acento de los temas nuevos es neutro**, casi blanco sobre oscuro y casi negro en Claro, para que en la interfaz el color signifique «red». Un estado activo que tiene que distinguirse con 3:1 lleva el borde del acento. El logotipo, con cuatro nodos de colores de red, es la única excepción. (D3, D4, D7)
+- **El acento de los temas nuevos es neutro**, casi blanco sobre oscuro y casi negro en Claro, para que en la interfaz el color signifique «red». Un estado activo que tiene que distinguirse con 3:1 lleva el borde del acento. Aparte de las redes, solo llevan color los estados (datos reales, de demostración, error y síntesis), el azul de las marcas y el logotipo, con cuatro nodos de colores de red. (D3, D4, D7, D9)
 - **Colores de las redes,** en Ajustes: «Automática», la de por defecto (suaves en los temas nuevos y originales en Original), «Suaves» u «Originales del atlas». Cambiar de tema no borra una elección hecha a mano. (D7)
 - **La paleta suave es una capa de presentación** calculada a partir de `NETWORK_COLORS`, que no se toca. Conserva el tono y las diferencias de croma de cada red, reparte la luminosidad en una banda por tema y separa las redes cercanas. (D7)
 - **La tabla suave es generada:** `frontend/src/theme/softPalettes.ts` no se edita a mano, sino con `scripts/generate_soft_palettes.py`, que no escribe si un grupo no cumple sus comprobaciones. `npm test` detecta una tabla desfasada. (D7)
-- **Anillo neutro:** los nodos y todas las muestras de color de red lo llevan, para que se vean los colores extremos sobre cualquier fondo. En los temas oscuros, cada red suave supera 3:1 con el panel; en Claro quedan por debajo y cuentan con el anillo. (18, D3, D4, D7)
+- **Anillo neutro:** los nodos y todas las muestras de color de red lo llevan, para que se vean los colores extremos sobre cualquier fondo. En los temas oscuros, cada red suave supera 3:1 con el panel; en Claro quedan por debajo y cuentan con el anillo. El diagrama de síntesis solo lo lleva en Claro: en Original y en los temas oscuros conserva su contorno oscuro de antes. (18, D3, D4, D7, D12)
 
 ## Aspecto
 
@@ -42,7 +42,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 
 ## Etiquetas y lectura
 
-- **Etiquetas de los nodos:** la abreviatura va siempre junto al nodo, en todas las vistas. El nombre completo nunca flota junto al ratón: aparece en un recuadro fijo bajo el dibujo y en el panel de detalle. (14, 15, 19)
+- **Etiquetas de los nodos:** la abreviatura va siempre junto al nodo, en todas las vistas. El nombre completo nunca flota junto al ratón: aparece en un recuadro fijo bajo el dibujo (en el 3D, encima) y en el panel de detalle. (14, 15, 19)
 - **Abreviatura y nombre:** en recuadros y leyendas se muestra la abreviatura seguida del nombre, salvo que el nombre ya empiece por ella. (19, 23)
 - **Lado de la región:** en los textos que nombran una región (el buscador, el historial, el título de una conexión), la abreviatura lleva «(izq.)» o «(der.)» si hace falta y no lo dice ya. El «(hemisferio …)» de los nombres de HCP-MMP1.0 no se repite donde el hemisferio ya se ve. (D4)
 - **Recuadros de lectura de altura fija**, para que lo que cambia al pasar el ratón no altere el tamaño del dibujo. El texto que no cabe se desplaza dentro del recuadro, o en el 3D se corta con el texto completo en el emergente. (D1b)
@@ -79,7 +79,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 
 ## Deshacer
 
-- **Deshacer y rehacer** cubren la selección, los filtros y las marcas. Los botones ↶ y ↷ van en la fila de selección de Filtros y describen el paso en su etiqueta emergente. Los atajos son Ctrl+Z, Ctrl+Mayús+Z y Ctrl+Y (⌘ en macOS), y dentro de un campo de texto son del campo. (D4, D9)
+- **Deshacer y rehacer** cubren la selección, los filtros y las marcas. Los botones ↶ y ↷ van en la fila de selección de Filtros y describen el paso en su etiqueta emergente. Los atajos son Ctrl+Z (⌘Z en macOS) para deshacer, y Ctrl+Mayús+Z (⌘⇧Z) o Ctrl+Y para rehacer; dentro de un campo de texto son del campo. (D4, D9)
 - **Fuera del historial:** pasar el ratón, la vista ampliada, la lupa, el tema, el plegado de paneles y las acciones del tour guiado. Un arrastre del deslizador es un solo paso. Cambiar de atlas o de clasificación, o caer a los datos de demostración, vacía el historial. (D4, D11)
 - **Aviso con «Deshacer»** cuando un solo paso quita dos o más regiones de la selección o dos o más marcas. No roba el foco, y se va solo salvo mientras tiene el ratón o el foco encima. (D4, D9)
 
@@ -114,7 +114,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Panel de detalle,** de más a menos importante: la región, su red con su color y su hemisferio, cómo se asignó la red, sus conexiones de más a menos peso con una barra de peso logarítmica, y el ID al pie, con un botón para copiarlo. Una conexión y varias regiones reciben la misma jerarquía. (D4)
 - **Connectograma:**
   - **Etiquetas radiales:** por fuera del anillo y giradas con el ángulo de su nodo; en la mitad izquierda, del revés, para leerse de izquierda a derecha. (D10)
-  - **Sitio para la etiqueta más larga:** el anillo deja hasta el borde lo que ocupa la más larga del atlas, ampliada y con su pastilla, para que ninguna se corte. El radio es estable por atlas: no cambia al mostrar u ocultar redes. (D10)
+  - **Sitio para la etiqueta más larga:** el anillo deja hasta el borde lo que ocupa la más larga del atlas, ampliada y con su pastilla, para que ninguna se corte. El radio es estable por atlas: no cambia al mostrar u ocultar redes, salvo si los nodos a la vista cruzan 40 o 150, porque cambia el tamaño de la letra. (D10)
   - **Arcos de hemisferio,** rotulados IZQUIERDO y DERECHO, solo si cada hemisferio forma un bloque seguido en el orden actual y ningún nodo carece de hemisferio. El orden de los nodos no se toca para lograrlo. (D10)
   - **Región seleccionada:** su anillo lleva además un halo del color de selección, en todos los temas y también en la lupa. (D10)
   - **Leyenda:** bajo el dibujo y solo en la vista grande, con los trazos de la evidencia, la flecha de la conectividad efectiva y «Color del punto = red». (D10)
@@ -126,11 +126,12 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Cerebro 3D:**
   - **Cámara:** la vertical es el eje superior-inferior y arranca en vista lateral. Gira alrededor del centroide fijo del atlas y no se recentra al seleccionar. Zoom con la rueda y sin desplazamiento lateral. (23, 24)
   - **Controles:**
-    - «Corteza»: pintada o translúcida;
+    - «Resaltar homología real hacia»: una especie o ninguna;
+    - «Corteza»: regiones pintadas, redes originales vértice a vértice (solo con las clasificaciones que tienen ese mapa) o translúcida;
     - «Forma»: real, inflada (la opción por defecto) o muy inflada;
     - «Hemisferio».
 
-    Un clic en la corteza selecciona la región. (72)
+    Un clic en la corteza selecciona la región. (50, 72, 73)
   - **Oclusión por la corteza:** el foco (líneas, marcadores, conos y etiquetas) se dibuja encima de la corteza, pero con la corteza pintada lo que ella tapa se ve tenue, más cuanto más hondo queda. No hay interruptor, y sin la corteza pintada todo se ve entero. (72, D8)
   - **Marcadores:** pequeños, para no tapar la región pintada, y algo mayor el de la región seleccionada. Su contorno se ve también en los nodos negros, y su zona de clic es mayor que el propio marcador. (D5)
   - **Etiquetas:** al lado de su marcador en pantalla, sobre una pastilla translúcida del tema y con la tipografía de la interfaz; la de la región seleccionada destaca. Un clic en la etiqueta selecciona su región. (D10)

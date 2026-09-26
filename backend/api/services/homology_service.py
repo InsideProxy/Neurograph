@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.api.services.regions_service import ensure_regions_exist
 from backend.database.models.entities import Dataset, Homology, Region, Species, Study
 
 
@@ -150,7 +151,10 @@ def find_homologues(db: Session, region_id: str | None = None, species_id: str |
     cualquiera de los dos extremos); `species_id` filtra a las que tocan
     esa especie (en cualquiera de los dos extremos) -- igual que
     `search_tracts`, un filtro decide QUÉ homologías aparecen, nunca
-    recorta lo que se cuenta de cada una."""
+    recorta lo que se cuenta de cada una. Un `region_id` que no existe
+    lanza `ValueError` (principio 9, decisión 77)."""
+    if region_id is not None:
+        ensure_regions_exist(db, [region_id])
     homology_rows = list(db.execute(select(Homology)).scalars().all())
     if not homology_rows:
         return []

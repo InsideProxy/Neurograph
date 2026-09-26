@@ -1,4 +1,4 @@
-// El aviso de min-release-age (H6): si el npm que instala es anterior a
+// El aviso de min-release-age (H9): si el npm que instala es anterior a
 // 11.10.0, no aplica esa protección del .npmrc y la ignora en silencio.
 // Solo la lógica pura: parsear `npm_config_user_agent` y comparar
 // versiones, sin tocar el entorno ni ejecutar npm.

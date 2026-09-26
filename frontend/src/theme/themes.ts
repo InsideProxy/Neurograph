@@ -220,7 +220,10 @@ export const DRAW_TOKENS: Readonly<Record<ThemeId, Readonly<DrawTokens>>> = {
     hoverHighlight: "#b7791f",
     label: "#686c74",
     nodeRing: "#6f737c",
-    nodeGap: "#ffffff",
+    // El contorno de los nodos del diagrama de síntesis es el anillo neutro:
+    // en blanco no se veía sobre el panel, y aquí las redes suaves no llegan
+    // a 3:1 sin él (D12).
+    nodeGap: "#6f737c",
     intra: "#2e8a5a",
     inter: "#c24a5f",
     hemiFill: "#f6f5f1",

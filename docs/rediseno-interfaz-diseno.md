@@ -1,7 +1,7 @@
 # Rediseño de la interfaz: documento de diseño
 
 - **Fecha:** 24/09/2026
-- **Estado:** aprobado por el usuario y validado por el main developer el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6 lleva los avisos arriba a la derecha, bajo la barra (5.6). Y el tour guiado, con el botón «?» de la barra, es la D11 (5.10); su verificación en la app real quedó pendiente.
+- **Estado:** aprobado por el usuario y validado por el desarrollador principal el 24/09/2026, tras tres pasadas de revisión de un agente aparte. La fase 1 está implementada: D3 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase1.md`. La fase 3 también: D4 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-fase3.md`. Y la legibilidad del cerebro 3D, la parte 3D de la fase 4, que se adelantó y se hizo en paralelo en la rama `rediseno-3d`, ya fusionada: D5 de `docs/decisiones-diseno.md`, con el plan en `docs/rediseno-interfaz-plan-3d.md`. La fase 2 también: D7, con el plan en `docs/rediseno-interfaz-plan-fase2.md`; su verificación en la app real quedó pendiente. A petición del usuario, la oclusión por la corteza sustituyó a la atenuación de la D5 (D8, 6.3), y se añadieron las marcas de regiones (D9, 5.9). Y el resto de la fase 4, los gráficos: D10, con el plan en `docs/rediseno-interfaz-plan-fase4.md`; su verificación en la app real quedó pendiente. La D6 lleva los avisos arriba a la derecha, bajo la barra (5.6). Y el tour guiado, con el botón «?» de la barra, es la D11 (5.10); su verificación en la app real quedó pendiente.
 - **Referencia visual:** lienzo de Claude Design «Rediseño de NeuroGraph», https://claude.ai/artifact/57gitCZSpXJZYCdiYhrknA (privado: hay que pedir acceso a su dueño). Es una referencia de aspecto. Los valores que mandan son los de este documento.
 
 ## 1. Objetivo
@@ -42,8 +42,8 @@ Fuera:
 1. **La lógica de representación no cambia.** El color del nodo es la red, el grosor de la línea es el peso, el trazo discontinuo es evidencia no directa (indirecta o hipótesis) y la flecha es conectividad efectiva. Las posiciones y el orden de los nodos siguen saliendo de los mismos datos.
 2. **El color de red es un dato.** `NETWORK_COLORS` sigue siendo el color extraído de cada atlas (`theme/networks.ts:225`). La paleta suave es una capa de presentación calculada a partir de él, y siempre se puede volver a los originales.
 3. **Un tema cambia colores, no estructura.** Barra, jerarquía, controles y mejoras de los gráficos son iguales en los cuatro temas.
-4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. La única excepción es el logotipo de la maqueta, que lleva cuatro nodos con colores de red: representa justo eso, redes (decisión del usuario, 24/09/2026).
-5. **Todo color sale de un token.** No quedan colores fijos en componentes ni en `App.css`.
+4. **En la interfaz, el color significa «red».** Los temas nuevos usan un acento neutro, casi blanco sobre oscuro y casi negro sobre claro. Aparte de las redes, solo llevan color los estados (datos reales, de demostración, error y síntesis), el azul de las marcas (5.9) y el logotipo de la maqueta, que lleva cuatro nodos con colores de red: representa justo eso, redes (decisión del usuario, 24/09/2026).
+5. **Todo color sale de un token.** Solo quedan fijos el blanco de la exportación y de las imágenes de Comparar especies, el brillo del nodo seleccionado en el 3D y los colores de los tractos.
 6. **Los nodos conservan su anillo neutro** (regla de `theme/networks.ts:228-234`). Es lo que mantiene visibles los colores extremos, como `#000000` o `#ffffcc`, sobre cualquier fondo.
 
 ## 4. Temas y colores
@@ -99,7 +99,7 @@ Lo que hoy son constantes en `theme/networks.ts` y valores sueltos en los compon
 | `hoverHighlight` | `#ffd84a` | `#ffd84a` | `#ffd84a` | `#b7791f` |
 | `label` abreviaturas | `#837f90` | `#8d95a3` | `#8a97b0` | `#686c74` |
 | `nodeRing` anillo neutro, 1 px | `#837f90` | `#8b93a0` | `#8a98b6` | `#6f737c` |
-| `nodeGap` contorno de los nodos del diagrama de síntesis | `#0b0c10` | `#0f1115` | `#0a0e17` | `#ffffff` |
+| `nodeGap` contorno de los nodos del diagrama de síntesis (en Claro, el anillo neutro, D12) | `#0b0c10` | `#0f1115` | `#0a0e17` | `#6f737c` |
 | `intra` intrahemisférica | `#2a925e` | `#6cc497` | `#5fd0a0` | `#2e8a5a` |
 | `inter` interhemisférica | `#cf596d` | `#ec8d9c` | `#f58fa3` | `#c24a5f` |
 | `hemiFill` relleno de las elipses de hemisferio | `none` | `#1d2127` | `#172035` | `#f6f5f1` |
@@ -118,7 +118,7 @@ Otros detalles del dibujo:
 - **Contraste:** `label` y `nodeRing` superan 4,7:1 sobre su panel en los temas nuevos. En Original quedan en 4,27:1, como hoy.
 - **Etiquetas del 3D** (6.3; D10): el texto es el `--text` de cada tema, y el de la región seleccionada, su `--text-h`. La pastilla es su `sceneBg` con transparencia: 0,84, y 0,88 en Claro, como el `scrim` de la maqueta en los temas nuevos (en Original, la maqueta usaba su `--bg` al 82 %). Con cualquier cosa detrás (el fondo compuesto sobre negro y sobre blanco), el texto supera 4,5:1, y `theme/themeCss.test.ts` lo comprueba: de 5,9:1 a 12,5:1, y el de la seleccionada, de 9,0:1 a 18,1:1, calculado. En Original no conservan el aspecto de antes: hasta la fase 4, las etiquetas del 3D eran texto casi negro con un contorno blanco, igual en todos los temas.
 - **Grosor:** el `dash` cambia solo el patrón del discontinuo; el grosor sigue siendo el peso. Hoy, el grosor al seleccionar y las flechas de conectividad efectiva siguen su regla actual.
-- **Clave desconocida:** si una clave de red no está en la tabla, se usa el color de «sin clasificar» de la paleta activa. Hoy son `"#888"` y `NEUTRAL_COLOR`: se unifica.
+- **Clave desconocida:** si una clave de red no está en la tabla, se usa el color de «sin clasificar» de la paleta activa. Antes del rediseño eran `"#888"` o `NEUTRAL_COLOR`, según la vista.
 
 ### 4.3 Paleta de redes: suave y original
 
@@ -195,7 +195,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 - Todo color es un atributo de presentación (`fill`, `stroke`, `stroke-opacity`), nunca `var()` ni una clase CSS, porque al serializar se pierden.
 - Cada elemento con color de tema lleva `data-ng-fill`, `data-ng-stroke` o `data-ng-stroke-opacity`. Su valor es el nombre de un token de 4.2 o `net:<clave>` para un color de red. Por ejemplo, `edge`, `selected`, `label`, `nodeRing`, `intra`, `hemiFill`, `edgeOpacityConnectogram` o `edgeOpacityHemispheres`.
 - `exportSvgAsJpeg` llama, antes de serializar el clon, a `applyExportColors(clon, resolver)`. Este recorre esos atributos y escribe el valor que devuelve `exportColorFor(ref, tema, modo)`.
-- El `<svg>` exportado lleva `font-family` explícito (una pila de fuentes del sistema). Hoy no lo lleva y sale con la fuente por defecto del navegador.
+- El `<svg>` exportado lleva `font-family` explícito (una pila de fuentes del sistema). Antes del rediseño no lo llevaba y salía con la fuente por defecto del navegador.
 - Lo que solo existe mientras el ratón está encima, como la lupa o el resaltado, no aparece en la exportación: al pulsar el botón, el puntero está fuera del dibujo. Es igual que hoy.
 
 **Cerebro 3D:** `ExportBridge` ya cambia el fondo a blanco. Además activa un modo «exportando», que es estado local de `Brain3D` y no del store global: así el connectograma y los hemisferios no se repintan durante una exportación 3D. Mientras dura:
@@ -204,7 +204,7 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 - La corteza pintada recalcula sus colores, que es rápido.
 - Los materiales de la selección, los marcadores, las líneas, los conos de dirección, las etiquetas con su pastilla (6.3) y la malla de referencia de `ReferenceMesh` usan los tokens de exportación.
 
-`ExportBridge` espera un fotograma dibujado con esos colores, lo captura y restaura el modo normal. Así la selección no desaparece sobre el blanco.
+`ExportBridge` espera a que la escena tenga esos colores, la dibuja fuera de pantalla sobre blanco, sin tocar el lienzo visible (6.3, D5), y restaura el modo normal. Así la selección no desaparece sobre el blanco.
 
 ### 4.5 Elección y persistencia
 
@@ -212,8 +212,8 @@ El fondo sigue siendo siempre blanco (decisión 11). Los colores dependen de dos
 - **«Automática»:** `null` se elige en Ajustes como «Automática», la opción de por defecto (5.2). Elegirla después de otra vuelve al automático.
 - **Independencia:** cambiar de tema no borra un `modoPaleta` elegido a mano.
 - **Almacenamiento:** se guarda en `localStorage` con la clave `neurograph.apariencia`. Cada lectura y escritura va en `try/catch`: si el almacenamiento falla o no existe, se usan los valores por defecto sin error.
-- **Tema por defecto: Grafito.** Lo elegimos con la delegación del usuario («lo que sea mejor, tu criterio»), y se le confirma al pedirle permiso para fusionar. Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
-- **Primer render:** `main.tsx` lee la elección de forma síncrona y aplica `data-theme` y `color-scheme` en `<html>` antes del primer render, para que no parpadee el tema equivocado. `index.css` define los tokens de 4.1 para cada `data-theme`.
+- **Tema por defecto: Grafito.** Lo elegimos con la delegación del usuario («lo que sea mejor, tu criterio»), y él ordenó fusionar el rediseño en master con Grafito por defecto (25/09/2026). Es también el tema que aplica `index.css` sin `data-theme`, antes de que cargue el JS.
+- **Primer render:** `main.tsx` lee la elección de forma síncrona y pone `data-theme` en `<html>` antes del primer render, para que no parpadee el tema equivocado. `index.css` define, para cada `data-theme`, los tokens de 4.1 y su `color-scheme`.
 
 ## 5. Estructura, común a todos los temas
 
@@ -584,7 +584,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
   - La etiqueta quedaba a 0,18 del borde del marcador, en +Y de los datos, como antes en uno normal. Desde la fase 4 va a su lado, en pantalla (Etiquetas 3D, abajo).
 - **Etiquetas 3D** (`logic/textSprite.ts`):
   - Usan la tipografía nueva, con el texto y un fondo translúcido del tema.
-  - La caché pasa de indexarse por texto a indexarse por texto, tema y una versión de fuentes, que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
+  - La caché pasa de indexarse por texto a indexarse también por los colores del tema, el peso y una versión de fuentes (ver «Caché», abajo), que sube cuando `document.fonts.load(...)` termina. Así las etiquetas se regeneran al cambiar de tema y cuando llega la fuente.
   - **Pastilla** (D10): todas van sobre una pastilla, como ya iban las de una región marcada (5.9), y una sola función dibuja las dos. Las de siempre llevan el texto del tema, `label3dText`, sobre su fondo translúcido, `label3dBackground` (4.2); las marcadas, los colores de marca. Van también en las vecinas de una región con muchas conexiones (decisión del usuario, 25/09/2026), aunque tapen más corteza que el texto con contorno de antes. El lienzo mide 84 px de alto para una letra de 44, así que el texto sale del tamaño de antes, con 34 px de margen a cada lado.
   - **Letra:** `600 44px 'Atkinson Hyperlegible Next', system-ui, sans-serif`, el peso de las etiquetas del connectograma. La textura va en sRGB, y el material, sin curva de tono (`toneMapped={false}`), como la pastilla y el anillo de las marcas: los colores salen como en los SVG.
   - **La de la región seleccionada destaca,** como en la maqueta: el texto fuerte del tema (`label3dStrong`, el `--text-h`), peso 700 y 13/12 más alta. Los colores de marca, si los hay, ganan.
@@ -646,7 +646,7 @@ La geometría y el cálculo son los mismos. Los colores salen de los tokens de 4
 - **`state/appearance.ts`:** store de zustand con `tema` y `modoPaleta`, más la persistencia de 4.5.
 - **`theme/useDrawColors.ts`:** hook `useDrawColors({ paraExportar })` que devuelve los tokens de dibujo y `networkColor(clave)` según el store. Con `paraExportar`, devuelve los de exportación. Solo `Brain3D` lo usa así, con su estado local «exportando».
 - **`logic/exportPalette.ts`:** `applyExportColors(raiz, resolver)`. Recorre `[data-ng-fill]`, `[data-ng-stroke]` y `[data-ng-stroke-opacity]` y escribe los atributos.
-- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (con `NETWORK_SOURCE_SHORT_LABELS`), `Toast` e `Icon` (iconos SVG en línea).
+- **Componentes:** `TopBar`, `SettingsPopover`, `DataContextMenu` (sus nombres cortos, `NETWORK_SOURCE_SHORT_LABELS`, están en `logic/dataContext.ts`), `Toast` e `Icon` (iconos SVG en línea).
 - **`state/history.ts`:** el historial de deshacer (5.7). Es un store propio que se suscribe a los de selección y filtros sin cambiarlos.
 - **`logic/historyStep.ts`:** función pura que describe cada paso (5.7) y decide si merece el aviso con «Deshacer».
 - **`logic/regionSearch.ts` y `RegionSearch`:** el buscador de regiones (5.8).
@@ -769,7 +769,7 @@ vitest corre en node, sin DOM, así que la lógica se prueba con funciones puras
   - el lado en las abreviaturas que no lo llevan.
 - **Sin romper nada:** las pruebas actuales siguen pasando, incluida `networkSurface.test.ts`, que compara `NETWORK_COLORS` con los JSON.
 
-El recorrido del DOM de `applyExportColors` es mínimo y se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
+`applyExportColors` se prueba con un árbol simulado (`logic/exportPalette.test.ts`); la exportación entera se comprueba en la aplicación real, exportando con cada tema. Cada fase se verifica además con capturas del antes y el después.
 
 **Fase 3.** 156 pruebas nuevas en 20 archivos, de 115 a 271 (D4):
 
@@ -833,7 +833,6 @@ Por último, el resto de la fase 4 (D10), en la rama `rediseno-fase4`, que sali�
 
 ## 12. Riesgos y puntos abiertos
 
-- **Tema por defecto:** Grafito, elegido con la delegación del usuario; se le confirma al pedirle permiso para fusionar.
 - **Daltonismo:** ninguna de las dos paletas lo tiene en cuenta. Una opción específica cambiaría tonos, y con ello la semántica de color, así que necesita su propia decisión.
 - **Fuente en el JPEG:** se declara una pila de fuentes del sistema. Incrustar la fuente nueva en el SVG queda para más adelante. Esa pila es más ancha que la serif que usaba antes el navegador. Por eso la leyenda de la selección múltiple, que es un SVG de ancho fijo, mide su texto con la fuente de la exportación y ensancha la imagen al exportarla (D3 de `docs/decisiones-diseno.md`).
   - Desde la fase 3 (D4), la leyenda mide también su texto en pantalla y ensancha su `<svg>`, así que ya no corta las etiquetas largas. Si no cabe en el panel, su recuadro se desplaza en horizontal.
@@ -859,7 +858,6 @@ Por último, el resto de la fase 4 (D10), en la rama `rediseno-fase4`, que sali�
 - **El halo, encima de las etiquetas de las vecinas** (D10): en la maqueta queda debajo, y cambiarlo obligaría a reorganizar el grupo de las etiquetas, que es del desarrollador principal. Con una región seleccionada y marcada, la punta de la pastilla tapa cerca de 1 px del halo. En la lupa, el halo llega a su etiqueta, que va hacia dentro, y algunas vecinas lo tapan.
 - **Clics en el 3D, en el código del desarrollador principal** (D10): un clic normal en zonas de clic de marcadores que se solapan alterna las dos; las líneas se alcanzan desde 1 unidad (40 mm); y un arrastre para girar que acaba sobre la corteza pintada selecciona una región. No se han cambiado, porque es su código. El clic en las etiquetas evita los tres.
 - **Pastillas de las etiquetas del 3D** (D10): tapan más corteza que el texto con contorno de antes, sobre todo con una región de muchas conexiones. En Claro, queda por mirar si el texto se ve demasiado fino con el zoom de partida.
-- **Anillo de los nodos del diagrama de síntesis en Claro** (D3): la D3 lo dejó para la fase 4, pero está fuera de la sección 6, y queda para más adelante (D10).
 - **«Original» no es la app de hoy:** conserva sus colores, pero recibe la tipografía y el acento en casillas y deslizadores (fase 1), la estructura (fase 3) y las mejoras de los gráficos (fase 4), como los demás temas.
 
 - **Limitaciones conocidas, sacadas de las entradas del log al resumirlas:**

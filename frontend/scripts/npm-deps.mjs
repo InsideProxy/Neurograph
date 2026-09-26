@@ -13,7 +13,7 @@
 //
 // Si instala algo y el npm que lo ejecuta es anterior a 11.10.0, añade un
 // aviso de que ese npm ignora en silencio `min-release-age` del `.npmrc`
-// del proyecto (H6, ver scripts/npm-version.mjs).
+// del proyecto (H9, ver scripts/npm-version.mjs).
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -48,7 +48,7 @@ export function pendingPackages(lock, installed) {
 }
 
 // La línea del paso al instalar: la de instalación y, si el npm que la
-// ejecuta ignora min-release-age, el aviso de H6 después. Pura: compone,
+// ejecuta ignora min-release-age, el aviso de H9 después. Pura: compone,
 // no lee el entorno.
 export function installLine(userAgent) {
   const line = "Instalando las dependencias de npm que faltan…";

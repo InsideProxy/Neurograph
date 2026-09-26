@@ -1,4 +1,4 @@
-// Aviso si el npm que instala no aplica min-release-age (H6). Esa opción
+// Aviso si el npm que instala no aplica min-release-age (H9). Esa opción
 // del `.npmrc` del proyecto existe desde npm 11.10.0 y rechaza instalar una
 // versión publicada hace menos de tres días: la ventana donde se suelen
 // colar los ataques a la cadena de suministro (Shai-Hulud, chalk, axios...).
