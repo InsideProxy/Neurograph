@@ -21,6 +21,7 @@ import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
+import { hiddenSelectedNodes, hiddenSelectionText } from "../logic/hiddenSelection";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { connectionArrow, regionPassingText } from "../logic/displayText";
 import { exportSvgAsJpeg } from "../logic/exportImage";
@@ -290,7 +291,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
   // usuaria, 30/08/2026): nunca flota junto al ratón ni al nodo -- así
   // el nombre nunca se sale del cuadro ni depende de dónde esté el
   // puntero. Prioridad: nodo bajo el ratón > conexión seleccionada > un
-  // único nodo seleccionado > leyenda de la selección múltiple > vacío.
+  // único nodo seleccionado > leyenda de la selección múltiple > selección
+  // entera oculta por el filtro de redes (D13) > vacío.
   const hoveredNode = hoveredNodeId ? nodeById.get(hoveredNodeId) : undefined;
   const selectedConnection = selectedConnectionId
     ? connections.find((c) => c.id === selectedConnectionId) ??
@@ -303,6 +305,12 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         .filter((n): n is GraphNode => n !== undefined)
         .sort((a, b) => a.label.localeCompare(b.label)),
     [selectedNodeIds, nodeById]
+  );
+  // Las seleccionadas de una red oculta no se dibujan ni entran en esa
+  // lista; el recuadro las cuenta aparte (D13).
+  const hiddenNote = hiddenSelectionText(
+    hiddenSelectedNodes(selectedNodeIds, allNodes, filters.hiddenNetworks),
+    selectedNodesList.length
   );
 
   let readout: ReactNode;
@@ -348,6 +356,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
           </span>
         )}
         {single && <span className="readout-selection__hint">pasa el ratón por otra región para verla</span>}
+        {hiddenNote && <span>{hiddenNote}</span>}
       </span>
     );
   } else if (selectedNodesList.length > 1) {
@@ -357,6 +366,7 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         {isInducedView && (
           <> · {connections.length} conexión{connections.length === 1 ? "" : "es"} entre ellas</>
         )}
+        {hiddenNote && <> · {hiddenNote}</>}
         <ul>
           {selectedNodesList.map((node) => (
             <li key={node.id}>
@@ -366,6 +376,8 @@ export function Connectogram({ nodes: allNodes, connections: allConnections, siz
         </ul>
       </span>
     );
+  } else if (hiddenNote) {
+    readout = <span>{hiddenNote}</span>;
   } else {
     readout = <span className="connectogram-readout__placeholder">Pasa el ratón o selecciona una región.</span>;
   }

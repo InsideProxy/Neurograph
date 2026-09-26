@@ -47,6 +47,7 @@ Reglas vigentes de la interfaz: disposición, aspecto e interacción. Lo que tie
 - **Lado de la región:** en los textos que nombran una región (el buscador, el historial, el título de una conexión), la abreviatura lleva «(izq.)» o «(der.)» si hace falta y no lo dice ya. El «(hemisferio …)» de los nombres de HCP-MMP1.0 no se repite donde el hemisferio ya se ve. (D4)
 - **Recuadros de lectura de altura fija**, para que lo que cambia al pasar el ratón no altere el tamaño del dibujo. El texto que no cabe se desplaza dentro del recuadro, o en el 3D se corta con el texto completo en el emergente. (D1b)
 - **Contenido del recuadro:** la región, su hemisferio y su red como etiqueta de color. En el del connectograma, con exactamente una región seleccionada, cuántas de sus conexiones pasan los filtros, con el umbral truncado para no exagerarlo, y «(no se dibujan)» por encima del tope de dibujo. (D4)
+- **Selección oculta:** los recuadros del connectograma y de los hemisferios cuentan solo las regiones seleccionadas que dibujan, y avisan de cuántas más oculta el filtro de redes y de qué redes son. (D13)
 - **Textos largos:** un nombre de red largo acaba en «…», con el completo en la etiqueta emergente. (D4)
 - **Conexiones:** se escriben «A ↔ B», y «A → B» solo si la conexión es efectiva, la única con sentido. (D4)
 - **Tamaños:** el radio de los nodos y el tamaño de letra dependen del número de nodos, nunca del tamaño del contenedor. En el SVG, 1 unidad es 1 px. (19, 21)

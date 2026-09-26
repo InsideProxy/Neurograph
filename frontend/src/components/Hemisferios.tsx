@@ -54,6 +54,7 @@ import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
+import { hiddenSelectedNodes, hiddenSelectionText } from "../logic/hiddenSelection";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
@@ -336,6 +337,11 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
         .sort((a, b) => a.label.localeCompare(b.label)),
     [selectedNodeIds, nodeById]
   );
+  // Las seleccionadas de una red oculta, como en el connectograma (D13).
+  const hiddenNote = hiddenSelectionText(
+    hiddenSelectedNodes(selectedNodeIds, allNodes, filters.hiddenNetworks),
+    selectedNodesList.length
+  );
 
   let readout: ReactNode;
   if (hoveredNode) {
@@ -376,7 +382,13 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
       </span>
     );
   } else if (selectedNodesList.length === 1) {
-    readout = <RegionSummary node={selectedNodesList[0]} />;
+    readout = hiddenNote ? (
+      <span>
+        <RegionSummary node={selectedNodesList[0]} /> · {hiddenNote}
+      </span>
+    ) : (
+      <RegionSummary node={selectedNodesList[0]} />
+    );
   } else if (selectedNodesList.length > 1) {
     readout = (
       <span className="hemisferios-readout__legend">
@@ -384,8 +396,11 @@ export function Hemisferios({ nodes: allNodes, connections: allConnections, comp
         {isInducedView && (
           <> · {connections.length} conexión{connections.length === 1 ? "" : "es"} entre ellas</>
         )}
+        {hiddenNote && <> · {hiddenNote}</>}
       </span>
     );
+  } else if (hiddenNote) {
+    readout = <span>{hiddenNote}</span>;
   } else {
     readout = <span className="hemisferios-readout__placeholder">Pasa el ratón o selecciona una región.</span>;
   }
