@@ -19,4 +19,4 @@ Reglas para trabajar en `frontend/`. Las generales están en el CLAUDE.md de la 
 
 - `npx --no -- tsc -b`, `npm test`, `npm run lint` y `npm run build`. El `--no` impide que `npx` descargue un paquete de npm si no encuentra TypeScript instalado: sin él, ejecutado fuera de `frontend/` bajaría y ejecutaría el paquete `tsc`, que no es TypeScript.
 - La comprobación visual automática usa un navegador headless propio, nunca la ventana del usuario.
-- `node_modules` se instala por separado en cada sistema operativo. `npm run dev` y `npm run build` ejecutan antes `scripts/prepare.mjs`, que instala lo que falte (H5); un paso de preparación nuevo es una entrada más en su lista `STEPS`.
+- `node_modules` se instala por separado en cada sistema operativo. `npm run dev`, `npm run build` y `npm run tauri` ejecutan antes `scripts/prepare.mjs`, que instala lo que falte (H5); un paso de preparación nuevo es una entrada más en su lista `STEPS`.

@@ -1,6 +1,7 @@
 // La preparación antes de dev y build (H5): el orden de los pasos, el
 // silencio cuando no hay nada que hacer y cómo para si algo falla. Con
 // pasos de prueba, sin tocar node_modules ni ejecutar npm.
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { npmDependencies } from "./npm-deps.mjs";
 import { STEPS, prepare } from "./prepare.mjs";
@@ -95,5 +96,22 @@ describe("prepare: los pasos antes de dev y build", () => {
     expect(prepare([noNpm, step("b", "Haciendo b…", 0, calls)])).toBe(1);
     expect(error).toHaveBeenLastCalledWith("No se pudo ejecutar npm: spawn sh ENOENT");
     expect(calls).toEqual(["Instalando las dependencias de npm que faltan…"]);
+  });
+});
+
+// Dónde se ejecuta (H5): dentro de los propios scripts, porque npm se salta
+// predev y prebuild con ignore-scripts=true, y en tauri antes de lanzar la
+// CLI, que en Windows no se puede sustituir mientras corre.
+describe("prepare: dentro de dev, build y tauri", () => {
+  const { scripts } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+  it("dev, build y tauri empiezan por la preparación", () => {
+    for (const name of ["dev", "build", "tauri"]) {
+      expect(scripts[name], name).toMatch(/^node scripts\/prepare\.mjs && /);
+    }
+  });
+
+  it("sin predev, prebuild ni pretauri: con los scripts permitidos, la preparación iría dos veces", () => {
+    expect(Object.keys(scripts).filter((name) => /^pre(dev|build|tauri)$/.test(name))).toEqual([]);
   });
 });

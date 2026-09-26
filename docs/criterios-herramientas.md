@@ -23,7 +23,7 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   (27, 31, 49, 63)
 - **Cliente MCP:** `.mcp.json` en la raíz, con el Python del entorno virtual, `-m backend.mcp.server` y la contraseña por variable de entorno. (32)
 - **`node_modules` no sirve de una plataforma a otra.** En Windows y en Linux se instala por separado. (18)
-- **Preparación antes de arrancar:** `npm run dev` y `npm run build`, también desde Tauri, ejecutan primero `frontend/scripts/prepare.mjs`, dentro del propio script para que valga con `ignore-scripts=true`. Sus pasos van en orden, callan si no hay nada que hacer y, si fallan, paran el arranque. El primero hace `npm install`, con la configuración de npm del usuario, si `node_modules` no tiene lo de `frontend/package-lock.json`; un opcional que falte no cuenta. (H5)
+- **Preparación antes de arrancar:** `npm run dev`, `npm run build` y `npm run tauri` ejecutan primero `frontend/scripts/prepare.mjs`, dentro del propio script para que valga con `ignore-scripts=true`; en `tauri`, antes de lanzar la CLI, que en Windows no se puede sustituir mientras corre. Sus pasos van en orden, callan si no hay nada que hacer y, si fallan, paran el arranque. El primero hace `npm install`, con la configuración de npm del usuario, si `node_modules` no tiene lo de `frontend/package-lock.json`; un opcional que falte no cuenta. (H5)
 
 ## Carga de SQL y codificación
 

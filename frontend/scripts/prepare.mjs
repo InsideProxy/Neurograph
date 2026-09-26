@@ -1,8 +1,10 @@
-// Preparación del frontend antes de arrancar (H5). `npm run dev` y
-// `npm run build` la ejecutan primero, dentro del propio script
-// (`node scripts/prepare.mjs && vite`), y no como `predev` o `prebuild`,
-// que npm se salta con `ignore-scripts=true`. Así, tras un pull, basta con
-// arrancar, también desde Tauri: lo que falte se pone al día solo.
+// Preparación del frontend antes de arrancar (H5). `npm run dev`,
+// `npm run build` y `npm run tauri` la ejecutan primero, dentro del propio
+// script (`node scripts/prepare.mjs && vite`), y no como `predev` o
+// `prebuild`, que npm se salta con `ignore-scripts=true`. En `tauri` va
+// antes de lanzar la CLI de Tauri, porque en Windows npm no puede
+// sustituirla mientras corre. Así, tras un pull, basta con arrancar: lo que
+// falte se pone al día solo.
 //
 // Los pasos van en STEPS, en orden. Cada uno es un objeto con:
 // - pending(): la línea corta, en castellano, que se imprime si hay algo

@@ -1,6 +1,7 @@
 // Paso de preparación: las dependencias de npm que falten (H5). Lo ejecuta
-// scripts/prepare.mjs antes de `npm run dev` y `npm run build`, así que
-// tras un pull se instala lo nuevo sin tener que acordarse de `npm install`.
+// scripts/prepare.mjs antes de `npm run dev`, `npm run build` y
+// `npm run tauri`, así que tras un pull se instala lo nuevo sin tener que
+// acordarse de `npm install`.
 //
 // Compara package-lock.json con el lockfile oculto que npm escribe en cada
 // instalación, node_modules/.package-lock.json, que dice lo que de verdad
