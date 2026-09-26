@@ -3,6 +3,13 @@
 Basado en la sección 28 de la especificación maestra, con los ajustes
 señalados en `docs/analisis-arquitectura.md` (sección 5).
 
+## Pendiente al actualizar
+
+Pasos que el desarrollador principal, o quien actualice, tiene que dar a mano tras el próximo pull.
+
+- **Reconstruir la API** (26/09/2026, decisión 77). El commit `11be2ba` cambia el backend: devuelve 404 para atlas y regiones que no existen. La API corre en una imagen de Docker cerrada, con el código copiado al construirla, así que tras el pull sigue con la versión anterior hasta ejecutar `docker compose up -d --build` en la raíz del repositorio (criterio de herramientas «Docker», 39). El frontend no lo necesita: `npm run dev` y `npm run tauri dev` instalan solos las dependencias de npm que falten (H5).
+- **npm 11.10 o posterior** (26/09/2026, H9). Hace falta para que se aplique el retardo de seguridad de `frontend/.npmrc` (`min-release-age=3`). Un npm más viejo lo ignora, y el paso de preparación lo avisa al instalar. Se actualiza con `npm install -g npm@11`; npm 12 pide Node 22.22 o posterior.
+
 ## Criterios a revisar
 
 - **Grosor de las líneas según el peso** (26/09/2026, criterio funcional
