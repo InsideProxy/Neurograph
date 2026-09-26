@@ -17,25 +17,46 @@
 // tractografía real que consultar, así que `canFetchTracts=false` evita
 // la petición por completo en vez de mostrar un resultado vacío que
 // parezca "no hay tractos" cuando en realidad es "no se ha buscado".
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  CONNECTION_TYPE_LABELS,
-  EVIDENCE_LEVEL_LABELS,
-  NETWORK_COLORS,
-  NETWORK_LABELS,
-  NEUTRAL_COLOR,
-} from "../theme/networks";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { CONNECTION_TYPE_LABELS, EVIDENCE_LEVEL_LABELS } from "../theme/networks";
+import { ngFill, ngStroke } from "../theme/colors";
+import { currentExportResolver, useDrawColors } from "../theme/useDrawColors";
 import { useSelectionStore } from "../state/selection";
 import { fetchInducedTracts } from "../data/api";
 import { inducedConnections } from "../logic/induced";
 import { exportSvgAsJpeg } from "../logic/exportImage";
 import { abbreviationAddsInformation } from "../logic/regionLabel";
+import { copyShortcutLabel, copyText } from "../logic/clipboard";
+import { connectionArrow, connectionTitle, formatCount, hemisphereLabel, regionTitleParts } from "../logic/displayText";
+import { CONNECTIONS_PREVIEW_COUNT, regionConnectionsByWeight, visibleRegionConnections } from "../logic/regionConnections";
+import { weightToSliderPosition } from "../logic/weightScale";
 import type { GraphConnection, GraphNode, InducedTract } from "../types/domain";
+import { Icon } from "./Icon";
+import { NetworkTag } from "./NetworkTag";
 
 interface Props {
   nodes: GraphNode[];
   connections: GraphConnection[];
   canFetchTracts?: boolean;
+}
+
+// Ancho mínimo de la leyenda de la selección múltiple (el de siempre) y
+// hueco a la derecha de su texto más largo (el mismo que a la izquierda).
+const LEGEND_MIN_WIDTH = 260;
+const LEGEND_MARGIN = 10;
+
+// Escribe en el <svg> de la leyenda el ancho de su texto. Si el navegador
+// todavía no puede medirlo (getBBox falla sin maqueta), se queda el que
+// tenga, como hace contentRightEdge en logic/exportImage.ts.
+function fitLegendWidth(svg: SVGSVGElement | null) {
+  if (!svg) return;
+  let box: DOMRect;
+  try {
+    box = svg.getBBox();
+  } catch {
+    return;
+  }
+  svg.setAttribute("width", String(Math.max(LEGEND_MIN_WIDTH, Math.ceil(box.x + box.width + LEGEND_MARGIN))));
 }
 
 // Mismo criterio que Connectogram.tsx/Hemisferios.tsx (fix del
@@ -51,10 +72,48 @@ function regionDisplayText(node: GraphNode | undefined, fallbackId: string): str
   return `${node.abbreviation} — ${node.label}`;
 }
 
-function ConnectionRow({ conn, otherLabel }: { conn: GraphConnection; otherLabel: string }) {
+// Una conexión de la región (D4 de docs/decisiones-diseno.md; spec 5.5).
+// Conserva la información de antes: la otra región, el tipo, el peso con
+// el mismo formato y el nivel de evidencia. Añade el color de la red de
+// la otra región, el sentido de las efectivas («hacia» o «desde» la otra
+// región) y una barra de peso en la escala logarítmica del filtro
+// (logic/weightScale.ts), porque los pesos abarcan varios órdenes de
+// magnitud. El color sale de useDrawColors, como en las vistas.
+function ConnectionRow({
+  conn,
+  otherLabel,
+  otherNetwork,
+  outgoing,
+}: {
+  conn: GraphConnection;
+  otherLabel: string;
+  otherNetwork: string | null;
+  outgoing: boolean;
+}) {
+  const colors = useDrawColors();
   return (
-    <li>
-      {otherLabel} — {CONNECTION_TYPE_LABELS[conn.type]}, peso {conn.weight}, {EVIDENCE_LEVEL_LABELS[conn.evidenceLevel]}
+    <li className="detail__connection">
+      <span
+        className="detail__connection-dot"
+        style={{ backgroundColor: colors.networkColor(otherNetwork ?? "unclassified") }}
+        aria-hidden="true"
+      />
+      <span className="detail__connection-name">
+        {conn.type === "effective" && (
+          <span className="detail__connection-direction">{outgoing ? "hacia " : "desde "}</span>
+        )}
+        {otherLabel}
+      </span>
+      <span className="detail__connection-weight">
+        <span className="visually-hidden">peso </span>
+        {conn.weight}
+      </span>
+      <span className="detail__connection-bar" aria-hidden="true">
+        <span style={{ width: `${Math.round(weightToSliderPosition(conn.weight) * 100)}%` }} />
+      </span>
+      <span className="detail__connection-meta">
+        {CONNECTION_TYPE_LABELS[conn.type]} · {EVIDENCE_LEVEL_LABELS[conn.evidenceLevel]}
+      </span>
     </li>
   );
 }
@@ -100,6 +159,161 @@ function membershipDescription(algorithm: string, confidence: number | null): st
     return "Etiqueta propia del atlas (Gordon et al., 2016), no calculada por NeuroGraph";
   }
   return pct === null ? algorithm : `${algorithm} (confianza ${pct})`;
+}
+
+// ID científico al pie, en letra monoespaciada, con un botón para copiarlo
+// (D4; spec 5.5). Si el portapapeles no está disponible (permiso denegado,
+// contexto no seguro), se selecciona el texto para copiarlo a mano, y se
+// dice, a la vista y a los lectores de pantalla; si vuelve a fallar, se
+// vuelve a anunciar. El temporizador que devuelve el botón a «Copiar» se
+// cancela en el clic siguiente y si el panel se desmonta antes.
+function ScientificId({ id, label }: { id: string; label: string }) {
+  const codeRef = useRef<HTMLElement>(null);
+  const timerRef = useRef<number | undefined>(undefined);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
+  // Sube con cada intento: el mensaje se vuelve a pintar, y a anunciar,
+  // aunque diga lo mismo que la vez anterior.
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), []);
+
+  const handleCopy = async () => {
+    window.clearTimeout(timerRef.current);
+    setAttempt((count) => count + 1);
+    if (await copyText(id, navigator.clipboard)) {
+      setStatus("copied");
+      timerRef.current = window.setTimeout(() => setStatus("idle"), 1500);
+      return;
+    }
+    const code = codeRef.current;
+    const selection = window.getSelection();
+    if (code && selection) selection.selectAllChildren(code);
+    setStatus("failed");
+  };
+
+  const message =
+    status === "copied"
+      ? "Identificador copiado"
+      : status === "failed"
+        ? `No se pudo copiar: el identificador queda seleccionado (${copyShortcutLabel(navigator.userAgent)})`
+        : "";
+
+  return (
+    <div className="detail__id">
+      <span className="detail__id-label">{label}</span>
+      <code ref={codeRef} className="detail__id-value">
+        {id}
+      </code>
+      <button
+        type="button"
+        className="detail__id-copy"
+        aria-label="Copiar el identificador"
+        title={status === "copied" ? "Copiado" : "Copiar"}
+        onClick={handleCopy}
+      >
+        <Icon name={status === "copied" ? "check" : "copy"} size={14} />
+      </button>
+      {/* El fallo se ve, bajo el ID; «copiado» solo se anuncia, porque
+          el botón ya lo muestra con ✓. */}
+      <span className={status === "failed" ? "detail__id-status" : "visually-hidden"} role="status">
+        {message && <span key={attempt}>{message}</span>}
+      </span>
+    </div>
+  );
+}
+
+// Detalle de una región (D4 de docs/decisiones-diseno.md; spec 5.5), de
+// más a menos importante: la región, su red y su hemisferio, cómo se
+// asignó la red, sus conexiones (más fuertes primero; se ven las cinco
+// primeras) y, al pie, el ID científico. DetailPanel monta uno por región
+// (key), así que «Ver las N» vuelve a plegarse al cambiar de región sin
+// ningún efecto. Se exporta solo para su prueba de marcado
+// (DetailPanel.test.tsx): en node, la selección del store no se puede
+// fijar antes de pintar DetailPanel.
+export function RegionDetail({
+  node,
+  connections,
+  nodeById,
+}: {
+  node: GraphNode;
+  connections: GraphConnection[];
+  nodeById: Map<string, GraphNode>;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const listId = useId();
+  const sorted = useMemo(() => regionConnectionsByWeight(connections, node.id), [connections, node.id]);
+  const shown = visibleRegionConnections(sorted, showAll);
+  const { main, secondary } = regionTitleParts(node);
+
+  return (
+    <aside className="detail-panel detail detail--with-id" aria-label="Región seleccionada">
+      <p className="detail__eyebrow">Región seleccionada</p>
+      <h2 className="detail__title">
+        <span className="detail__main">{main}</span>
+        {secondary && <span className="detail__secondary">{secondary}</span>}
+      </h2>
+      <div className="detail__tags">
+        <NetworkTag network={node.network} />
+        <span className="detail__tag">{hemisphereLabel(node.hemisphere)}</span>
+      </div>
+      {node.networkAlgorithm && (
+        <p className="detail__note" title="Cómo se asignó la red">
+          <Icon name="info" size={14} />
+          <span>
+            <span className="visually-hidden">Cómo se asignó la red: </span>
+            {membershipDescription(node.networkAlgorithm, node.networkConfidence ?? null)}
+          </span>
+        </p>
+      )}
+      {/* «Conexiones N» cuenta todas las cargadas de la región, y el
+          recuadro de lectura del connectograma, las que pasan los filtros:
+          la pista lo aclara. El título no se parte entre el nombre y el
+          número (App.css). */}
+      <div className="detail__section-header">
+        <h3 className="detail__heading detail__heading--count">
+          Conexiones <span className="detail__count">{formatCount(sorted.length)}</span>
+        </h3>
+        {sorted.length > 0 && (
+          <span className="detail__hint">
+            {sorted.length === 1
+              ? "la única cargada · barra logarítmica"
+              : "todas las cargadas · más fuertes primero · barra logarítmica"}
+          </span>
+        )}
+      </div>
+      {sorted.length === 0 ? (
+        <p className="detail-panel__empty-note">Esta región no tiene conexiones cargadas.</p>
+      ) : (
+        <ul className="detail__connections" id={listId}>
+          {shown.map(({ connection, otherId, outgoing }) => {
+            const other = nodeById.get(otherId);
+            return (
+              <ConnectionRow
+                key={connection.id}
+                conn={connection}
+                otherLabel={regionDisplayText(other, otherId)}
+                otherNetwork={other?.network ?? null}
+                outgoing={outgoing}
+              />
+            );
+          })}
+        </ul>
+      )}
+      {sorted.length > CONNECTIONS_PREVIEW_COUNT && (
+        <button
+          type="button"
+          className="detail__more"
+          aria-expanded={showAll}
+          aria-controls={listId}
+          onClick={() => setShowAll((value) => !value)}
+        >
+          {showAll ? `Ver solo las ${CONNECTIONS_PREVIEW_COUNT} primeras` : `Ver las ${formatCount(sorted.length)}`}
+          <Icon name={showAll ? "chevronUp" : "arrowRight"} size={14} />
+        </button>
+      )}
+      <ScientificId id={node.id} label="ID científico" />
+    </aside>
+  );
 }
 
 export function DetailPanel({ nodes, connections, canFetchTracts = false }: Props) {
@@ -159,9 +373,37 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   }, [canFetchTracts, selectedNodesList.map((n) => n.id).join(",")]);
 
   const legendSvgRef = useRef<SVGSVGElement>(null);
+  // La leyenda cortaba en pantalla las etiquetas largas (spec, sección 12;
+  // D3 de docs/decisiones-diseno.md). Tras cada render se mide su texto y
+  // se escribe el ancho en el propio <svg>: LEGEND_MIN_WIDTH, el de
+  // siempre, o más si el texto lo necesita. Si el panel es más estrecho,
+  // su recuadro se desplaza en horizontal. El ancho no es estado de React
+  // (el <svg> no lleva la prop width), así que medir no provoca otro
+  // render. La exportación parte de este ancho y solo lo ensancha
+  // (fitWidthToContent): con etiquetas cortas el JPEG sale como antes, y
+  // con largas puede salir algo más ancho, nunca cortado.
+  useLayoutEffect(() => fitLegendWidth(legendSvgRef.current));
+  // Una fuente que llega tarde cambia lo que mide el texto: se vuelve a medir.
+  useEffect(() => {
+    const fonts = document.fonts;
+    const refit = () => fitLegendWidth(legendSvgRef.current);
+    fonts?.addEventListener("loadingdone", refit);
+    return () => fonts?.removeEventListener("loadingdone", refit);
+  }, []);
+  const colors = useDrawColors();
   const handleExportLegend = () => {
     if (legendSvgRef.current) {
-      exportSvgAsJpeg(legendSvgRef.current, `neurograph-leyenda-${Date.now()}.jpg`);
+      // fitWidthToContent: la exportación usa otra fuente (una pila del
+      // sistema, D3 de docs/decisiones-diseno.md), así que vuelve a medir
+      // el texto con ella y, si no cabe en el ancho que el <svg> tiene en
+      // pantalla (el del efecto de arriba, D4), ensancha la imagen. Nunca
+      // la estrecha. Sin esto, una etiqueta larga podría salir cortada.
+      exportSvgAsJpeg(
+        legendSvgRef.current,
+        `neurograph-leyenda-${Date.now()}.jpg`,
+        currentExportResolver(),
+        { fitWidthToContent: true },
+      );
     }
   };
 
@@ -179,14 +421,17 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
     const source = nodeById.get(connection.source);
     const target = nodeById.get(connection.target);
     return (
-      <aside className="detail-panel">
-        <h2>Conexión</h2>
-        <dl>
-          <dt>ID</dt>
-          <dd><code>{connection.id}</code></dd>
-          <dt>Origen</dt>
+      <aside className="detail-panel detail detail--with-id" aria-label="Conexión seleccionada">
+        <p className="detail__eyebrow">Conexión seleccionada</p>
+        <h2 className="detail__title">
+          <span className="detail__main detail__main--text">{connectionTitle(connection, nodeById)}</span>
+        </h2>
+        <dl className="detail__facts">
+          {/* «Origen» y «Destino» solo si la conexión tiene sentido (efectiva);
+              si no, las dos regiones van en pie de igualdad. */}
+          <dt>{connection.type === "effective" ? "Origen" : "Región A"}</dt>
           <dd>{regionDisplayText(source, connection.source)}</dd>
-          <dt>Destino</dt>
+          <dt>{connection.type === "effective" ? "Destino" : "Región B"}</dt>
           <dd>{regionDisplayText(target, connection.target)}</dd>
           <dt>Tipo</dt>
           <dd>{CONNECTION_TYPE_LABELS[connection.type]}</dd>
@@ -195,41 +440,14 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           <dt>Nivel de evidencia</dt>
           <dd>{EVIDENCE_LEVEL_LABELS[connection.evidenceLevel]}</dd>
         </dl>
+        <ScientificId key={connection.id} id={connection.id} label="ID" />
       </aside>
     );
   }
 
   if (selectedNodesList.length === 1) {
     const node = selectedNodesList[0];
-    const related = connections.filter((c) => c.source === node.id || c.target === node.id);
-    return (
-      <aside className="detail-panel">
-        <h2>{regionDisplayText(node, node.id)}</h2>
-        <dl>
-          <dt>ID científico</dt>
-          <dd><code>{node.id}</code></dd>
-          <dt>Red</dt>
-          <dd>{NETWORK_LABELS[node.network] ?? node.network}</dd>
-          {node.networkAlgorithm && (
-            <>
-              <dt>Cómo se asignó la red</dt>
-              <dd>{membershipDescription(node.networkAlgorithm, node.networkConfidence ?? null)}</dd>
-            </>
-          )}
-          <dt>Conexiones ({related.length})</dt>
-          <dd>
-            <ul>
-              {related.map((c) => {
-                const otherId = c.source === node.id ? c.target : c.source;
-                const other = nodeById.get(otherId);
-                const otherLabel = regionDisplayText(other, otherId);
-                return <ConnectionRow key={c.id} conn={c} otherLabel={otherLabel} />;
-              })}
-            </ul>
-          </dd>
-        </dl>
-      </aside>
-    );
+    return <RegionDetail key={node.id} node={node} connections={connections} nodeById={nodeById} />;
   }
 
   // Selección múltiple: dos o más regiones a la vez.
@@ -237,11 +455,14 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
   const legendHeight = 28 + selectedNodesList.length * legendLineHeight;
 
   return (
-    <aside className="detail-panel">
-      <h2>{selectedNodesList.length} regiones seleccionadas</h2>
+    <aside className="detail-panel detail" aria-label="Regiones seleccionadas">
+      <p className="detail__eyebrow">Selección múltiple</p>
+      <h2 className="detail__title">
+        <span className="detail__main detail__main--text">{selectedNodesList.length} regiones seleccionadas</span>
+      </h2>
 
-      <div className="detail-panel__legend-header">
-        <span>Leyenda</span>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Leyenda</h3>
         <button type="button" className="export-btn" onClick={handleExportLegend}>
           Exportar leyenda JPEG
         </button>
@@ -251,43 +472,49 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
           App.css como `.legend-svg`, solo pantalla) para que
           exportSvgAsJpeg pueda seguir componiendo esta leyenda -- también
           exportable -- sobre blanco explícito sin que un fondo oscuro
-          clonado lo tape. El círculo de red mantiene su color real sin
-          tocar (NETWORK_COLORS); el texto usa NEUTRAL_COLOR, legible
-          sobre los dos fondos. */}
-      <svg
-        ref={legendSvgRef}
-        width={260}
-        height={legendHeight}
-        role="img"
-        aria-label="Leyenda de regiones seleccionadas"
-        className="legend-svg"
-      >
-        {selectedNodesList.map((node, i) => (
-          <g key={node.id} transform={`translate(10, ${20 + i * legendLineHeight})`}>
-            <circle
-              r={5}
-              cy={-4}
-              fill={NETWORK_COLORS[node.network] ?? "#888"}
-              stroke={NEUTRAL_COLOR}
-              strokeWidth={1}
-            />
-            <text x={14} fontSize={11} fill={NEUTRAL_COLOR}>
-              {abbreviationAddsInformation(node) ? (
-                <>
-                  <tspan fontWeight={700}>{node.abbreviation}</tspan>
-                  {" — " + node.label}
-                </>
-              ) : (
-                node.label
-              )}
-            </text>
-          </g>
-        ))}
-      </svg>
+          clonado lo tape. El círculo usa el color de red y el texto el
+          token label del tema; al exportar, applyExportColors los cambia
+          por los de la paleta de exportación (D3 de
+          docs/decisiones-diseno.md). */}
+      <div className="detail__legend">
+        <svg
+          ref={legendSvgRef}
+          height={legendHeight}
+          role="img"
+          aria-label="Leyenda de regiones seleccionadas"
+          className="legend-svg"
+        >
+          {selectedNodesList.map((node, i) => (
+            <g key={node.id} transform={`translate(10, ${20 + i * legendLineHeight})`}>
+              <circle
+                r={5}
+                cy={-4}
+                fill={colors.networkColor(node.network)}
+                {...ngFill(`net:${node.network}`)}
+                stroke={colors.nodeRing}
+                {...ngStroke("nodeRing")}
+                strokeWidth={1}
+              />
+              <text x={14} fontSize={11} fill={colors.label} {...ngFill("label")}>
+                {abbreviationAddsInformation(node) ? (
+                  <>
+                    <tspan fontWeight={700}>{node.abbreviation}</tspan>
+                    {" — " + node.label}
+                  </>
+                ) : (
+                  node.label
+                )}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
 
-      <h3>Conectividad entre las regiones seleccionadas</h3>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Conectividad entre las regiones seleccionadas</h3>
+      </div>
       {induced && induced.length > 0 ? (
-        <ul>
+        <ul className="detail__list">
           {induced.map((c) => {
             const source = nodeById.get(c.source);
             const target = nodeById.get(c.target);
@@ -302,7 +529,8 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
             const targetLabel = regionDisplayText(target, c.target);
             return (
               <li key={c.id}>
-                {sourceLabel} → {targetLabel} — {CONNECTION_TYPE_LABELS[c.type]}, peso {c.weight}, {EVIDENCE_LEVEL_LABELS[c.evidenceLevel]}
+                {sourceLabel} {connectionArrow(c.type)} {targetLabel} — {CONNECTION_TYPE_LABELS[c.type]}, peso {c.weight},{" "}
+                {EVIDENCE_LEVEL_LABELS[c.evidenceLevel]}
               </li>
             );
           })}
@@ -313,7 +541,9 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
         </p>
       )}
 
-      <h3>Tractos con nombre</h3>
+      <div className="detail__section-header">
+        <h3 className="detail__heading">Tractos con nombre</h3>
+      </div>
       {!canFetchTracts ? (
         <p className="detail-panel__empty-note">
           No disponible con datos de demostración (solo con un atlas real cargado en la base de datos).
@@ -323,7 +553,7 @@ export function DetailPanel({ nodes, connections, canFetchTracts = false }: Prop
       ) : tractsError ? (
         <p className="detail-panel__empty-note">No se pudo consultar la API de conectividad.</p>
       ) : tracts.length > 0 ? (
-        <ul>
+        <ul className="detail__list">
           {tracts.map((tract) => (
             <TractRow key={tract.id} tract={tract} nodeById={nodeById} />
           ))}

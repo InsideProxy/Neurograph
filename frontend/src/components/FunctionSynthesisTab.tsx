@@ -26,7 +26,8 @@
 import type { GraphNode } from "../types/domain";
 import type { SynthesisFinding, ValidatedSynthesis } from "../types/synthesis";
 import { EVIDENCE_TYPE_LABELS } from "../types/synthesis";
-import { NETWORK_COLORS, NETWORK_LABELS, NEUTRAL_COLOR } from "../theme/networks";
+import { NETWORK_LABELS } from "../theme/networks";
+import { useDrawColors } from "../theme/useDrawColors";
 
 interface Props {
   validated: ValidatedSynthesis;
@@ -66,6 +67,7 @@ function projectNodes(nodes: GraphNode[]): Map<string, { x: number; y: number }>
 }
 
 function FindingDiagram({ validated }: Props) {
+  const colors = useDrawColors();
   const nodes = Object.values(validated.resolvedNodes);
   const positions = projectNodes(nodes);
 
@@ -103,7 +105,7 @@ function FindingDiagram({ validated }: Props) {
           y1={line.y1}
           x2={line.x2}
           y2={line.y2}
-          stroke={NEUTRAL_COLOR}
+          stroke={colors.edge}
           strokeWidth={1.25}
           strokeDasharray="5,4"
           opacity={0.7}
@@ -112,10 +114,10 @@ function FindingDiagram({ validated }: Props) {
       {nodes.map((node) => {
         const pos = positions.get(node.id);
         if (!pos) return null;
-        const color = NETWORK_COLORS[node.network] ?? NEUTRAL_COLOR;
+        const color = colors.networkColor(node.network);
         return (
           <g key={node.id}>
-            <circle cx={pos.x} cy={pos.y} r={7} fill={color} stroke="#0b0c10" strokeWidth={1} />
+            <circle cx={pos.x} cy={pos.y} r={7} fill={color} stroke={colors.nodeGap} strokeWidth={1} />
             <text x={pos.x + 9} y={pos.y + 4} fontSize={10} fill="var(--text)">
               {node.abbreviation ?? node.label}
             </text>

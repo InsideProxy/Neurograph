@@ -146,25 +146,92 @@ export type RGB = [number, number, number];
 // red deben pasar por `hexToLinearRgb`. Sin esta conversión, los
 // colores reales de cada red se verían lavados en la superficie y no
 // coincidirían con los del connectograma.
-const GRAY_SULCUS = srgbToLinear(0.35);
-const GRAY_GYRUS = srgbToLinear(0.72);
-const GRAY_NO_DATA = srgbToLinear(0.55);
-const GRAY_MEDIAL_WALL = srgbToLinear(0.25);
+//
+// Grises de la corteza en RGB lineal. Cada tema tiene los suyos (D3 de
+// docs/decisiones-diseno.md, DrawTokens de theme/themes.ts).
+export interface CortexGrays {
+  sulcus: RGB;
+  gyrus: RGB;
+  noData: RGB;
+  medialWall: RGB;
+}
+
+function uniformGray(srgb: number): RGB {
+  const v = srgbToLinear(srgb);
+  return [v, v, v];
+}
+
+// Estos son los de siempre (tema 1).
+export const DEFAULT_CORTEX_GRAYS: CortexGrays = {
+  sulcus: uniformGray(0.35),
+  gyrus: uniformGray(0.72),
+  noData: uniformGray(0.55),
+  medialWall: uniformGray(0.25),
+};
+
+// Tokens de un tema (sRGB 0-1) a RGB lineal.
+export function cortexGraysFromSrgb(tokens: {
+  cortexSulcus: readonly [number, number, number];
+  cortexGyrus: readonly [number, number, number];
+  cortexNoData: readonly [number, number, number];
+  cortexMedialWall: readonly [number, number, number];
+}): CortexGrays {
+  const lin = (c: readonly [number, number, number]): RGB => [
+    srgbToLinear(c[0]),
+    srgbToLinear(c[1]),
+    srgbToLinear(c[2]),
+  ];
+  return {
+    sulcus: lin(tokens.cortexSulcus),
+    gyrus: lin(tokens.cortexGyrus),
+    noData: lin(tokens.cortexNoData),
+    medialWall: lin(tokens.cortexMedialWall),
+  };
+}
 
 export function srgbToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
+// Surcos más visibles (docs/rediseno-interfaz-diseno.md, 6.3; fase 4 del
+// rediseño). El degradado surco -> giro va de los percentiles 5 y 95 del
+// archivo, no de su mínimo y su máximo: unos pocos vértices extremos
+// estiraban el rango y casi toda la corteza quedaba en grises medios. En el
+// archivo del HCP, el rango pasa de -1,69 a 1,16 a de -0,85 a 0,56.
+export const SULC_PERCENTILES: readonly [number, number] = [5, 95];
+
+// Percentil p (de 0 a 100) de unos valores ya ordenados, interpolando entre
+// los dos más cercanos (el método por defecto de numpy).
+export function percentile(sorted: ArrayLike<number>, p: number): number {
+  const position = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(position);
+  const upper = Math.min(lower + 1, sorted.length - 1);
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
+// Los percentiles se calculan una vez por archivo de surcos: se guardan con
+// el propio vector, que es el mismo mientras no se cargue otro archivo.
+const sulcRangeCache = new WeakMap<Float32Array, [number, number] | null>();
+
 export function sulcRange(sulc: Float32Array | null): [number, number] | null {
   if (!sulc) return null;
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
-  for (const v of sulc) {
-    if (Number.isNaN(v)) continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  return Number.isFinite(min) && max > min ? [min, max] : null;
+  const cached = sulcRangeCache.get(sulc);
+  if (cached !== undefined) return cached;
+  const values = sulc.filter((v) => !Number.isNaN(v)).sort();
+  const low = values.length > 0 ? percentile(values, SULC_PERCENTILES[0]) : Number.NaN;
+  const high = values.length > 0 ? percentile(values, SULC_PERCENTILES[1]) : Number.NaN;
+  const range: [number, number] | null = high > low ? [low, high] : null;
+  sulcRangeCache.set(sulc, range);
+  return range;
+}
+
+// Suavizado del valor normalizado del surco (6.3): se recorta a 0-1, porque
+// fuera de los percentiles quedan valores por debajo de 0 y por encima de 1,
+// y pasa por un smoothstep, que lleva más vértices hacia el gris del surco y
+// el del giro sin saltos.
+export function sulcShade(t: number): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  return clamped * clamped * (3 - 2 * clamped);
 }
 
 // Rellena `out` (RGB lineal 0-1, 3 valores por vértice) con el color de
@@ -175,8 +242,9 @@ export function fillVertexColors(
   map: SurfaceParcelMap,
   sulc: Float32Array | null,
   colorForRegion: (regionIndex: number) => RGB | null,
+  grays: CortexGrays = DEFAULT_CORTEX_GRAYS,
 ): void {
-  fillVertexColorsByIndex(out, map.vertexRegionIndex, map.regionIds.length, sulc, colorForRegion);
+  fillVertexColorsByIndex(out, map.vertexRegionIndex, map.regionIds.length, sulc, colorForRegion, grays);
 }
 
 // Versión general (decisión 73): cada vértice tiene un índice de
@@ -188,6 +256,7 @@ export function fillVertexColorsByIndex(
   categoryCount: number,
   sulc: Float32Array | null,
   colorForCategory: (index: number) => RGB | null,
+  grays: CortexGrays = DEFAULT_CORTEX_GRAYS,
 ): void {
   const n = vertexIndex.length;
   if (out.length !== n * 3) throw new Error("tamaño del búfer de colores incorrecto");
@@ -195,14 +264,33 @@ export function fillVertexColorsByIndex(
   const categoryColors = new Array<RGB | null>(categoryCount);
   for (let r = 0; r < categoryCount; r++) categoryColors[r] = colorForCategory(r);
 
+  // Extremos del degradado surco -> giro, izados fuera del bucle: con
+  // decenas de miles de vértices por hemisferio, restar y desestructurar
+  // un array en cada iteración duplicaba el tiempo de pintar la corteza.
+  const s0 = grays.sulcus[0],
+    s1 = grays.sulcus[1],
+    s2 = grays.sulcus[2];
+  const d0 = grays.gyrus[0] - s0,
+    d1 = grays.gyrus[1] - s1,
+    d2 = grays.gyrus[2] - s2;
+
   for (let v = 0; v < n; v++) {
     const category = vertexIndex[v];
     const s = sulc ? sulc[v] : Number.NaN;
-    const t = range && !Number.isNaN(s) ? (s - range[0]) / (range[1] - range[0]) : null;
-    let gray: number;
-    if (t !== null) gray = GRAY_SULCUS + (GRAY_GYRUS - GRAY_SULCUS) * t;
-    else if (category === NO_REGION) gray = GRAY_MEDIAL_WALL;
-    else gray = GRAY_NO_DATA;
+    const t = range && !Number.isNaN(s) ? sulcShade((s - range[0]) / (range[1] - range[0])) : null;
+    let r: number;
+    let g: number;
+    let b: number;
+    if (t !== null) {
+      r = s0 + d0 * t;
+      g = s1 + d1 * t;
+      b = s2 + d2 * t;
+    } else {
+      const base = category === NO_REGION ? grays.medialWall : grays.noData;
+      r = base[0];
+      g = base[1];
+      b = base[2];
+    }
 
     const color = category === NO_REGION ? null : (categoryColors[category] ?? null);
     if (color) {
@@ -213,9 +301,9 @@ export function fillVertexColorsByIndex(
       out[v * 3 + 1] = color[1] * shade;
       out[v * 3 + 2] = color[2] * shade;
     } else {
-      out[v * 3] = gray;
-      out[v * 3 + 1] = gray;
-      out[v * 3 + 2] = gray;
+      out[v * 3] = r;
+      out[v * 3 + 1] = g;
+      out[v * 3 + 2] = b;
     }
   }
 }

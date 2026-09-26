@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npx --no -- tsc -b)",
+      "Bash(python3 scripts/check_docs.py)",
+      "Bash(python scripts/check_docs.py)",
+      "Bash(git check-ignore *)",
+      "Bash(npm run lint)"
+    ]
+  }
+}

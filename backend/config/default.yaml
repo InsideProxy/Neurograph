@@ -11,7 +11,8 @@ database:
   port: 5432
   name: neurograph
   user: neurograph
-  # password: usar variable de entorno NEUROGRAPH_DB_PASSWORD
+  # password: variable de entorno NEUROGRAPH_DATABASE__PASSWORD (en .env).
+  # NEUROGRAPH_DB_PASSWORD es la de docker-compose.yml, que la pasa al contenedor.
 
 ai:
   provider: claude   # claude | openai | local | generic

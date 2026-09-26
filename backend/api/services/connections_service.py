@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.api.services.regions_service import ensure_atlas_exists
 from backend.database.models.entities import Connection, Region
 
 
@@ -44,9 +45,11 @@ def list_connections(db: Session, atlas_id: str | None = None) -> list[Connectio
     """Conexiones cuyo origen pertenece al atlas indicado (si se da
     uno). No filtra por peso ni aplica ningún umbral aquí: el dato
     completo es responsabilidad de la API/MCP, decidir qué mostrar es
-    responsabilidad de quien la consuma (sección 24)."""
+    responsabilidad de quien la consuma (sección 24). Un `atlas_id` que
+    no existe lanza `ValueError` (principio 9, decisión 77)."""
     query = select(Connection)
     if atlas_id is not None:
+        ensure_atlas_exists(db, atlas_id)
         region_ids = select(Region.id).where(Region.atlas_id == atlas_id)
         query = query.where(Connection.source_id.in_(region_ids))
     rows = db.execute(query).scalars().all()

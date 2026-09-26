@@ -3,6 +3,31 @@
 Basado en la sección 28 de la especificación maestra, con los ajustes
 señalados en `docs/analisis-arquitectura.md` (sección 5).
 
+## Pendiente al actualizar
+
+Pasos que el desarrollador principal, o quien actualice, tiene que dar a mano tras el próximo pull.
+
+- **Reconstruir la API** (26/09/2026, decisión 77). El commit `11be2ba` cambia el backend: devuelve 404 para atlas y regiones que no existen. La API corre en una imagen de Docker cerrada, con el código copiado al construirla, así que tras el pull sigue con la versión anterior hasta ejecutar `docker compose up -d --build` en la raíz del repositorio (criterio de herramientas «Docker», 39). El frontend no lo necesita: `npm run dev` y `npm run tauri dev` instalan solos las dependencias de npm que falten (H5).
+- **npm 11.10 o posterior** (26/09/2026, H9). Hace falta para que se aplique el retardo de seguridad de `frontend/.npmrc` (`min-release-age=3`). Un npm más viejo lo ignora, y el paso de preparación lo avisa al instalar. Se actualiza con `npm install -g npm@11`; npm 12 pide Node 22.22 o posterior.
+
+## Criterios a revisar
+
+- **Grosor de las líneas según el peso** (26/09/2026, criterio funcional
+  10, decisión 21). Hoy es `max(1, 6·peso)` en el connectograma y
+  `max(1, 5·peso)` en Hemisferios, y el 3D no lo codifica. En HCP-MMP1.0,
+  el atlas por defecto, ninguna de las 64 620 conexiones de Rosen & Halgren
+  pasa de 1 px: su peso máximo es 0,144 y la mediana, 1e-4, así que el
+  grosor no informa. En Brainnetome sí informa, en 3725 de sus 30 135.
+  Quitar el mínimo de 1 px no lo arregla: el navegador pinta más tenue lo
+  más fino y lo de 1e-4 desaparecería. Propuesta: conservar la escala real
+  y ofrecer, como alternativa de presentación, una escala adaptable (por
+  ejemplo, logarítmica dentro del rango real de cada atlas, como el
+  deslizador «Peso mínimo»), con leyenda que se exporte, igual que la
+  paleta «Suaves» convive con los colores originales (D7). Más grueso
+  sigue siendo más fuerte (principio 24) y el rango sale del dato, sin
+  umbrales elegidos a mano (principio 6). Se revisa con el usuario, y la
+  decisión 21 es del desarrollador principal.
+
 - **Fase 0 — Entorno.** Repositorio, estructura de módulos, base de datos,
   ontología inicial, sistema de biblioteca SSD, configuración. **(hecho)**
 - **Fase 1 — Arquitectura (hecho).** Stack de interfaz confirmado (web

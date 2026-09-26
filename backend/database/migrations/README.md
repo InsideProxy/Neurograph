@@ -58,3 +58,57 @@ revisión del archivo — si quieres ver el SQL antes de aplicarlo, ábrelo
 tú misma (`notepad .\archivo.sql`) antes de ejecutar el script; el script
 solo automatiza la mecánica de aplicarlo una vez que ya decidiste
 hacerlo, nunca decide por ti qué aplicar.
+
+## Reconstruir la base de datos desde cero sin volcado
+
+Si tienes un volcado (`scripts/export_snapshot.ps1`, decisión 53),
+úsalo: es la base de datos real. Si no lo tienes (instalación nueva,
+otro ordenador), la base se puede reconstruir desde los `.sql` del
+repositorio con un solo comando, con `docker compose up -d` ya en
+marcha:
+
+```bash
+scripts/rebuild_db_from_sql.sh            # contenedor por defecto: neurograph-postgres
+```
+
+Aplica las migraciones de `generated/` (solo si la base está vacía) y
+después los datos en el orden de abajo, y termina imprimiendo recuentos y
+comprobaciones de huérfanos. Se puede repetir sin riesgo: todos los
+archivos de datos son idempotentes (`ON CONFLICT DO UPDATE` o `UPDATE`
+por id). El orden y su justificación están en la H1 de
+`docs/decisiones-herramientas.md` (antes decisión 75).
+
+**Orden de carga** (cada paso depende solo de los anteriores). Los
+`salida_*` están en `init/` y los `seed/…`, en `backend/database/seed/`:
+
+| # | Archivos | Por qué va aquí |
+|---|----------|-----------------|
+| 1 | `seed/register_library_neurodata`, `seed/register_dataset_hcp_s1200_groupavg`, `seed/register_dataset_hcp_s1200_groupavg_extracted`, `seed/register_dataset_brainnetome`, `salida_mni152_meshes` | Datasets a los que apuntan los `source_dataset_id` posteriores. `_extracted` apunta al zip original. |
+| 2 | `salida_mmp1`, `salida_subcortex`, `salida_gordon333`, `salida_brainnetome`, `salida_macaque_wang2017`, `salida_cheng2021_ipl` | Especies, atlas, regiones y coordenadas. `salida_mmp1` da de alta la especie humana que usan subcortex y Gordon. |
+| 3 | `seed/register_atlas_studies`, `salida_backfill_atlas_study_metadata`, `salida_backfill_zhang2018_study_metadata`, `salida_zotero_kerezoudis_2026` | Estudios y enlace atlas→estudio. `register_atlas_studies` va **antes** de los backfills: si fuera después, su `ON CONFLICT` volvería a escribir name/doi/year. |
+| 4 | `salida_backfill_hcp_mmp1_names` | Nombres largos de HCP-MMP1.0: después de todo lo que escribe esas regiones. |
+| 5 | `seed/register_cole_anticevic_networks`, `seed/register_cerebellum_network_distribution`, `salida_rsn_networks` | Redes y pertenencias. El cerebelo usa las redes de Cole-Anticevic. |
+| 6 | `seed/register_connections_brainnetome`, `seed/register_yeh2022_tract_region`, `salida_rosen_halgren2021_…_part1of2`, `…_part2of2` | Conexiones. La parte 2 usa el dataset que da de alta la parte 1. |
+| 7 | `salida_motor_sma_synthesis` | Homologías humano↔macaco: necesita las regiones de ambos atlas. |
+
+**No se aplican** `seed/register_atlas_hcp_mmp1`, `seed/register_atlas_brainnetome`,
+`seed/register_gordon333` ni `seed/register_hcp_subcortical_structures`:
+sus `salida_*` equivalentes tienen exactamente las mismas regiones,
+nombres y coordenadas (comparado fila a fila), más `abbreviation` y
+`hemisphere`, que los seeds dejarían en `NULL` (decisión 53a).
+
+**Codificación:** `salida_mmp1.sql` tiene un único byte cp1252 (un guion
+largo en un comentario). El script lo convierte a UTF-8 en una copia
+temporal antes de aplicarlo; el archivo del repositorio no se toca.
+
+**Tractografía.** No está en la carga inicial: su SQL pesa unos 160 MB y
+no se sube a git. Después de la carga inicial, la instala
+`scripts/install_tractography.sh` (solo Linux): descarga los originales
+de Zenodo, genera el SQL en la biblioteca y lo carga.
+
+**Lo que sale vacío:** las tablas de genes (`genes`, `expressions`) y
+`evidence`, porque nunca tuvieron datos.
+
+**Al añadir un `salida_*.sql` nuevo:** guárdalo en `init/` y añádelo a
+la lista `DATOS` de `scripts/rebuild_db_from_sql.sh`, detrás de lo que
+referencia, y a esta tabla.

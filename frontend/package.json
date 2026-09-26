@@ -4,18 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/prepare.mjs && vite",
+    "build": "node scripts/prepare.mjs && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "tauri": "tauri"
+    "tauri": "node scripts/prepare.mjs && tauri"
   },
   "dependencies": {
     "@react-three/fiber": "^9.7.0",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "d3": "^7.9.0",
+    "driver.js": "1.8.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",

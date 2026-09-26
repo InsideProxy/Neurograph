@@ -5,7 +5,7 @@ que `GET /tracts` (sección 15: nunca reimplementar).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.api.services import homology_service
@@ -28,5 +28,8 @@ def find_homologues(
     dos extremos); `species_id`, a las que tocan esa especie. Ningún
     filtro reduce lo que se cuenta de cada homología encontrada -- solo
     decide cuáles aparecen (ver docstring de `find_homologues` en el
-    servicio)."""
-    return homology_service.find_homologues(db, region_id=region_id, species_id=species_id)
+    servicio). 404 si `region_id` no existe (principio 9, decisión 77)."""
+    try:
+        return homology_service.find_homologues(db, region_id=region_id, species_id=species_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

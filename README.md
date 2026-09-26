@@ -150,6 +150,11 @@ NeuroGraph (puerto 8420, `backend/Dockerfile`) — no hace falta tener
 Python instalado para esto. Comprobar que responde:
 `curl http://127.0.0.1:8420/health`.
 
+La base de datos arranca vacía. Si tienes un volcado
+(`scripts/export_snapshot.ps1`), cárgalo; si no, reconstrúyela desde los
+`.sql` del repositorio con `scripts/rebuild_db_from_sql.sh` (orden de
+carga y lo que no incluye: `backend/database/migrations/README.md`).
+
 **2. Frontend** (necesita Node.js instalado):
 
 ```bash
@@ -214,7 +219,8 @@ no aparece, revisa `%APPDATA%\Claude\logs\mcp-server-neurograph.log`.
   distinguen siempre explícitamente (sección 11, sección 24).
 - La IA nunca inventa conexiones, homologías ni evidencia (sección 1).
 
-Ver `docs/analisis-arquitectura.md` para el detalle completo.
+Ver `docs/principios.md` para la lista completa de principios vigentes y
+`docs/analisis-arquitectura.md` para el razonamiento de cada decisión.
 
 ## Licencia
 
