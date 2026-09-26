@@ -1,7 +1,7 @@
 // Cuándo hay que instalar las dependencias de npm (H5): la comparación
 // pura de scripts/npm-deps.mjs, sin tocar node_modules ni ejecutar npm.
 import { describe, expect, it } from "vitest";
-import { pendingPackages } from "./npm-deps.mjs";
+import { installLine, pendingPackages } from "./npm-deps.mjs";
 
 const DRIVER = "node_modules/driver.js";
 const VITE = "node_modules/vite";
@@ -124,5 +124,21 @@ describe("pendingPackages: qué falta por instalar", () => {
     const installed = installedFrom(lock, [WIN, MUSL]);
     installed.packages["node_modules/left-pad"] = { version: "1.3.0" };
     expect(pendingPackages(lock, installed)).toEqual([]);
+  });
+});
+
+describe("installLine: la línea del paso al instalar, con el aviso de H6 si hace falta", () => {
+  it("con un npm que ya aplica min-release-age, o sin user-agent, solo la línea de instalación", () => {
+    expect(installLine("npm/11.10.0 node/v22.12.0 linux x64 workspaces/false")).toBe(
+      "Instalando las dependencias de npm que faltan…",
+    );
+    expect(installLine(undefined)).toBe("Instalando las dependencias de npm que faltan…");
+  });
+
+  it("con un npm anterior a 11.10.0, el aviso va después, en su propia línea", () => {
+    expect(installLine("npm/10.9.0 node/v22.12.0 linux x64 workspaces/false")).toBe(
+      "Instalando las dependencias de npm que faltan…\n" +
+        "Tu npm (10.9.0) no aplica el retardo de seguridad (min-release-age): actualízalo con `npm install -g npm@11`.",
+    );
   });
 });

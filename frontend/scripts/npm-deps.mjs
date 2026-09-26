@@ -10,9 +10,14 @@
 // siguen sin ejecutar sus scripts de instalación. Solo usa Node, sin
 // dependencias, porque tiene que funcionar también cuando faltan todas, en
 // Linux y en Windows.
+//
+// Si instala algo y el npm que lo ejecuta es anterior a 11.10.0, añade un
+// aviso de que ese npm ignora en silencio `min-release-age` del `.npmrc`
+// del proyecto (H6, ver scripts/npm-version.mjs).
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { npmMinReleaseAgeNotice } from "./npm-version.mjs";
 
 const FRONTEND = new URL("..", import.meta.url);
 
@@ -42,6 +47,15 @@ export function pendingPackages(lock, installed) {
     .map(([path]) => path);
 }
 
+// La línea del paso al instalar: la de instalación y, si el npm que la
+// ejecuta ignora min-release-age, el aviso de H6 después. Pura: compone,
+// no lee el entorno.
+export function installLine(userAgent) {
+  const line = "Instalando las dependencias de npm que faltan…";
+  const notice = npmMinReleaseAgeNotice(userAgent);
+  return notice ? `${line}\n${notice}` : line;
+}
+
 // Un JSON del frontend, o null si no existe. Sin el BOM que deja algún
 // editor de Windows, que npm también tolera.
 function readJson(name) {
@@ -68,7 +82,7 @@ export const npmDependencies = {
     } catch {
       // A medio escribir: se instala.
     }
-    return pendingPackages(lock, installed).length > 0 ? "Instalando las dependencias de npm que faltan…" : null;
+    return pendingPackages(lock, installed).length > 0 ? installLine(process.env.npm_config_user_agent) : null;
   },
 
   run() {
