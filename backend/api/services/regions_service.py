@@ -14,13 +14,20 @@ reexporta `RegionNode`/`region_to_node` para no romper
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import NamedTuple
 
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.database.models.entities import Coordinate, Network, Region, RegionNetworkMembership
+from backend.database.models.entities import (
+    Atlas,
+    Coordinate,
+    Network,
+    Region,
+    RegionNetworkMembership,
+)
 from backend.ontology.schema import parse_id
 
 
@@ -200,15 +207,47 @@ def _rows_to_nodes(rows, requested_source: str | None) -> list[RegionNode]:
     return nodes
 
 
+# Principio 9 (decisión 77): un atlas o una región que no existen dan 404
+# (`ValueError` aquí), nunca la misma lista vacía que un atlas real sin
+# datos (Gordon 333, sin conexiones, sigue dando 200 con lista vacía). La
+# interfaz solo pide ids que vienen de datos ya cargados; esto protege
+# sobre todo a las herramientas MCP, donde un id mal escrito parecía un
+# resultado vacío.
+def check_ids_exist(
+    requested_ids: Iterable[str], existing_ids: Iterable[str], singular: str, plural: str
+) -> None:
+    """Función pura: lanza `ValueError` con los ids pedidos que no están
+    entre los existentes. Solo mira si existen, nunca si tienen datos."""
+    missing = sorted(set(requested_ids) - set(existing_ids))
+    if len(missing) == 1:
+        raise ValueError(f"No existe {singular} {missing[0]!r}")
+    if missing:
+        raise ValueError(f"No existen {plural} {', '.join(repr(m) for m in missing)}")
+
+
+def ensure_atlas_exists(db: Session, atlas_id: str) -> None:
+    """`check_ids_exist` contra la tabla `atlases`."""
+    existing = db.execute(select(Atlas.id).where(Atlas.id == atlas_id)).scalars().all()
+    check_ids_exist([atlas_id], existing, "el atlas", "los atlas")
+
+
+def ensure_regions_exist(db: Session, region_ids: list[str]) -> None:
+    """`check_ids_exist` contra la tabla `regions`, sin importar el atlas."""
+    existing = db.execute(select(Region.id).where(Region.id.in_(region_ids))).scalars().all()
+    check_ids_exist(region_ids, existing, "la región", "las regiones")
+
+
 def list_regions(
     db: Session, atlas_id: str | None = None, network_source: str | None = None
 ) -> list[RegionNode]:
     """Regiones con coordenada registrada. `atlas_id` filtra a un atlas
     concreto; sin él, todas las regiones cargadas. `network_source`
     (decisión 73) elige la clasificación de red (p. ej. "yeo2011-7");
-    sin él, la original de cada atlas."""
+    sin él, la original de cada atlas. Un `atlas_id` que no existe lanza
+    `ValueError` (principio 9, decisión 77)."""
     query = _region_node_query()
     if atlas_id is not None:
+        ensure_atlas_exists(db, atlas_id)
         query = query.where(Region.atlas_id == atlas_id)
     rows = db.execute(query).all()
     return _rows_to_nodes(rows, network_source)
@@ -238,7 +277,9 @@ class NetworkSourceSummary(BaseModel):
 def list_network_sources(db: Session, atlas_id: str) -> list[NetworkSourceSummary]:
     """Clasificaciones de red REALMENTE cargadas para un atlas (decisión
     73): de dónde saca la interfaz su selector, sin ninguna lista escrita
-    a mano. Cuenta regiones distintas con pertenencia en cada fuente."""
+    a mano. Cuenta regiones distintas con pertenencia en cada fuente. Un
+    `atlas_id` que no existe lanza `ValueError` (principio 9, decisión 77)."""
+    ensure_atlas_exists(db, atlas_id)
     rows = db.execute(
         select(RegionNetworkMembership.region_id, Network)
         .join(Network, Network.id == RegionNetworkMembership.network_id)

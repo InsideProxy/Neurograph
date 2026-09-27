@@ -18,16 +18,17 @@
 # frontend/src-tauri/resources/README.md).
 #
 # ADVERTENCIA HONESTA, no una promesa de que esto funciona sin ajustes:
-# ninguna sesión de este proyecto ha podido construir esto contra un
-# Windows real todavía -- el análisis estático de PyInstaller sigue las
-# importaciones reales desde run_backend.py, lo que cubre bien el código
+# cuando se escribió, ninguna sesión había construido esto contra un
+# Windows real (se hizo en las decisiones 56-59) -- el análisis estático
+# de PyInstaller sigue las importaciones reales desde run_backend.py,
+# lo que cubre bien el código
 # propio del proyecto (importa `app` directamente, no una cadena
 # "módulo:atributo", precisamente para que PyInstaller pueda seguirla).
 # uvicorn, en cambio, elige algunas piezas en tiempo de ejecución según lo
 # que hay instalado (protocolo HTTP, bucle de eventos) -- la lista de
 # hiddenimports de abajo es un punto de partida razonable, no una lista
-# verificada. El primer intento real probablemente falle con un
-# 'ModuleNotFoundError' que señale exactamente qué falta: se añade ese
+# verificada. Si un build falla con un 'ModuleNotFoundError' que señale
+# exactamente qué falta, se añade ese
 # nombre exacto a hiddenimports y se reintenta -- documentando el
 # hallazgo real como una decisión nueva, igual que el resto de este
 # proyecto (nunca asumir que ya funciona sin haberlo visto funcionar).

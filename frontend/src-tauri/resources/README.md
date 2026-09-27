@@ -55,10 +55,15 @@ Pasos:
    - `doc/` (documentación de PostgreSQL, no hace falta en tiempo de ejecución)
    - `include/` (cabeceras C para compilar extensiones contra libpq/postgres,
      no para ejecutar el servidor ya compilado)
+6. **Añade pgvector** (decisión 58): los binarios de EDB no lo traen, y la
+   migración 0001 hace `CREATE EXTENSION vector`. Descarga la versión para
+   PostgreSQL 16 de `andreiramani/pgvector_pgsql_windows` (se usó la
+   `0.8.6_16`) y fusiona su contenido dentro de `resources/postgres/`: tienen
+   que quedar `lib/vector.dll` y `share/extension/vector.control`.
 
 ## `resources/migrations/`
 
-Copia literal de las 13 migraciones ya generadas del proyecto — el código
+Copia literal de todas las migraciones ya generadas del proyecto — el código
 (`postgres.rs::apply_migrations`) las aplica todas, en orden alfabético/
 numérico, así que los nombres de archivo tienen que conservar el prefijo
 numérico que ya tienen.
@@ -67,7 +72,7 @@ Pasos:
 
 1. Localiza la carpeta real de migraciones generadas en tu repositorio:
    `backend/database/migrations/generated/`.
-2. Copia **todos** los `.sql` de ahí (deberían ser 13 archivos) a
+2. Copia **todos** los `.sql` de ahí (uno por migración) a
    `frontend/src-tauri/resources/migrations/`, manteniendo sus nombres
    exactos (por ejemplo `0001_...sql`, `0002_...sql`, etc.).
 3. No copies nada más de esa carpeta (si hay algún `.py` u otro archivo
@@ -76,13 +81,15 @@ Pasos:
 
 ## `resources/neurograph_snapshot.sql`
 
-El volcado real generado con `scripts/export_snapshot.ps1` (decisión 53),
-ya verificado tabla por tabla. Un solo archivo, no una carpeta.
+El volcado real, generado desde el Postgres embebido con
+`scripts/export_snapshot_embedded.ps1` (decisión 67; nunca desde Docker) y
+verificado tabla por tabla. Un solo archivo, no una carpeta.
 
 Pasos:
 
-1. Copia `neurograph_snapshot.sql` (el que ya tienes en la raíz del
-   repositorio, `E:\Neurograph\neurograph_snapshot.sql`) a
+1. Copia `neurograph_snapshot.sql` (el script lo deja en la carpeta desde la
+   que lo lanzas, normalmente la raíz del repositorio,
+   `E:\Neurograph\neurograph_snapshot.sql`) a
    `frontend/src-tauri/resources/neurograph_snapshot.sql`.
 2. Si en algún momento vuelves a exportar un volcado más reciente (por
    ejemplo tras cargar más estudios), repite este paso para mantenerlo al
@@ -117,11 +124,11 @@ Pasos:
    frontend/src-tauri/resources/backend/neurograph-backend/... (el resto de archivos que genera PyInstaller)
    ```
 
-**Advertencia honesta** (ya está también en la cabecera de
-`backend.spec`): nadie ha construido esto todavía contra un Windows real.
-Es razonablemente probable que el primer intento falle con un
-`ModuleNotFoundError` señalando algún submódulo de `uvicorn` que falta en
-la lista `hiddenimports` del `.spec` — si pasa eso, no es un fallo del
+**Si un build falla** (ver también la cabecera de `backend.spec`): se
+construyó por primera vez en las decisiones 56-59, y el instalador en la 70.
+Un build nuevo puede fallar con un `ModuleNotFoundError` señalando algún
+submódulo de `uvicorn` que falta en la lista `hiddenimports` del `.spec` —
+si pasa eso, no es un fallo del
 diseño, es exactamente el tipo de cosa que PyInstaller solo puede
 descubrir en un build real. La solución es añadir el nombre exacto que
 indique el error a `hiddenimports` en `backend.spec` y reintentar. Avísame
@@ -140,7 +147,7 @@ npm run tauri dev
 
 (o `npm run tauri build` para generar el instalador final). La primera vez
 que arranque va a ejecutar el flujo completo de `setup::ensure_running`:
-`initdb` → arrancar Postgres → crear la base → aplicar las 13 migraciones →
+`initdb` → arrancar Postgres → crear la base → aplicar las migraciones →
 cargar `neurograph_snapshot.sql` → arrancar el backend empaquetado → esperar
 a que `/health` responda. Si algo falla, el mensaje de error (visible en la
 consola y en `setup_error.log`, dentro de la carpeta de datos de la
@@ -148,6 +155,5 @@ aplicación) va a decir exactamente en qué paso se detuvo — nunca hace falta
 adivinar.
 
 Nota: `resources/postgres/`, `resources/migrations/`, `resources/backend/`
-y `neurograph_snapshot.sql` no deberían entrar al control de versiones
-(son binarios y datos, no código) — si `.gitignore` no los excluye ya,
-conviene añadirlos ahí.
+y `neurograph_snapshot.sql` no entran al control de versiones (son binarios
+y datos, no código): `.gitignore` ya los excluye.

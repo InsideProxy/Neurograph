@@ -37,25 +37,45 @@
 // abreviatura (30/08/2026) usan un <sprite> con una textura de <canvas>
 // propia (src/logic/textSprite.ts) en vez de troika-three-text o
 // @react-three/drei <Text> -- mismo criterio.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Canvas, extend, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, extend, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import type { GraphConnection, GraphNode } from "../types/domain";
 import { useSelectionStore } from "../state/selection";
 import { useFiltersStore } from "../state/filters";
 import { filterGraph } from "../logic/visibility";
 import { inducedConnections } from "../logic/induced";
 import { MAX_RENDERED_CONNECTIONS } from "../logic/renderSafety";
-import { exportCanvasAsJpeg } from "../logic/exportImage";
-import { getLabelTexture } from "../logic/textSprite";
+import { exportPixelsAsJpeg } from "../logic/exportImage";
+import { exportPhaseAfter, renderSceneOffscreen, type ExportEvent, type ExportPhase } from "../logic/capture3d";
 import {
-  NETWORK_COLORS,
-  NETWORK_LABELS,
-  NEUTRAL_COLOR,
-  ACCENT_SELECTED_COLOR,
-  HOMOLOGY_HIGHLIGHT_COLOR,
-} from "../theme/networks";
+  LABEL_WEIGHT,
+  MARK_RING_SPRITE_SCALE,
+  STRONG_LABEL_SCALE,
+  STRONG_LABEL_WEIGHT,
+  getLabelTexture,
+  getMarkRingTexture,
+  raycastLabelFirst,
+  type LabelColors,
+} from "../logic/textSprite";
+import { labelAnchor, labelStart, markRing3d, markerSize } from "../logic/markerSize";
+import { isDragRelease, isMarkGesture, type ClickKeys } from "../logic/marks";
+import { useMarksStore } from "../state/marks";
+import { requestLabelFont, useLabelFontStore } from "../state/labelFont";
+import {
+  OCCLUSION_PASS_PRIORITY,
+  createCortexOcclusion,
+  createOcclusionOverrideMaterial,
+  createOcclusionTarget,
+  detachCortexOcclusion,
+  occlusionMaterialProps,
+  renderCortexDepth,
+  type CortexOcclusion,
+} from "../logic/cortexOcclusion";
+import { NETWORK_LABELS } from "../theme/networks";
+import { hasNetworkColor } from "../theme/colors";
+import { useDrawColors, type DrawColors } from "../theme/useDrawColors";
 import { fetchSpeciesList, type SpeciesListItem } from "../data/speciesApi";
 import { fetchHomologiesForSpecies, homologyRegionIds } from "../data/homologyApi";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -67,6 +87,7 @@ import {
   type VertexPaint,
 } from "./PaintedCortex";
 import {
+  cortexGraysFromSrgb,
   hexToLinearRgb,
   parseSulcFile,
   regionAtFace,
@@ -81,15 +102,6 @@ import {
   vertexNetworkForDisplay,
   type NetworkSurfaceMap,
 } from "../logic/networkSurface";
-
-// Fondo de la escena en pantalla (decisión 18, 30/08/2026): mismo valor
-// que --panel-bg en frontend/src/index.css. three.js no puede leer
-// variables CSS, así que este valor se duplica aquí a propósito -- si
-// --panel-bg cambia algún día, este literal hay que actualizarlo a mano
-// junto a él (documentado también en index.css). ExportBridge, más
-// abajo, lo sustituye temporalmente por blanco al exportar, igual que ya
-// hacía con el color de "clear" del renderer.
-const SCENE_BG = "#1d1e26";
 
 // Malla de fondo del cerebro 3D (petición de la usuaria, 30/08/2026: "falta
 // una malla que simule el cerebro... las áreas no pueden aparecer 'en el
@@ -345,44 +357,121 @@ function ContextLossWatcher({ onLost }: { onLost: () => void }) {
   return null;
 }
 
-// Puente para exportar el frame actual del canvas WebGL a JPEG en color
-// sobre fondo blanco (sección 20; decisión de la usuaria, 30/08/2026,
-// ver docs/analisis-arquitectura.md): react-three-fiber no expone
-// gl/scene/camera fuera del árbol de <Canvas>, así que este componente
-// vive dentro de él solo para guardar una función de exportación en el
-// ref que le pasa Brain3D. Se fuerza primero un frame con fondo blanco
-// opaco, se lee el canvas, y se restaura el fondo original para no
-// alterar lo que ve la usuaria en pantalla.
+// Pasada de la oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts):
+// en cada fotograma dibuja la profundidad de la corteza pintada en su propio
+// destino, fuera de pantalla, y enciende la oclusión con ella. Solo se monta
+// con la corteza pintada (renderFocus); al desmontarse, apaga la oclusión y
+// libera su destino y su material.
 //
-// Bug real encontrado y corregido el 30/08/2026 (decisión 18, junto con
-// el tema oscuro): esto SOLO cambiaba `gl.setClearColor`, que es lo que
-// pinta el renderer cuando `scene.background` es `null`. Ahora que la
-// escena tiene un fondo propio (`SCENE_BG`, ver `<color attach=
-// "background">` en `Brain3D`), `scene.background` GANA siempre sobre el
-// color de "clear" -- forzar solo `setClearColor` habría exportado igual
-// el fondo oscuro en vez de blanco, deshaciendo en la práctica la
-// decisión 11 en cuanto se activara el tema oscuro. Por eso aquí se
-// sustituye también `scene.background` temporalmente, no solo el color
-// de "clear".
-function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null } }) {
+// Orden en el fotograma: react-three-fiber llama a los useFrame por
+// prioridad, de menor a mayor. Controls coloca la cámara con prioridad 0,
+// esta pasada va con OCCLUSION_PASS_PRIORITY (0,5) y ExportBridge dibuja el
+// lienzo con prioridad 1. Así la profundidad es siempre la de la cámara con
+// la que se dibuja. La captura de la exportación (logic/capture3d.ts) dibuja
+// la escena con la misma cámara, en su propio requestAnimationFrame, después
+// de este: usa la profundidad de la corteza de este fotograma y reproduce la
+// oclusión tal como se ve.
+function CortexOcclusionPass({ occlusion }: { occlusion: CortexOcclusion }) {
+  const [target] = useState(createOcclusionTarget);
+  const [overrideMaterial] = useState(createOcclusionOverrideMaterial);
+  // useLayoutEffect, no useEffect: la limpieza corre en el mismo commit que
+  // quita el useFrame de la pasada (react-three-fiber lo suscribe con un
+  // efecto de layout). Con useEffect, un fotograma podía caer entre los dos
+  // y dibujar con la oclusión aún encendida pero sin pasada, con la
+  // profundidad de la corteza de un fotograma anterior. Además, los
+  // materiales de fuera de la corteza pintada no llevan el parche
+  // (occlusionMaterialProps): la oclusión no les llega.
+  useLayoutEffect(
+    () => () => {
+      detachCortexOcclusion(occlusion);
+      target.dispose();
+      overrideMaterial.dispose();
+    },
+    [occlusion, target, overrideMaterial],
+  );
+  useFrame(
+    ({ gl, scene, camera }) => renderCortexDepth(gl, scene, camera, target, occlusion, overrideMaterial),
+    OCCLUSION_PASS_PRIORITY,
+  );
+  return null;
+}
+
+// Puente para exportar el cerebro 3D a JPEG en color sobre fondo blanco
+// (sección 20; decisiones 11 y 18, y D3 de docs/decisiones-diseno.md).
+// react-three-fiber no expone gl, scene ni camera fuera del árbol de
+// <Canvas>, así que este componente vive dentro de él.
+//
+// D3: la captura lleva los colores de EXPORTACIÓN, no los del tema de
+// pantalla. Si no, en un tema oscuro la selección (casi blanca)
+// desaparecería sobre el blanco del JPEG.
+//
+// Legibilidad del 3D (logic/capture3d.ts): la exportación pasa por tres
+// fases, que Brain3D guarda en su estado.
+// - «capturing»: Brain3D da a la escena los colores de exportación. Un
+//   fotograma después, cuando ya están en los materiales y la corteza
+//   pintada los ha recalculado en su efecto, la escena se dibuja sobre
+//   blanco en un destino fuera de pantalla, se lee y se descarga.
+// - «restoring»: vuelven los colores de pantalla; se espera otro fotograma,
+//   a que la corteza los recalcule.
+// - «idle»: el lienzo se vuelve a dibujar.
+// Este componente dibuja la escena en cada fotograma (useFrame con
+// prioridad 1: react-three-fiber deja entonces de dibujar por su cuenta),
+// pero solo en «idle». Mientras se exporta, el lienzo sigue mostrando el
+// último fotograma y nunca se ve uno con los colores de exportación, que
+// era la limitación que anotó la D3.
+//
+// onPhaseEvent tiene que ser estable (Brain3D pasa el dispatch de su
+// useReducer). Si cambiara en cada render, el efecto de la captura se
+// limpiaría a mitad de la exportación y la cancelaría.
+function ExportBridge({
+  phase,
+  onPhaseEvent,
+}: {
+  phase: ExportPhase;
+  onPhaseEvent: (event: ExportEvent) => void;
+}) {
   const { gl, scene, camera } = useThree();
+  useFrame((state) => {
+    if (phase === "idle") state.gl.render(state.scene, state.camera);
+  }, 1);
   useEffect(() => {
-    exportRef.current = () => {
-      const previousClearColor = gl.getClearColor(new THREE.Color());
-      const previousClearAlpha = gl.getClearAlpha();
-      const previousBackground = scene.background;
-      gl.setClearColor("#ffffff", 1);
-      scene.background = new THREE.Color("#ffffff");
-      gl.render(scene, camera);
-      exportCanvasAsJpeg(gl.domElement, `neurograph-cerebro3d-${Date.now()}.jpg`);
-      gl.setClearColor(previousClearColor, previousClearAlpha);
-      scene.background = previousBackground;
-      gl.render(scene, camera);
-    };
+    if (phase !== "capturing") return;
+    let done = false;
+    const frame = requestAnimationFrame(() => {
+      // try/finally: aunque la captura falle, se sale de la fase. Sin
+      // contexto WebGL o con el lienzo sin tamaño, renderSceneOffscreen lo
+      // dice en la consola y devuelve null: no hay JPEG, y se sale igual.
+      try {
+        const capture = renderSceneOffscreen(gl, scene, camera);
+        if (capture) {
+          exportPixelsAsJpeg(capture.pixels, capture.width, capture.height, `neurograph-cerebro3d-${Date.now()}.jpg`);
+        }
+      } finally {
+        done = true;
+        onPhaseEvent("captured");
+      }
+    });
     return () => {
-      exportRef.current = null;
+      cancelAnimationFrame(frame);
+      // Si el fotograma no llegó a ejecutarse (se desmontó el lienzo o se
+      // perdió el contexto WebGL), también se sale de la exportación: si
+      // no, Brain3D seguiría con los colores de exportación y el lienzo no
+      // se volvería a dibujar.
+      if (!done) onPhaseEvent("abort");
     };
-  }, [gl, scene, camera, exportRef]);
+  }, [phase, gl, scene, camera, onPhaseEvent]);
+  useEffect(() => {
+    if (phase !== "restoring") return;
+    let done = false;
+    const frame = requestAnimationFrame(() => {
+      done = true;
+      onPhaseEvent("restored");
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!done) onPhaseEvent("abort");
+    };
+  }, [phase, onPhaseEvent]);
   return null;
 }
 
@@ -393,23 +482,65 @@ function ExportBridge({ exportRef }: { exportRef: { current: (() => void) | null
 // Se omite por completo cuando la región no tiene abreviatura registrada
 // todavía (atlas sin backfill de la migración 0007): nunca se inventa
 // una a partir de `label`.
-function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boolean }) {
+function NodeLabel({
+  node,
+  start,
+  selected,
+  occlusion,
+  colors,
+  overlay = false,
+  pill = null,
+  onClick,
+}: {
+  node: GraphNode;
+  // Dónde empieza la etiqueta, a la derecha de su marcador en pantalla
+  // (labelStart, en logic/markerSize.ts).
+  start: number;
+  // La de la región seleccionada destaca, como en la maqueta: el texto
+  // fuerte del tema, en negrita y algo mayor (fase 4 del rediseño).
+  selected: boolean;
+  occlusion: CortexOcclusion;
+  // Etiquetas del 3D (docs/rediseno-interfaz-diseno.md, 6.3; fase 4 del
+  // rediseño): el texto del tema sobre su fondo translúcido. Mientras se
+  // captura el JPEG, los de la paleta de exportación, como lo demás.
+  colors: DrawColors;
+  overlay?: boolean;
+  // Región marcada (docs/rediseno-interfaz-diseno.md, 5.9): la etiqueta va
+  // sobre una pastilla del color de marca (logic/textSprite.ts).
+  pill?: LabelColors | null;
+  // El clic en la etiqueta selecciona o marca su región (NodeMesh).
+  onClick: (event: ThreeEvent<MouseEvent>) => void;
+}) {
+  // La versión de fuentes (state/labelFont.ts): cuando llega la fuente, las
+  // etiquetas se vuelven a dibujar con ella.
+  const fontVersion = useLabelFontStore((state) => state.version);
+  const background = pill?.background ?? colors.label3dBackground;
+  // Los colores de marca ganan; sin ellos, la de la región seleccionada lleva
+  // el texto fuerte del tema.
+  const color = pill?.color ?? (selected ? colors.label3dStrong : colors.label3dText);
+  const weight = selected ? STRONG_LABEL_WEIGHT : LABEL_WEIGHT;
   // useMemo va antes que cualquier retorno condicional (regla de los
   // hooks: el orden de llamada no puede depender de datos) -- por eso
   // el texto de repuesto "" en vez de omitir la llamada cuando no hay
   // abreviatura; getLabelTexture("") solo se pide una vez por caché.
-  const label = useMemo(() => getLabelTexture(node.abbreviation ?? ""), [node.abbreviation]);
+  const label = useMemo(
+    () => getLabelTexture(node.abbreviation ?? "", { background, color, weight }, fontVersion),
+    [node.abbreviation, background, color, weight, fontVersion],
+  );
   if (!node.abbreviation) return null;
   // Separación aumentada (30/08/2026, ronda de ajustes tras revisión
   // visual: "las abreviaturas... se confunden con la esfera") de 0.15 a
   // 0.24 -- junto con el radio de nodo reducido en NodeMesh (baseRadius,
   // más abajo), deja un hueco visible entre la esfera y su etiqueta en
   // vez de que la etiqueta arranque casi pegada al borde superior.
-  const position: [number, number, number] = [
-    node.position3d[0],
-    node.position3d[1] + 0.24,
-    node.position3d[2],
-  ];
+  // Fase 4 del rediseño (decisión del usuario del 25/09/2026): la etiqueta ya
+  // no va encima del marcador, sino a su lado, a la derecha en pantalla y
+  // centrada en vertical, como en la maqueta. Sobre su pastilla, que con la
+  // corteza pintada se dibuja encima de todo, tapaba su propio marcador: las
+  // largas en la vista lateral de partida, y todas desde delante o desde
+  // detrás. El sprite va en el centro del marcador, a su misma profundidad,
+  // y su ancla (Sprite.center) lo desplaza en pantalla hasta `start`, pasado
+  // el contorno, o el anillo de una región marcada (logic/markerSize.ts).
   // Ancho del sprite proporcional al aspecto real de la textura (corregido
   // 30/08/2026: "los nombres... se ven cortados"). Antes el sprite usaba
   // una escala fija [0.32, 0.13, 1] emparejada con un canvas de ancho
@@ -419,16 +550,31 @@ function NodeLabel({ node, overlay = false }: { node: GraphNode; overlay?: boole
   // texto real y expone su proporción (`aspect`); aquí se mantiene la
   // altura fija y se calcula el ancho a partir de esa proporción, así el
   // texto nunca sale cortado ni deformado sea cual sea su longitud.
-  const labelHeight = 0.13;
+  // Fase 4 del rediseño: la de la región seleccionada, 13/12 más alta, como
+  // en la maqueta (13 px frente a 12). El clic, primero para la etiqueta
+  // (raycastLabelFirst, en logic/textSprite.ts).
+  const labelHeight = 0.13 * (selected ? STRONG_LABEL_SCALE : 1);
   const labelWidth = labelHeight * label.aspect;
   return (
-    <sprite position={position} scale={[labelWidth, labelHeight, 1]} renderOrder={overlay ? 3 : 0}>
+    <sprite
+      position={node.position3d}
+      center={labelAnchor(start, labelWidth)}
+      scale={[labelWidth, labelHeight, 1]}
+      renderOrder={overlay ? 3 : 0}
+      raycast={raycastLabelFirst}
+      onClick={onClick}
+    >
+      {/* Sin la curva de tono del lienzo (toneMapped): la etiqueta sale con
+          los colores del tema, o con los de marca, tal cual, como en los
+          dibujos SVG y como el anillo de las marcas (fase 4; spec 6.3). */}
       <spriteMaterial
         map={label.texture}
         transparent
         depthWrite={false}
         depthTest={!overlay}
         sizeAttenuation
+        toneMapped={false}
+        {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
       />
     </sprite>
   );
@@ -442,10 +588,21 @@ function overlayNoRaycast(overlay: boolean): { raycast?: () => null } {
   return overlay ? { raycast: () => null } : {};
 }
 
+// Cómo se ve una región marcada en el 3D (docs/rediseno-interfaz-diseno.md,
+// 5.9): la pastilla de su etiqueta y la textura de su anillo, con los colores
+// de marca del tema.
+interface MarkLook {
+  pill: LabelColors;
+  ringTexture: THREE.Texture;
+}
+
 function NodeMesh({
   node,
   isHomologyHighlighted,
+  colors,
+  occlusion,
   overlay = false,
+  mark = null,
 }: {
   node: GraphNode;
   // Con la corteza pintada y opaca (decisión 72), las esferas y líneas de
@@ -461,15 +618,28 @@ function NodeMesh({
   // defecto (ninguna especie de comparación elegida, o esta región en
   // concreto no tiene ninguna fila de homología real hacia ella).
   isHomologyHighlighted: boolean;
+  colors: DrawColors;
+  // Oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts): el parche
+  // y los uniforms que comparten los materiales de la capa de foco de este
+  // lienzo.
+  occlusion: CortexOcclusion;
+  // Región marcada (spec 5.9): con su anillo y su etiqueta sobre la pastilla.
+  // null si no lo está, o mientras se captura la exportación.
+  mark?: MarkLook | null;
 }) {
   const { selectedNodeIds, toggleNode } = useSelectionStore();
+  const toggleMark = useMarksStore((state) => state.toggleMark);
   const isSelected = selectedNodeIds.has(node.id);
   // Radio reducido dos veces (30/08/2026, ronda de ajustes tras revisión
   // visual: primero de 0.16/0.11 a 0.12/0.08, y de nuevo -- "aún más
   // pequeños" -- a 0.09/0.06) -- deja más espacio real alrededor de cada
   // nodo, tanto para distinguir nodos vecinos entre sí como para separar
   // visualmente la esfera de su etiqueta (ver NodeLabel).
-  const baseRadius = isSelected ? 0.09 : 0.06;
+  // Legibilidad del 3D (spec 6.3): otra vez a la mitad, 0,03, para no tapar
+  // la región pintada, con la región seleccionada un 40 % mayor. El
+  // contorno, la zona de clic y la etiqueta se ajustan con el radio
+  // (logic/markerSize.ts).
+  const size = markerSize(isSelected);
   // Vista en dos colores por homología real (02/09/2026, petición de la
   // usuaria tras cerrar el resto del inventario pendiente): el color de
   // red real (NETWORK_COLORS) es la codificación por defecto de SIEMPRE,
@@ -477,9 +647,23 @@ function NodeMesh({
   // lo SUSTITUYE, nunca lo combina ni lo atenúa, para que las dos
   // señales (red funcional real / homología real) nunca se mezclen en
   // un tercer color ambiguo que no sea ninguna de las dos.
-  const fillColor = isHomologyHighlighted
-    ? HOMOLOGY_HIGHLIGHT_COLOR
-    : NETWORK_COLORS[node.network] ?? "#888";
+  const fillColor = isHomologyHighlighted ? colors.homology : colors.networkColor(node.network);
+  // Tamaño del sprite del anillo de una región marcada (logic/markerSize.ts).
+  const ringSize = 2 * markRing3d(size).outerRadius * MARK_RING_SPRITE_SCALE;
+  // Clic en la etiqueta (fase 4 del rediseño; decisión del usuario del
+  // 25/09/2026): el clic normal selecciona la región, o la deselecciona, y
+  // Ctrl+clic (⌘+clic en macOS) la marca o la desmarca, como en el marcador.
+  // También con la corteza pintada, donde los marcadores no reciben clics.
+  // La etiqueta recibe el clic antes que lo que tenga detrás
+  // (raycastLabelFirst, en logic/textSprite.ts), y aquí se corta: ni la
+  // corteza, ni la zona de clic de su marcador, ni una línea lo reciben
+  // también. El clic que llega al soltar un arrastre no hace nada.
+  const handleLabelClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    if (isDragRelease(event.delta)) return;
+    if (isMarkGesture(event.nativeEvent)) toggleMark(node.id);
+    else toggleNode(node.id);
+  };
   return (
     <>
       {/* Halo de contorno neutro (decisión 18, 30/08/2026) -- equivalente
@@ -494,36 +678,95 @@ function NodeMesh({
           mesh, un poco más grande y con las caras traseras hacia fuera
           (`side: THREE.BackSide`), deja ver solo un fino borde alrededor
           del nodo real -- técnica estándar de "contorno por casco
-          invertido". Usa NEUTRAL_COLOR/ACCENT_SELECTED_COLOR (theme/
-          networks.ts), los mismos "colores intermedios" legibles tanto
-          en pantalla (fondo oscuro) como en la exportación (blanco
-          forzado, ver ExportBridge) -- por eso el halo también se ve
-          bien en la figura exportada, no solo en pantalla. */}
-      <mesh position={node.position3d} scale={1.18} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+          invertido". Usa los tokens nodeRing/selected del tema (D3 de
+          docs/decisiones-diseno.md); al exportar, `colors` ya lleva la
+          paleta de exportación -- la captura se dibuja fuera de pantalla
+          (logic/capture3d.ts) --, así que el contorno también se ve en
+          la figura exportada. */}
+      <mesh position={node.position3d} scale={size.outlineScale} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshBasicMaterial
-          color={isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR}
+          color={isSelected ? colors.selected : colors.nodeRing}
           side={THREE.BackSide}
           depthTest={!overlay}
+          {...occlusionMaterialProps(occlusion, { opaque: true, overlay })}
         />
       </mesh>
-      <mesh
-        position={node.position3d}
-        renderOrder={overlay ? 2 : 0}
-        {...(overlay ? overlayNoRaycast(true) : { onClick: () => toggleNode(node.id) })}
-      >
+      <mesh position={node.position3d} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
         {/* 14x14 en vez de 24x24: con cientos de regiones reales, cada
             segmento de más cuesta 360 veces más caro que en la demo de 8
             nodos. Sigue viéndose redondo a esta escala. */}
-        <sphereGeometry args={[baseRadius, 14, 14]} />
+        <sphereGeometry args={[size.radius, 14, 14]} />
         <meshStandardMaterial
           color={fillColor}
           emissive={isSelected ? "#ffffff" : "#000000"}
           emissiveIntensity={isSelected ? 0.4 : 0}
           depthTest={!overlay}
+          {...occlusionMaterialProps(occlusion, { opaque: true, overlay })}
         />
       </mesh>
-      <NodeLabel node={node} overlay={overlay} />
+      {/* Zona de clic (Legibilidad del 3D): la esfera de antes, invisible.
+          visible={false} va en el <mesh>, no en su material: WebGLRenderer
+          descarta un Object3D con visible={false} nada más empezar
+          (projectObject), antes de recortarlo contra la cámara o subir su
+          geometría a la GPU (~9 KB por nodo). Con el material invisible en
+          vez del mesh (como antes), three.js sí hace las dos cosas y solo
+          deja de dibujarlo al final. Ni el raycaster de three.js ni el de
+          react-three-fiber miran `visible` (comprobado en su código de
+          node_modules): la encuentran igual, así que seleccionar con un
+          clic sigue costando lo mismo que antes. Con la corteza pintada no
+          hay, como antes: se selecciona pulsando la propia región. */}
+      {/* Ctrl+clic (⌘+clic en macOS) marca o desmarca la región (spec
+          5.9); el clic normal sigue seleccionándola, como antes. */}
+      {!overlay && (
+        <mesh
+          position={node.position3d}
+          visible={false}
+          onClick={(event) => {
+            if (!isMarkGesture(event.nativeEvent)) {
+              toggleNode(node.id);
+              return;
+            }
+            // Solo la región de delante: react-three-fiber entrega el clic a
+            // todas las zonas de clic que cruza el rayo, de la más cercana a
+            // la más lejana, y en la vista lateral de partida las de los dos
+            // hemisferios se solapan. Al soltar un Ctrl+arrastre, no marca.
+            event.stopPropagation();
+            if (!isDragRelease(event.delta)) toggleMark(node.id);
+          }}
+        >
+          <sphereGeometry args={[size.hitRadius, 14, 14]} />
+          <meshBasicMaterial />
+        </mesh>
+      )}
+      {/* Región marcada (spec 5.9): el hueco del color del fondo y el anillo
+          del color de marca, fuera del contorno, en un sprite siempre de cara
+          a la cámara; su centro, transparente, deja ver el marcador. Sin
+          prueba de profundidad con la corteza pintada y con la oclusión, como
+          el marcador: tenue detrás de la corteza. Sin la curva de tono del
+          lienzo, para que salga con el color de marca. */}
+      {mark && (
+        <sprite position={node.position3d} scale={[ringSize, ringSize, 1]} renderOrder={overlay ? 2 : 0}>
+          <spriteMaterial
+            map={mark.ringTexture}
+            transparent
+            depthWrite={false}
+            depthTest={!overlay}
+            toneMapped={false}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
+          />
+        </sprite>
+      )}
+      <NodeLabel
+        node={node}
+        start={labelStart(size, mark !== null)}
+        selected={isSelected}
+        occlusion={occlusion}
+        colors={colors}
+        overlay={overlay}
+        pill={mark?.pill ?? null}
+        onClick={handleLabelClick}
+      />
     </>
   );
 }
@@ -532,11 +775,13 @@ function DirectionArrow({
   from,
   to,
   color,
+  occlusion,
   overlay = false,
 }: {
   from: THREE.Vector3;
   to: THREE.Vector3;
   color: string;
+  occlusion: CortexOcclusion;
   overlay?: boolean;
 }) {
   // Un pequeño cono a un 80% del trayecto, orientado de origen a destino:
@@ -555,7 +800,7 @@ function DirectionArrow({
   return (
     <mesh position={position} quaternion={quaternion} renderOrder={overlay ? 2 : 0} {...overlayNoRaycast(overlay)}>
       <coneGeometry args={[0.035, 0.09, 12]} />
-      <meshBasicMaterial color={color} depthTest={!overlay} />
+      <meshBasicMaterial color={color} depthTest={!overlay} {...occlusionMaterialProps(occlusion, { opaque: true, overlay })} />
     </mesh>
   );
 }
@@ -567,6 +812,8 @@ function ConnectionLine({
   isDashed,
   isDirected,
   onClick,
+  colors,
+  occlusion,
   overlay = false,
 }: {
   a: [number, number, number];
@@ -575,15 +822,26 @@ function ConnectionLine({
   isDashed: boolean;
   isDirected: boolean;
   onClick: () => void;
+  colors: DrawColors;
+  occlusion: CortexOcclusion;
   overlay?: boolean;
 }) {
   const from = useMemo(() => new THREE.Vector3(...a), [a]);
   const to = useMemo(() => new THREE.Vector3(...b), [b]);
-  // Colores "intermedios" (decisión 18, 30/08/2026), no "#222222"/
-  // "#999999": el primero tenía casi cero contraste contra el fondo
-  // oscuro de la escena (una conexión SELECCIONADA era casi invisible,
-  // justo el caso que más importa distinguir) -- ver theme/networks.ts.
-  const color = isSelected ? ACCENT_SELECTED_COLOR : NEUTRAL_COLOR;
+  // Tokens selected y edge del tema (D3 de docs/decisiones-diseno.md); al
+  // exportar, los de la paleta de exportación. Antes de la decisión 18
+  // (30/08/2026) eran "#222222"/"#999999", y el primero casi no se veía
+  // sobre el fondo oscuro de la escena: una conexión SELECCIONADA, justo
+  // la que más importa distinguir, era casi invisible.
+  const color = isSelected ? colors.selected : colors.edge;
+  // Marcas (docs/rediseno-interfaz-diseno.md, 5.9): react-three-fiber
+  // entrega el clic a todo lo que atraviesa el rayo, y una línea se alcanza
+  // desde lejos (Line.threshold de three.js, 1 unidad de la escena). Un
+  // Ctrl+clic, que marca el marcador, no selecciona además la línea de
+  // detrás: vaciaría la selección de regiones.
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (!isMarkGesture(event.nativeEvent)) onClick();
+  };
 
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints([from, to]);
@@ -605,27 +863,29 @@ function ConnectionLine({
       <threeLine
         geometry={geometry}
         renderOrder={overlay ? 2 : 0}
-        {...(overlay ? overlayNoRaycast(true) : { onClick })}
+        {...(overlay ? overlayNoRaycast(true) : { onClick: handleClick })}
       >
         {isDashed ? (
           <lineDashedMaterial
             color={color}
             transparent
-            opacity={isSelected ? 0.95 : 0.55}
+            opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             dashSize={0.08}
             gapSize={0.06}
             depthTest={!overlay}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
           />
         ) : (
           <lineBasicMaterial
             color={color}
             transparent
-            opacity={isSelected ? 0.95 : 0.55}
+            opacity={isSelected ? colors.edgeOpacitySelected : colors.edgeOpacity3d}
             depthTest={!overlay}
+            {...occlusionMaterialProps(occlusion, { opaque: false, overlay })}
           />
         )}
       </threeLine>
-      {isDirected && <DirectionArrow from={from} to={to} color={color} overlay={overlay} />}
+      {isDirected && <DirectionArrow from={from} to={to} color={color} occlusion={occlusion} overlay={overlay} />}
     </>
   );
 }
@@ -892,8 +1152,58 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // moviendo la cámara hacia ella -- si hace falta acercarse a algo
   // concreto, la rueda del ratón controla el zoom.
   const target = useMemo(() => computeCentroid(allNodes), [allNodes]);
-  const exportRef = useRef<(() => void) | null>(null);
-  const handleExport = () => exportRef.current?.();
+  // Fases de la exportación (Legibilidad del 3D; logic/capture3d.ts y
+  // ExportBridge). El dispatch de useReducer es estable, como pide
+  // ExportBridge.
+  const [exportPhase, dispatchExport] = useReducer(exportPhaseAfter, "idle");
+  const exporting = exportPhase !== "idle";
+  // Mientras se exporta, el botón lleva aria-disabled y no disabled, para
+  // que no pierda el foco del teclado; por eso el clic se ignora aquí.
+  // exportPhaseAfter descarta además una segunda petición que llegue antes
+  // de que React aplique el estado.
+  const handleExport = () => {
+    if (exporting) return;
+    dispatchExport("request");
+  };
+  // Colores de dibujo; durante la captura, los de la paleta de exportación
+  // (D3 de docs/decisiones-diseno.md). El fondo de la escena usa siempre los
+  // de pantalla: la captura ya fuerza el blanco en su destino, fuera de
+  // pantalla.
+  const screenColors = useDrawColors();
+  const colors = useDrawColors(exportPhase === "capturing");
+  const cortexGrays = useMemo(() => cortexGraysFromSrgb(colors), [colors]);
+
+  // Oclusión por la corteza (spec 6.3; logic/cortexOcclusion.ts): con la
+  // corteza pintada, lo que ella tapa se ve tenue. Sustituye a «Atenuar lo
+  // que queda detrás» de la D5, y no tiene interruptor: es como se dibuja.
+  // `occlusion` guarda el parche y los uniforms que comparten los materiales
+  // de la capa de foco, uno por lienzo; CortexOcclusionPass la enciende.
+  const [occlusion] = useState(createCortexOcclusion);
+
+  // Tipografía de las etiquetas (fase 4 del rediseño; spec 6.3): se pide la
+  // fuente al montar y, cuando llega, las etiquetas se vuelven a dibujar con
+  // ella (state/labelFont.ts).
+  useEffect(() => {
+    void requestLabelFont(document.fonts);
+  }, []);
+
+  // Marcas de regiones (docs/rediseno-interfaz-diseno.md, 5.9): las regiones
+  // marcadas que pasan los filtros llevan su marcador, con el anillo, y su
+  // etiqueta sobre la pastilla, también fuera de la selección y con el mapa
+  // entero pintado (renderFocus). Mientras se captura la exportación no se
+  // dibujan: los JPEG salen como sin ellas. Sus colores son siempre los de
+  // pantalla.
+  const markedIds = useMarksStore((state) => state.markedIds);
+  const toggleMark = useMarksStore((state) => state.toggleMark);
+  const drawMarks = exportPhase !== "capturing";
+  const markedNodes = nodes.filter((node) => markedIds.has(node.id));
+  const markLook = useMemo<MarkLook>(
+    () => ({
+      pill: { background: screenColors.mark, color: screenColors.markText },
+      ringTexture: getMarkRingTexture(screenColors.sceneBg, screenColors.mark),
+    }),
+    [screenColors.mark, screenColors.markText, screenColors.sceneBg],
+  );
 
   // Lista de especies reales para el selector de comparación (mismo
   // origen que SpeciesComparisonPanel.tsx: GET /species) -- se pide una
@@ -1073,10 +1383,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     return painted.map.regionIds.map((id) => {
       const node = allNodesById.get(id);
       if (!node || !shown.has(id)) return null;
-      const hex = homologyNodeIds.has(id) ? HOMOLOGY_HIGHLIGHT_COLOR : (NETWORK_COLORS[node.network] ?? "#888888");
+      const hex = homologyNodeIds.has(id) ? colors.homology : colors.networkColor(node.network);
       return hexToLinearRgb(hex);
     });
-  }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds]);
+  }, [painted, focus, filteredNodeIds, allNodesById, homologyNodeIds, colors]);
   const colorForRegion = useCallback((region: number) => regionColors?.[region] ?? null, [regionColors]);
 
   // Colores del modo vértice a vértice: la red de cada vértice con su
@@ -1094,9 +1404,11 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       (i) => !hiddenNetworks.has(networkSurface.networks[i].slug),
       focusIds ? (r) => focusIds.has(regionIds[r]) : null
     );
-    const colors = networkSurface.networks.map((n) => hexToLinearRgb(NETWORK_COLORS[n.slug] ?? n.color));
-    return { vertexIndex, categoryCount: colors.length, colorFor: (i) => colors[i] ?? null };
-  }, [painted, networkSurface, focus, hiddenNetworks]);
+    const netColors = networkSurface.networks.map((n) =>
+      hexToLinearRgb(hasNetworkColor(n.slug) ? colors.networkColor(n.slug) : n.color)
+    );
+    return { vertexIndex, categoryCount: netColors.length, colorFor: (i) => netColors[i] ?? null };
+  }, [painted, networkSurface, focus, hiddenNetworks, colors]);
 
   const anchorById = useMemo(
     () => (painted ? new Map(painted.map.regionIds.map((id, i) => [id, painted.map.anchorVertices[i]])) : null),
@@ -1105,12 +1417,17 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
 
   // Clic sobre la corteza = mismo efecto que un clic sobre el nodo en el
   // connectograma. Una región oculta por los filtros no se selecciona.
+  // Marcas (spec 5.9): con Ctrl+clic (⌘+clic en macOS), se marca o se
+  // desmarca, como el nodo; una región oculta tampoco se marca. El clic
+  // que llega al soltar un Ctrl+arrastre no marca (isDragRelease).
   const handleRegionClick = useCallback(
-    (region: number) => {
+    (region: number, keys: ClickKeys, delta: number) => {
       const id = painted?.map.regionIds[region];
-      if (id && filteredNodeIds.has(id)) toggleNode(id);
+      if (!id || !filteredNodeIds.has(id)) return;
+      if (!isMarkGesture(keys)) toggleNode(id);
+      else if (!isDragRelease(delta)) toggleMark(id);
     },
-    [painted, filteredNodeIds, toggleNode]
+    [painted, filteredNodeIds, toggleNode, toggleMark]
   );
   // Solo valores primitivos en el estado: pasar el ratón por la misma
   // región/red no vuelve a dibujar nada.
@@ -1208,10 +1525,15 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // región se dibuja sobre SU vértice ancla en la forma de superficie que
   // se está mostrando (en la midthickness es exactamente `position3d`),
   // y se omite si su hemisferio está oculto.
+  // Marcas (spec 5.9): las regiones marcadas que no están en el foco se
+  // colocan y se dibujan igual que él, también sin selección, con el mapa
+  // entero pintado.
   const renderFocus = (helpers: SurfaceOverlayHelpers | null) => {
-    if (!focus) return null;
+    const focusIds = new Set(focus?.nodes.map((node) => node.id));
+    const markedOutside = drawMarks ? markedNodes.filter((node) => !focusIds.has(node.id)) : [];
+    if (!focus && markedOutside.length === 0) return null;
     const placed = new Map<string, GraphNode>();
-    for (const node of focus.nodes) {
+    for (const node of [...(focus?.nodes ?? []), ...markedOutside]) {
       if (helpers && anchorById) {
         const anchor = anchorById.get(node.id);
         if (anchor === undefined || !helpers.isVertexVisible(anchor)) continue;
@@ -1223,12 +1545,16 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
     const overlay = helpers !== null;
     return (
       <>
+        {helpers && <CortexOcclusionPass occlusion={occlusion} />}
         {[...placed.values()].map((node) => (
           <NodeMesh
             key={node.id}
             node={node}
             isHomologyHighlighted={homologyNodeIds.has(node.id)}
+            colors={colors}
+            occlusion={occlusion}
             overlay={overlay}
+            mark={drawMarks && markedIds.has(node.id) ? markLook : null}
           />
         ))}
         {visibleFocusConnections.map((conn) => {
@@ -1254,6 +1580,8 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               isDashed={conn.evidenceLevel !== "direct"}
               isDirected={conn.type === "effective"}
               onClick={() => selectConnection(conn.id)}
+              colors={colors}
+              occlusion={occlusion}
               overlay={overlay}
             />
           );
@@ -1268,7 +1596,12 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
   // en cualquiera de los otros dos en vez de mostrar un lienzo vacío sin
   // explicación. Excepción (decisión 72): con la corteza pintada sí se
   // muestra el mapa completo de regiones, ver `regionColors`.
-  if (!focus && !painted) {
+  // Marcas (spec 5.9): con regiones marcadas que se ven, el lienzo las
+  // muestra, solas, porque se marcan para encontrarlas en todas las vistas.
+  // Mientras carga el mapa de regiones de la corteza, sigue el aviso de
+  // «cargando».
+  const waitingForCortex = effectiveSurfaceMode !== "translucent" && parcelsLoading;
+  if (!focus && !painted && (markedNodes.length === 0 || waitingForCortex)) {
     return (
       <>
         {!compact && (
@@ -1295,9 +1628,20 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       <div className="brain3d-toolbar">
         {homologyControl}
         {surfaceControls}
-        <button type="button" className="export-btn" onClick={handleExport}>
-          Exportar JPEG
-        </button>
+        {/* aria-disabled, no disabled: así el botón conserva el foco del
+            teclado mientras se exporta. No hace de guarda -- un segundo
+            clic durante la exportación ya no hace nada por su cuenta (ver
+            el comentario junto a handleExport, más arriba); aria-disabled
+            solo muestra ese estado. */}
+        {/* Marcas (spec 5.9): el lienzo que solo muestra regiones marcadas,
+            sin selección ni corteza pintada, no ofrece exportar: las marcas
+            no se exportan, y la imagen saldría vacía (spec 5.4: sin
+            selección y con la corteza translúcida, no hay botón). */}
+        {(focus || painted) && (
+          <button type="button" className="export-btn" onClick={handleExport} aria-disabled={exporting}>
+            Exportar JPEG
+          </button>
+        )}
       </div>
     )}
     {!compact && parcelError}
@@ -1329,7 +1673,10 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       // contenido siga en el búfer de dibujo en el momento de leerlo
       // con toBlob/toDataURL (el navegador puede limpiarlo antes del
       // siguiente frame) -- necesario para que la exportación a JPEG
-      // sea fiable en vez de "funciona a veces".
+      // sea fiable en vez de "funciona a veces". Legibilidad del 3D: la
+      // exportación ya no lee este lienzo (se dibuja fuera de pantalla,
+      // logic/capture3d.ts); se deja como estaba para no cambiar cómo se
+      // presenta el lienzo.
       gl={{ preserveDrawingBuffer: true }}
       // Posición inicial de la cámara (30/08/2026, parte de la misma
       // corrección que `camera.up.set(0, 0, 1)` en Controls más arriba):
@@ -1353,16 +1700,17 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
       {/* Fondo de la escena (decisión 18, 30/08/2026): antes no se fijaba
           ningún fondo, así que el <Canvas> quedaba transparente y dejaba
           ver el fondo de la página (blanco, antes de esta misma
-          decisión) -- ahora usa el mismo tono que el resto de paneles en
-          pantalla (SCENE_BG = --panel-bg). ExportBridge lo sustituye
-          temporalmente por blanco al exportar. */}
-      <color attach="background" args={[SCENE_BG]} />
+          decisión) -- ahora es el token sceneBg del tema (D3 de
+          docs/decisiones-diseno.md), siempre el de pantalla, también
+          mientras se exporta. ExportBridge lo sustituye temporalmente
+          por blanco al exportar. */}
+      <color attach="background" args={[screenColors.sceneBg]} />
       <ambientLight intensity={0.6} />
       <pointLight position={[5, 5, 5]} intensity={60} />
       {painted && <CameraLight />}
       <Controls target={target} />
       <ContextLossWatcher onLost={() => setContextLost(true)} />
-      <ExportBridge exportRef={exportRef} />
+      <ExportBridge phase={exportPhase} onPhaseEvent={dispatchExport} />
       {/* Malla de fondo (30/08/2026, petición de la usuaria) -- ver
           REFERENCE_SPACE_MESH/resolveMeshUrl más arriba y ReferenceMesh.tsx. Envuelta
           en su propio ErrorBoundary (nunca el mismo que usa App.tsx para
@@ -1384,6 +1732,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
               sulc={painted.sulc}
               colorForRegion={colorForRegion}
               paintBy={networkPaint}
+              grays={cortexGrays}
               hemisphere={hemisphere}
               onRegionClick={handleRegionClick}
               onRegionHover={handleRegionHover}
@@ -1398,7 +1747,7 @@ export function Brain3D({ nodes: allNodes, connections: allConnections, atlasId,
           {meshUrl && (
             <ErrorBoundary fallback={null}>
               <Suspense fallback={null}>
-                <ReferenceMesh url={meshUrl} />
+                <ReferenceMesh url={meshUrl} color={colors.edge} />
               </Suspense>
             </ErrorBoundary>
           )}

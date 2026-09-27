@@ -41,19 +41,29 @@ def list_regions(
     "yeo2011-7"); sin él, la original del atlas. Con `atlas_id`, una
     fuente que ese atlas no tiene cargada es un error 400 -- nunca una
     lista de regiones "todas sin red" que parecería un dato real.
+
+    404 si el atlas no existe (principio 9, decisión 77); un atlas que existe y no
+    tiene regiones da una lista vacía.
     """
-    if network_source is not None and atlas_id is not None:
-        available = {s.source for s in regions_service.list_network_sources(db, atlas_id)}
-        if network_source not in available:
-            raise HTTPException(
-                status_code=400,
-                detail=f"El atlas {atlas_id} no tiene la clasificación de red {network_source!r} "
-                f"(cargadas: {sorted(available)})",
-            )
-    return regions_service.list_regions(db, atlas_id, network_source)
+    try:
+        if network_source is not None and atlas_id is not None:
+            available = {s.source for s in regions_service.list_network_sources(db, atlas_id)}
+            if network_source not in available:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El atlas {atlas_id} no tiene la clasificación de red {network_source!r} "
+                    f"(cargadas: {sorted(available)})",
+                )
+        return regions_service.list_regions(db, atlas_id, network_source)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/network-sources", response_model=list[NetworkSourceSummary])
 def list_network_sources(atlas_id: str, db: Session = Depends(get_db)) -> list[NetworkSourceSummary]:
-    """Clasificaciones de red realmente cargadas para un atlas (decisión 73)."""
-    return regions_service.list_network_sources(db, atlas_id)
+    """Clasificaciones de red realmente cargadas para un atlas (decisión
+    73). 404 si el atlas no existe (principio 9, decisión 77)."""
+    try:
+        return regions_service.list_network_sources(db, atlas_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.api.services.regions_service import ensure_atlas_exists
 from backend.core.graph.from_connections import edges_from_connections
 from backend.core.graph.model import build_graph
 from backend.core.graph.network_analysis import (
@@ -192,7 +193,10 @@ def list_graph_metrics(
     """Métricas del motor matemático sobre las regiones y conexiones
     reales de un atlas. `atlas_id` es obligatorio (nunca se calcula
     sobre "todo", que mezclaría regiones de parcelaciones distintas que
-    ocupan el mismo espacio físico dos veces)."""
+    ocupan el mismo espacio físico dos veces). Un `atlas_id` que no existe
+    lanza `ValueError` (principio 9, decisión 77): antes llegaba al motor como un
+    grafo sin nodos y daba un 500."""
+    ensure_atlas_exists(db, atlas_id)
     region_ids, connection_rows = load_atlas_regions_and_connections(db, atlas_id, connection_type)
 
     return compute_graph_metrics(

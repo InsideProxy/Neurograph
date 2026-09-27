@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.api.services import paths_service
@@ -29,5 +29,9 @@ def find_path(
     """Camino más corto real entre `source_id` y `target_id`, dentro del
     mismo atlas (`atlas_id` obligatorio, mismo motivo que `GET
     /graph-metrics`). `path`/`distance` vienen `None` cuando no existe
-    ningún camino real entre ambas regiones -- nunca se inventa uno."""
-    return paths_service.find_path(db, atlas_id, source_id, target_id, connection_type, min_weight)
+    ningún camino real entre ambas regiones -- nunca se inventa uno. 404
+    si el atlas o alguna de las dos regiones no existen (principio 9, decisión 77)."""
+    try:
+        return paths_service.find_path(db, atlas_id, source_id, target_id, connection_type, min_weight)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

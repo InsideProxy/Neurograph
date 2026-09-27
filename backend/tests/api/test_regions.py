@@ -172,3 +172,35 @@ def test_unclassified_node_carries_no_membership_details():
     assert node.network == "unclassified"
     assert node.network_algorithm is None
     assert node.network_confidence is None
+
+
+# --- «No existe» no es «existe pero está vacío» (principio 9, decisión 77) ---
+
+def test_check_ids_exist_rejects_an_atlas_that_does_not_exist():
+    import pytest
+
+    from backend.api.services.regions_service import check_ids_exist
+
+    with pytest.raises(ValueError, match="No existe el atlas 'atlas.no.existe'"):
+        check_ids_exist(["atlas.no.existe"], ["atlas.human.gordon333.cortex"], "el atlas", "los atlas")
+
+
+def test_check_ids_exist_only_asks_whether_the_ids_exist():
+    # Gordon 333 existe y no tiene conexiones: su lista vacía es un dato
+    # real (200), no un 404. La comprobación solo recibe los ids que
+    # existen, nunca cuántos datos tienen.
+    from backend.api.services.regions_service import check_ids_exist
+
+    check_ids_exist(["atlas.human.gordon333.cortex"], ["atlas.human.gordon333.cortex"], "el atlas", "los atlas")
+    check_ids_exist([], [], "la región", "las regiones")
+
+
+def test_check_ids_exist_names_every_missing_region_once():
+    import pytest
+
+    from backend.api.services.regions_service import check_ids_exist
+
+    requested = ["region.b.no_existe", "region.human.hcp-mmp1.r_v1", "region.a.no_existe", "region.b.no_existe"]
+    with pytest.raises(ValueError) as excinfo:
+        check_ids_exist(requested, ["region.human.hcp-mmp1.r_v1"], "la región", "las regiones")
+    assert str(excinfo.value) == "No existen las regiones 'region.a.no_existe', 'region.b.no_existe'"

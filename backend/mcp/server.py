@@ -95,7 +95,8 @@ def search_region(atlas_id: str | None = None, network_source: str | None = None
     "unclassified" -- nunca una red inventada). `network_source` elige
     la clasificación de red (decisión 73): p. ej. "cole-anticevic" (la
     de siempre en HCP-MMP1.0), "yeo2011-7", "yeo2011-17" o "power2011";
-    sin él, la original de cada atlas."""
+    sin él, la original de cada atlas. Lanza un error si `atlas_id` no
+    existe, en vez de devolver una lista vacía."""
     with session_scope() as db:
         return regions_service.list_regions(db, atlas_id, network_source)
 
@@ -107,7 +108,7 @@ def get_connectivity(region_ids: list[str]) -> InducedConnectivity:
     conexiones existen entre ellas y qué tractos con nombre las tocan
     (con su cita real). Con menos de dos region_ids no hay conectividad
     "entre regiones" que calcular, y se devuelve vacío en vez de
-    reinterpretar la petición."""
+    reinterpretar la petición. Lanza un error si alguna región no existe."""
     with session_scope() as db:
         return connectivity_service.induced_connectivity(db, region_ids)
 
@@ -119,7 +120,9 @@ def search_tract(name: str | None = None, region_id: str | None = None) -> list[
     una región que deban tocar. Cada tracto devuelto lleva TODAS las
     regiones reales que toca (no solo region_id, si se dio uno) y su
     cita real. Un tracto sin ninguna conexión real registrada no
-    aparece: no hay nada verificado que reportar sobre él."""
+    aparece: no hay nada verificado que reportar sobre él. Lanza un error
+    si `region_id` no existe; un `name` sin coincidencias da una lista
+    vacía."""
     with session_scope() as db:
         return connectivity_service.search_tracts(db, name=name, region_id=region_id)
 
@@ -134,7 +137,8 @@ def calculate_laplacian(
     "conectividad algebraica" -- cuánto le cuesta desconectarse.
     `connection_type` nunca mezcla structural/functional/effective
     (sección 8); `min_weight` es un umbral explícito que decide quien
-    llama, no uno aplicado de antemano al cargar los datos."""
+    llama, no uno aplicado de antemano al cargar los datos. Lanza un
+    error si `atlas_id` no existe."""
     with session_scope() as db:
         metrics = graph_metrics_service.list_graph_metrics(db, atlas_id, connection_type, min_weight)
         return graph_metrics_service.laplacian_view(metrics)
@@ -149,7 +153,8 @@ def calculate_spectrum(
     eigenmaps): una posición por región derivada de la estructura del
     grafo, útil para ver agrupamientos sin depender de la posición
     anatómica. None por región cuando el grafo tiene menos de 4 nodos
-    (nunca un embedding inventado para un grafo demasiado pequeño)."""
+    (nunca un embedding inventado para un grafo demasiado pequeño).
+    Lanza un error si `atlas_id` no existe."""
     with session_scope() as db:
         metrics = graph_metrics_service.list_graph_metrics(db, atlas_id, connection_type, min_weight)
         return graph_metrics_service.spectrum_view(metrics)
@@ -168,9 +173,10 @@ def find_path(
     grafo de conectividad de `connection_type` (un peso mayor es una
     conexión más fuerte, no un coste mayor -- el camino real más corto
     tiende hacia las conexiones fuertes). `path` y `distance` quedan en
-    None cuando source_id/target_id no pertenecen a este atlas, o cuando
+    None cuando source_id/target_id son regiones de otro atlas, o cuando
     no existe ningún camino real entre ambos (p. ej. componentes
-    desconectadas) -- nunca se aproxima ni se inventa un camino."""
+    desconectadas) -- nunca se aproxima ni se inventa un camino. Lanza
+    un error si el atlas o alguna de las dos regiones no existen."""
     with session_scope() as db:
         return paths_service.find_path(db, atlas_id, source_id, target_id, connection_type, min_weight)
 
@@ -186,7 +192,7 @@ def find_homologues(region_id: str | None = None, species_id: str | None = None)
     de los dos extremos); `species_id`, a las que tocan esa especie. Cada
     homología lleva la región y la especie real de sus dos extremos, y su
     cita real si el dataset de origen tiene un estudio enlazado (nunca una
-    cita inventada)."""
+    cita inventada). Lanza un error si `region_id` no existe."""
     with session_scope() as db:
         return homology_service.find_homologues(db, region_id=region_id, species_id=species_id)
 

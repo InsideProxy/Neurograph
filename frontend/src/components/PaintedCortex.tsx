@@ -24,11 +24,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useLoader, type ThreeEvent } from "@react-three/fiber";
 import { DISPLAY_SCALE } from "../data/api";
+import { enableCortexOccluderLayer } from "../logic/cortexOcclusion";
 import {
   fillVertexColors,
   fillVertexColorsByIndex,
   leftTriangleCount,
   regionAtFace,
+  type CortexGrays,
   type RGB,
   type SurfaceParcelMap,
 } from "../logic/surfaceParcels";
@@ -55,8 +57,18 @@ interface Props {
   sulc: Float32Array | null;
   colorForRegion: (regionIndex: number) => RGB | null;
   paintBy?: VertexPaint | null;
+  grays: CortexGrays;
   hemisphere: HemisphereVisibility;
-  onRegionClick: (regionIndex: number) => void;
+  // Marcar regiones (docs/rediseno-interfaz-diseno.md, 5.9): el clic llega
+  // con sus teclas, para que Brain3D distinga Ctrl+clic (marcar) del clic
+  // normal (seleccionar), y con cuántos píxeles se movió el puntero entre
+  // pulsar y soltar (delta de react-three-fiber), para que un Ctrl+arrastre
+  // no marque al soltar.
+  onRegionClick: (
+    regionIndex: number,
+    keys: Pick<MouseEvent, "ctrlKey" | "metaKey" | "altKey" | "shiftKey">,
+    delta: number,
+  ) => void;
   // `face`: los tres vértices del triángulo bajo el cursor, para quien
   // necesite saber algo más que la región (p. ej. la red del vértice).
   onRegionHover: (regionIndex: number | null, face: [number, number, number] | null) => void;
@@ -70,6 +82,7 @@ export function PaintedCortex({
   sulc,
   colorForRegion,
   paintBy = null,
+  grays,
   hemisphere,
   onRegionClick,
   onRegionHover,
@@ -115,12 +128,13 @@ export function PaintedCortex({
         paintBy.categoryCount,
         sulc,
         paintBy.colorFor,
+        grays,
       );
     } else {
-      fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion);
+      fillVertexColors(attr.array as Float32Array, map, sulc, colorForRegion, grays);
     }
     attr.needsUpdate = true;
-  }, [geometry, map, sulc, colorForRegion, paintBy]);
+  }, [geometry, map, sulc, colorForRegion, paintBy, grays]);
 
   const splitTriangles = useMemo(() => {
     const index = geometry.getIndex();
@@ -166,12 +180,16 @@ export function PaintedCortex({
   return (
     <>
       <group scale={DISPLAY_SCALE}>
+        {/* ref: la corteza va también en su capa de three.js, la que dibuja
+            la pasada de la oclusión por la corteza de Brain3D.tsx
+            (logic/cortexOcclusion.ts). */}
         <mesh
+          ref={enableCortexOccluderLayer}
           geometry={geometry}
           onClick={(e) => {
             e.stopPropagation();
             const region = regionOfEvent(e);
-            if (region !== null) onRegionClick(region);
+            if (region !== null) onRegionClick(region, e.nativeEvent, e.delta);
           }}
           onPointerMove={(e) => {
             e.stopPropagation();

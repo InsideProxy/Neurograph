@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.api.services.graph_metrics_service import load_atlas_regions_and_connections
+from backend.api.services.regions_service import ensure_atlas_exists, ensure_regions_exist
 from backend.core.graph.from_connections import edges_from_connections
 from backend.core.graph.model import build_graph
 from backend.core.graph.network_analysis import shortest_path
@@ -84,6 +85,11 @@ def find_path(
     """Camino más corto real entre dos regiones del mismo atlas, sobre el
     grafo de conectividad de `connection_type` -- mismo criterio de
     `atlas_id` obligatorio que `list_graph_metrics` (nunca mezclar
-    regiones de parcelaciones distintas)."""
+    regiones de parcelaciones distintas). Un atlas o una región que no
+    existen lanzan `ValueError` (principio 9, decisión 77), en vez de un `path`
+    None igual al de "no hay camino"; una región que existe en otro atlas
+    sigue dando None (`compute_path`)."""
+    ensure_atlas_exists(db, atlas_id)
+    ensure_regions_exist(db, [source_id, target_id])
     region_ids, connection_rows = load_atlas_regions_and_connections(db, atlas_id, connection_type)
     return compute_path(region_ids, connection_rows, atlas_id, source_id, target_id, connection_type, min_weight)

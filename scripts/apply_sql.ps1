@@ -36,8 +36,8 @@
     Base de datos de PostgreSQL. Por defecto "neurograph".
 
 .EJEMPLO
-    .\scripts\apply_sql.ps1 -Archivo .\salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
-    .\scripts\apply_sql.ps1 -Archivo .\salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
+    .\scripts\apply_sql.ps1 -Archivo .\init\salida_rosen_halgren2021_mmp1_connectome_part1of2.sql
+    .\scripts\apply_sql.ps1 -Archivo .\init\salida_rosen_halgren2021_mmp1_connectome_part2of2.sql
 #>
 
 param(
@@ -68,7 +68,16 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-docker exec -i $Contenedor psql -U $Usuario -d $BaseDatos -f $rutaTemporal
+# Cada archivo en su propia transacción, y psql se para en el primer error:
+# sin ON_ERROR_STOP sigue tras un error y sale con 0, y este script daría el
+# archivo por aplicado. Los que traen su propio BEGIN/COMMIT (las migraciones
+# generadas) no se envuelven en otra. Mismo criterio que
+# scripts/rebuild_db_from_sql.sh (H1, H7).
+if (Select-String -LiteralPath $rutaCompleta -Pattern '^BEGIN;$' -Quiet) {
+    docker exec -i $Contenedor psql -U $Usuario -d $BaseDatos -v ON_ERROR_STOP=1 -f $rutaTemporal
+} else {
+    docker exec -i $Contenedor psql -U $Usuario -d $BaseDatos -1 -v ON_ERROR_STOP=1 -f $rutaTemporal
+}
 $codigoPsql = $LASTEXITCODE
 
 docker exec $Contenedor rm -f $rutaTemporal | Out-Null

@@ -11,28 +11,28 @@
 // entradas; Tractography3D.tsx: su propio mapa, una entrada) -- este
 // componente solo sabe cargar y pintar un .glb ya resuelto, nunca decide
 // cuál usar ni mezcla espacios.
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useLoader } from "@react-three/fiber";
-import { NEUTRAL_COLOR } from "../theme/networks";
 import { DISPLAY_SCALE } from "../data/api";
 
 /** Malla de fondo anatómica (superficie o isosuperficie real, nunca
  * inventada -- ver scripts/generate_brain_meshes.py y
  * scripts/generate_org_atlas_mesh.py). Material translúcido único y
- * neutro (NEUTRAL_COLOR), fuera de la detección de clics
+ * neutro, del color que llega como prop (`color`: el token `edge` del
+ * tema, D3 de docs/decisiones-diseno.md), fuera de la detección de clics
  * (`raycast={() => null}`), escalada con el mismo DISPLAY_SCALE que el
  * resto de coordenadas reales de la vista que la usa -- el .glb en sí
  * siempre guarda milímetros reales sin escalar. */
-export function ReferenceMesh({ url }: { url: string }) {
+export function ReferenceMesh({ url, color }: { url: string; color: string }) {
   const gltf = useLoader(GLTFLoader, url);
   const scene = useMemo(() => {
     const cloned = gltf.scene.clone(true);
     cloned.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
         obj.material = new THREE.MeshStandardMaterial({
-          color: NEUTRAL_COLOR,
+          color,
           transparent: true,
           opacity: 0.14,
           depthWrite: false,
@@ -42,7 +42,18 @@ export function ReferenceMesh({ url }: { url: string }) {
       }
     });
     return cloned;
+    // Solo al cargar: los cambios de color se aplican en el efecto de abajo,
+    // sin volver a crear los materiales.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf]);
+
+  // Color del tema (D3 de docs/decisiones-diseno.md): se actualiza en los materiales existentes.
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) (obj.material as THREE.MeshStandardMaterial).color.set(color);
+    });
+  }, [scene, color]);
+
   return (
     <group scale={DISPLAY_SCALE}>
       <primitive object={scene} />

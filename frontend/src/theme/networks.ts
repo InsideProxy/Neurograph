@@ -234,6 +234,12 @@ export const EVIDENCE_LEVEL_LABELS: Record<string, string> = {
 // Brain3D.tsx) -- nunca cambiar el color real.
 export const NEUTRAL_COLOR = "#837f90";
 export const ACCENT_SELECTED_COLOR = "#ac61d1";
+// Conexiones del nodo bajo el ratón en el connectograma (decisión 76c,
+// 24/09/2026, petición de la usuaria: "algo muy resaltado"). Amarillo
+// claro: ningún trazo de conexión usa ese tono (solo algunos nodos de red),
+// y sobre el fondo oscuro es lo más llamativo. Solo existe mientras el
+// ratón está encima, así que nunca llega al JPEG exportado (fondo blanco).
+export const HOVER_HIGHLIGHT_COLOR = "#ffd84a";
 export const INTRA_HEMISPHERE_COLOR = "#2a925e";
 export const INTER_HEMISPHERE_COLOR = "#cf596d";
 // Segundo color para el resaltado por homología real (Brain3D.tsx,

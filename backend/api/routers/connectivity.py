@@ -23,7 +23,7 @@ delega en el servicio -- la herramienta MCP `get_connectivity`
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.api.services import connectivity_service
@@ -63,5 +63,10 @@ def induced_connectivity(
     `compute_induced_connectivity`, igual que el resto de la API
     (sección 24) -- filtrar por peso es cosa de la interfaz, no de este
     endpoint.
+
+    404 si alguna región no existe (principio 9, decisión 77).
     """
-    return connectivity_service.induced_connectivity(db, region_ids)
+    try:
+        return connectivity_service.induced_connectivity(db, region_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

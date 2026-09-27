@@ -1,0 +1,236 @@
+// Historial de deshacer y rehacer (D4 de docs/decisiones-diseno.md;
+// docs/rediseno-interfaz-diseno.md, 5.7). Guarda instantáneas de la
+// selección y de los filtros. Se suscribe a sus dos stores, que son del
+// desarrollador principal, sin cambiar su código ni su API, y las restaura
+// con setState. No registra los cambios que provoca él mismo.
+// - Los cambios que llegan en la misma tarea son un solo paso: «Resaltar»
+//   una red oculta la muestra y la selecciona a la vez.
+// - Un arrastre del deslizador de peso es un solo paso: se registra al
+//   soltar el puntero (setPointerHeld). Con el teclado, los cambios de peso
+//   que llegan a menos de 500 ms se juntan. Si el peso vuelve a donde
+//   estaba, no hay paso.
+// - Guarda los 50 últimos pasos.
+// - App lo vacía al cambiar de atlas o de clasificación (resetHistory).
+// - Guarda también las marcas de regiones (spec 5.9; state/marks.ts), que
+//   son un store nuestro: marcar, desmarcar y «Quitar marcas» son pasos. Al
+//   cambiar de atlas, App llama a resetForAtlasChange, que las vacía sin
+//   que eso sea un paso.
+// - El tour guiado (D11; spec 5.10) pausa el registro mientras dura: sus
+//   acciones no son pasos. Al salir devuelve los stores y el historial tal
+//   como estaban (pauseRecording, loadHistory y resumeRecording).
+import { create } from "zustand";
+import { changedKinds, type HistorySnapshot } from "../logic/historyStep";
+import { useFiltersStore } from "./filters";
+import { useMarksStore } from "./marks";
+import { useSelectionStore } from "./selection";
+
+export const HISTORY_LIMIT = 50;
+export const WEIGHT_SETTLE_MS = 500;
+
+interface HistoryState {
+  // Instantáneas de antes de cada paso, de la más antigua a la más reciente.
+  past: HistorySnapshot[];
+  // El estado de los stores tal como se registró por última vez.
+  present: HistorySnapshot;
+  // Instantáneas de después de cada paso deshecho; la primera es la próxima.
+  future: HistorySnapshot[];
+  // Cambio de peso todavía sin registrar: la instantánea de antes.
+  pendingFrom: HistorySnapshot | null;
+  // Sube con cada cambio del historial. lastStep es el último paso
+  // registrado, hasta el siguiente cambio: App decide con él si sale el
+  // aviso con «Deshacer» (logic/historyStep.ts, stepNotice).
+  version: number;
+  lastStep: { before: HistorySnapshot; after: HistorySnapshot } | null;
+}
+
+function currentSnapshot(): HistorySnapshot {
+  const { selectedNodeIds, selectedConnectionId } = useSelectionStore.getState();
+  const { hiddenNetworks, hiddenConnectionTypes, minWeight } = useFiltersStore.getState();
+  const { markedIds } = useMarksStore.getState();
+  return { selectedNodeIds, selectedConnectionId, hiddenNetworks, hiddenConnectionTypes, minWeight, markedIds };
+}
+
+export const useHistoryStore = create<HistoryState>(() => ({
+  past: [],
+  present: currentSnapshot(),
+  future: [],
+  pendingFrom: null,
+  version: 0,
+  lastStep: null,
+}));
+
+let restoring = false;
+// El tour guiado tiene el registro en pausa (pauseRecording).
+let paused = false;
+let batchScheduled = false;
+let pointerHeld = false;
+let settleTimer: ReturnType<typeof setTimeout> | undefined;
+
+function bump(changes: Partial<HistoryState>) {
+  useHistoryStore.setState((state) => ({ ...changes, version: state.version + 1 }));
+}
+
+// Registra el cambio de peso pendiente como un paso. Si el peso ha vuelto a
+// donde estaba, no hay paso, y lo que se podía rehacer se conserva.
+function commitPendingWeight() {
+  clearTimeout(settleTimer);
+  const { pendingFrom, present, past } = useHistoryStore.getState();
+  if (pendingFrom === null) return;
+  if (changedKinds(pendingFrom, present).length === 0) {
+    bump({ pendingFrom: null, lastStep: null });
+    return;
+  }
+  bump({
+    past: [...past, pendingFrom].slice(-HISTORY_LIMIT),
+    future: [],
+    pendingFrom: null,
+    lastStep: { before: pendingFrom, after: present },
+  });
+}
+
+function settleWeight() {
+  // Mientras el puntero sigue pulsado, el arrastre no ha terminado.
+  if (!pointerHeld) commitPendingWeight();
+}
+
+function record(next: HistorySnapshot) {
+  const { present, pendingFrom } = useHistoryStore.getState();
+  const kinds = changedKinds(present, next);
+  if (kinds.length === 0) return;
+  if (kinds.length === 1 && kinds[0] === "weight") {
+    // Deslizador: se junta con los cambios de peso que siguen.
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(settleWeight, WEIGHT_SETTLE_MS);
+    bump({ present: next, pendingFrom: pendingFrom ?? present, lastStep: null });
+    return;
+  }
+  commitPendingWeight();
+  const { past, present: before } = useHistoryStore.getState();
+  bump({ past: [...past, before].slice(-HISTORY_LIMIT), present: next, future: [], lastStep: { before, after: next } });
+}
+
+function flushBatch() {
+  if (!batchScheduled) return;
+  batchScheduled = false;
+  record(currentSnapshot());
+}
+
+function scheduleRecord() {
+  if (restoring || paused || batchScheduled) return;
+  batchScheduled = true;
+  queueMicrotask(flushBatch);
+}
+
+const unsubscribers = [
+  useSelectionStore.subscribe(scheduleRecord),
+  useFiltersStore.subscribe(scheduleRecord),
+  useMarksStore.subscribe(scheduleRecord),
+];
+
+// En desarrollo, al recargar este módulo en caliente, el módulo anterior
+// deja de escuchar a los stores.
+import.meta.hot?.dispose(() => {
+  for (const unsubscribe of unsubscribers) unsubscribe();
+});
+
+// Pone en los stores una instantánea: los mismos Set y valores que tenían.
+function apply(snapshot: HistorySnapshot) {
+  restoring = true;
+  try {
+    useSelectionStore.setState({
+      selectedNodeIds: snapshot.selectedNodeIds,
+      selectedConnectionId: snapshot.selectedConnectionId,
+    });
+    useFiltersStore.setState({
+      hiddenNetworks: snapshot.hiddenNetworks,
+      hiddenConnectionTypes: snapshot.hiddenConnectionTypes,
+      minWeight: snapshot.minWeight,
+    });
+    useMarksStore.setState({ markedIds: snapshot.markedIds });
+  } finally {
+    restoring = false;
+  }
+}
+
+export function undo() {
+  flushBatch();
+  commitPendingWeight();
+  const { past, present, future } = useHistoryStore.getState();
+  const previous = past.at(-1);
+  if (!previous) return;
+  apply(previous);
+  bump({ past: past.slice(0, -1), present: previous, future: [present, ...future], lastStep: null });
+}
+
+export function redo() {
+  flushBatch();
+  commitPendingWeight();
+  const { past, present, future } = useHistoryStore.getState();
+  const next = future[0];
+  if (!next) return;
+  apply(next);
+  bump({ past: [...past, present].slice(-HISTORY_LIMIT), present: next, future: future.slice(1), lastStep: null });
+}
+
+// Vacía el historial: la instantánea de partida es lo que haya ahora en los
+// stores. App lo llama al cambiar de atlas y cuando llega otra
+// clasificación de redes.
+export function resetHistory() {
+  batchScheduled = false;
+  clearTimeout(settleTimer);
+  bump({ past: [], present: currentSnapshot(), future: [], pendingFrom: null, lastStep: null });
+}
+
+// Al cambiar de atlas (spec 5.9): las marcas son de regiones del atlas
+// anterior, que ya no valen, y se vacían; después, el historial. El
+// vaciado no es un paso: resetHistory, en la misma tarea, anula el registro
+// pendiente y parte de las marcas ya vacías. Con otra clasificación de
+// redes, App llama solo a resetHistory: las regiones son las mismas y las
+// marcas se conservan.
+export function resetForAtlasChange() {
+  useMarksStore.getState().clearMarks();
+  resetHistory();
+}
+
+// Puntero pulsado o suelto sobre el deslizador de peso
+// (useHistoryShortcuts): un arrastre se registra al soltar.
+export function setPointerHeld(held: boolean) {
+  pointerHeld = held;
+  if (!held) commitPendingWeight();
+}
+
+// Tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10). Sus acciones no
+// son pasos: el tour pausa el registro al empezar y, al salir, pone en los
+// stores la instantánea que guardó (applySnapshot, con sus mismos Set),
+// devuelve el historial tal cual (loadHistory) y vuelve a registrar.
+export interface HistoryContents {
+  past: HistorySnapshot[];
+  present: HistorySnapshot;
+  future: HistorySnapshot[];
+}
+
+// Registra antes lo pendiente, que es del usuario (un cambio en esta misma
+// tarea, un peso a medias), y devuelve el historial tal como queda.
+export function pauseRecording(): HistoryContents {
+  flushBatch();
+  commitPendingWeight();
+  paused = true;
+  const { past, present, future } = useHistoryStore.getState();
+  return { past, present, future };
+}
+
+// Pone este historial: `present` es lo que ya tienen los stores. Avisa de un
+// cambio sin paso nuevo, como resetHistory: App retira el aviso con
+// «Deshacer». El tour lo usa también para enseñar a deshacer con su propio
+// historial.
+export function loadHistory(contents: HistoryContents) {
+  batchScheduled = false;
+  clearTimeout(settleTimer);
+  bump({ past: contents.past, present: contents.present, future: contents.future, pendingFrom: null, lastStep: null });
+}
+
+export function resumeRecording() {
+  paused = false;
+}
+
+export { apply as applySnapshot, currentSnapshot };

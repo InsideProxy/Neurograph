@@ -33,6 +33,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.api.services.connections_service import ConnectionEdge, connection_to_edge
+from backend.api.services.regions_service import ensure_regions_exist
 from backend.database.models.entities import Connection, Dataset, Study, Tract
 
 
@@ -179,8 +180,10 @@ def induced_connectivity(db: Session, region_ids: list[str]) -> InducedConnectiv
     """Consulta real detrás de `GET /connectivity/induced` y de la
     herramienta MCP `get_connectivity`: dado un conjunto de regiones
     seleccionadas a la vez, qué conexiones existen entre ellas y qué
-    tractos con nombre las conectan, con su cita real."""
+    tractos con nombre las conectan, con su cita real. Una región que no
+    existe lanza `ValueError` (principio 9, decisión 77)."""
     unique_region_ids = sorted(set(region_ids))
+    ensure_regions_exist(db, unique_region_ids)
     if len(unique_region_ids) < 2:
         return InducedConnectivity(region_ids=unique_region_ids, connections=[], tracts=[])
 
@@ -246,7 +249,12 @@ def search_tracts(db: Session, name: str | None = None, region_id: str | None = 
     nada real que reportar sobre a qué regiones toca, y devolverlo con
     `region_ids=[]` se confundiría con "se comprobó y no toca ninguna",
     que es una afirmación distinta y no verificada aquí.
+
+    Un `region_id` que no existe lanza `ValueError` (principio 9, decisión 77); un
+    `name` sin coincidencias es una búsqueda sin resultados, no un error.
     """
+    if region_id is not None:
+        ensure_regions_exist(db, [region_id])
     tract_query = select(Tract)
     if name is not None:
         pattern = f"%{name}%"

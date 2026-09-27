@@ -40,9 +40,12 @@ def search_tracts(
     `GET /connectivity/induced`. Un tracto sin ninguna fila de
     conectividad real (`weight > 0`) no aparece: no hay nada verificado
     que reportar sobre él (ver docstring de `search_tracts` en el
-    servicio).
+    servicio). 404 si `region_id` no existe (principio 9, decisión 77).
     """
-    return connectivity_service.search_tracts(db, name=name, region_id=region_id)
+    try:
+        return connectivity_service.search_tracts(db, name=name, region_id=region_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 

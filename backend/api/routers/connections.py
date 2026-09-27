@@ -13,7 +13,7 @@ que delega en el servicio.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.api.services import connections_service
@@ -31,5 +31,9 @@ def list_connections(atlas_id: str | None = None, db: Session = Depends(get_db))
     (si se da uno). No filtra por peso ni aplica ningún umbral aquí: el
     dato completo es responsabilidad de la API, decidir qué mostrar es
     responsabilidad de la interfaz (sección 24 / decisión del 28/08/2026
-    con la usuaria)."""
-    return connections_service.list_connections(db, atlas_id)
+    con la usuaria). 404 si el atlas no existe (principio 9, decisión 77); un
+    atlas que existe sin conexiones (Gordon 333) da una lista vacía."""
+    try:
+        return connections_service.list_connections(db, atlas_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

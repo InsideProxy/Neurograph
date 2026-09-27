@@ -15,7 +15,7 @@ del resultado que su nombre promete.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.api.services import graph_metrics_service
@@ -43,5 +43,10 @@ def list_graph_metrics(
     aristas: las métricas de centralidad y comunidad siguen siendo
     válidas (cada nodo su propia comunidad, centralidad 0), pero no
     aportan nada hasta que haya conectividad real que analizar.
+
+    404 si el atlas no existe (principio 9, decisión 77).
     """
-    return graph_metrics_service.list_graph_metrics(db, atlas_id, connection_type, min_weight)
+    try:
+        return graph_metrics_service.list_graph_metrics(db, atlas_id, connection_type, min_weight)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

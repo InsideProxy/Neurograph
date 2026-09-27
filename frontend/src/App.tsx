@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Connectogram } from "./components/Connectogram";
 import { Brain3D } from "./components/Brain3D";
 import { Hemisferios } from "./components/Hemisferios";
@@ -9,11 +9,26 @@ import { SpeciesComparisonPanel } from "./components/SpeciesComparisonPanel";
 import { Tractography3D } from "./components/Tractography3D";
 import { TractographyNodes3D } from "./components/TractographyNodes3D";
 import { FunctionSynthesisTab } from "./components/FunctionSynthesisTab";
+import { DataContextMenu } from "./components/DataContextMenu";
+import { DataStatus, TopBar, type TopBarTab } from "./components/TopBar";
+import { GuidedTour } from "./components/GuidedTour";
+import { Icon } from "./components/Icon";
+import { ToastRegion } from "./components/Toast";
+import { HistoryButtons } from "./components/HistoryButtons";
+import { useHistoryShortcuts } from "./components/useHistoryShortcuts";
+import { focusRegionSearch, useRegionSearchShortcut } from "./components/useRegionSearchShortcut";
 import { DEMO_CONNECTIONS, DEMO_NODES } from "./data/demo";
 import { fetchNetworkSources, fetchRealConnections, fetchRealNodes, type NetworkSourceSummary } from "./data/api";
-import { NETWORK_SOURCE_LABELS } from "./theme/networks";
+import { atlasShortLabel, networkSourceLabel, networkSourceOptionLabel, networkSourceShortLabel } from "./logic/dataContext";
 import { pickAndReadSynthesisFile, type PickedSynthesisFile } from "./logic/synthesisImport";
 import { validateSynthesisFile } from "./logic/synthesisValidation";
+import { IMPORT_DESKTOP_ONLY_MESSAGE, runInDesktop } from "./logic/desktopOnly";
+import { dismissToast, showToast, type ToastContent, type ToastEntry } from "./logic/toastQueue";
+import { countConnections, type ConnectionCounts } from "./logic/filterCounts";
+import { stepNotice } from "./logic/historyStep";
+import { useFiltersStore } from "./state/filters";
+import { resetForAtlasChange, resetHistory, undo, useHistoryStore } from "./state/history";
+import type { TourHost } from "./state/tourRunner";
 import type { GraphConnection, GraphNode } from "./types/domain";
 import type { ValidatedSynthesis } from "./types/synthesis";
 import "./App.css";
@@ -68,6 +83,20 @@ const ATLASES: AtlasOption[] = [
 // ellas se ve depende de `activeSynthesisTabId`, no de `view` por sí solo.
 type View = "atlas" | "species" | "tractography" | "tractography-nodes" | "synthesis";
 
+// Orígenes de los avisos (D4; spec 5.6): un aviso nuevo sustituye al
+// anterior del mismo origen.
+const IMPORT_TOAST = "importar";
+const NETWORK_TOAST = "redes";
+// Aviso con «Deshacer» (D4; spec 5.7): se va solo a los 8 s.
+const UNDO_TOAST = "deshacer";
+const UNDO_NOTICE_MS = 8000;
+
+const NO_CONNECTION_COUNTS: ConnectionCounts = {
+  byType: { structural: 0, functional: 0, effective: 0 },
+  visible: 0,
+  loaded: 0,
+};
+
 export default function App() {
   const [view, setView] = useState<View>("atlas");
   // Espacio de trabajo (decisión 74): qué vista va en grande, y si el
@@ -84,7 +113,6 @@ export default function App() {
   const [networkSources, setNetworkSources] = useState<{ atlasId: string; items: NetworkSourceSummary[] } | null>(
     null,
   );
-  const [networkSourceError, setNetworkSourceError] = useState<string | null>(null);
 
   // Pestañas de síntesis de IA (decisión 71): cada una guarda su propio
   // resultado YA VALIDADO y congelado en el momento de importar -- no
@@ -95,7 +123,26 @@ export default function App() {
   // real de NeuroGraph, solo quita la pestaña).
   const [synthesisTabs, setSynthesisTabs] = useState<{ tabId: string; validated: ValidatedSynthesis }[]>([]);
   const [activeSynthesisTabId, setActiveSynthesisTabId] = useState<string | null>(null);
-  const [synthesisImportError, setSynthesisImportError] = useState<string | null>(null);
+  // Avisos flotantes (D4 de docs/decisiones-diseno.md; spec 5.6). Sustituyen
+  // a las dos franjas de error de antes: la de importar una síntesis y la
+  // de cambiar la clasificación de redes, que se quedan hasta que se
+  // cierran. Hay un tercer origen, el aviso con «Deshacer» (spec 5.7), que
+  // se va solo.
+  const [toasts, setToasts] = useState<ToastEntry[]>([]);
+  const showNotice = (key: string, content: ToastContent) => setToasts((queue) => showToast(queue, key, content));
+  // Fuera de la vista Atlas, el aviso con «Deshacer» se retira: tras usarlo,
+  // el foco iría a ↶ o al título de la vista grande, que allí no están, y
+  // caería en la página. Fuera de Atlas no cambian ni la selección ni los
+  // filtros, así que no puede salir otro. Se ajusta al pintar con la vista
+  // nueva, sin un efecto (el patrón de React para ajustar un estado cuando
+  // cambia otro).
+  const [viewOfToasts, setViewOfToasts] = useState(view);
+  if (viewOfToasts !== view) {
+    setViewOfToasts(view);
+    if (view !== "atlas") setToasts((queue) => dismissToast(queue, UNDO_TOAST));
+  }
+  // Al cerrar el último aviso, el foco vuelve a «Importar» (ToastRegion).
+  const importButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +184,16 @@ export default function App() {
           // Falló solo el cambio de clasificación: se avisa y se vuelve a
           // la original, nunca se cae a datos de demostración por esto.
           const message = err instanceof Error ? err.message : "error desconocido";
-          setNetworkSourceError(`No se pudo cargar la clasificación '${networkSource}' (${message}).`);
+          // setToasts y no showNotice: un setter de estado no es dependencia del efecto.
+          // En «Detalles», el error entero, con su tipo (String), y si no es
+          // un Error, el texto de siempre.
+          setToasts((queue) =>
+            showToast(queue, NETWORK_TOAST, {
+              tone: "error",
+              message: `No se pudo cargar la clasificación de redes «${networkSourceShortLabel(networkSource)}». Se vuelve a la clasificación por defecto del atlas.`,
+              details: `No se pudo cargar la clasificación '${networkSource}' (${err instanceof Error ? String(err) : message}).`,
+            }),
+          );
           setNetworkSource(null);
           return;
         }
@@ -151,8 +207,14 @@ export default function App() {
   function handleChangeAtlas(atlasId: string) {
     setSelectedAtlasId(atlasId);
     setNetworkSource(null);
-    setNetworkSourceError(null);
+    setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
     setSource({ kind: "loading" });
+    // D4 (spec 5.7): el atlas nuevo empieza con el historial de deshacer
+    // vacío. App no vacía la selección al cambiar de atlas (los ids del
+    // anterior se quedan en el store y las vistas los ignoran), así que la
+    // instantánea de partida es la selección tal como queda. Las marcas de
+    // regiones sí se vacían (spec 5.9), y eso no es un paso.
+    resetForAtlasChange();
   }
 
   const sourcesForAtlas = networkSources?.atlasId === selectedAtlasId ? networkSources.items : [];
@@ -161,6 +223,125 @@ export default function App() {
   // elegida si todavía está cargando): es la que necesita Brain3D.
   const shownNetworkSource = source.kind === "real" ? (source.networkSource ?? defaultNetworkSource) : null;
   const networkSourcePending = source.kind === "real" && source.networkSource !== networkSource;
+
+  // Recuentos del panel de filtros (D4 de docs/decisiones-diseno.md; spec
+  // 5.3): por tipo de conectividad con los demás filtros, y cuántas
+  // conexiones pasan todos. Se calculan aquí porque el panel solo recibe
+  // los nodos.
+  const hiddenNetworks = useFiltersStore((state) => state.hiddenNetworks);
+  const hiddenConnectionTypes = useFiltersStore((state) => state.hiddenConnectionTypes);
+  const minWeight = useFiltersStore((state) => state.minWeight);
+  const connectionCounts = useMemo(
+    () =>
+      source.kind === "loading"
+        ? NO_CONNECTION_COUNTS
+        : countConnections(source.nodes, source.connections, { hiddenNetworks, hiddenConnectionTypes, minWeight }),
+    [source, hiddenNetworks, hiddenConnectionTypes, minWeight],
+  );
+
+  // Plegar y desplegar Filtros (D4 de docs/decisiones-diseno.md): el foco
+  // pasa al botón que sustituye al que se ha pulsado.
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const focusFiltersToggle = useRef(false);
+  useEffect(() => {
+    if (!focusFiltersToggle.current) return;
+    focusFiltersToggle.current = false;
+    filtersRef.current
+      ?.querySelector<HTMLButtonElement>(filtersCollapsed ? ".ws-filters__expand" : ".filters__collapse")
+      ?.focus();
+  }, [filtersCollapsed]);
+  const toggleFilters = (collapsed: boolean) => {
+    focusFiltersToggle.current = true;
+    setFiltersCollapsed(collapsed);
+  };
+
+  // Deshacer y rehacer con el teclado, en la vista Atlas (D4 de
+  // docs/decisiones-diseno.md; spec 5.7).
+  useHistoryShortcuts(view === "atlas");
+
+  // Regiones cargadas, para el aviso con «Deshacer» (más abajo): las lee de
+  // aquí su suscripción al historial, que es una sola. Va antes del efecto
+  // que vacía el historial, así que este ya las encuentra al día.
+  const loadedIdsRef = useRef<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    loadedIdsRef.current = new Set(source.kind === "loading" ? [] : source.nodes.map((node) => node.id));
+  }, [source]);
+
+  // Con otra clasificación de redes, las redes guardadas en el historial
+  // dejan de valer (spec 5.7). Se vacía cuando llega, no al elegirla:
+  // mientras carga se sigue viendo la anterior, y si falla, se queda. Lo
+  // mismo al caer a los datos de demostración, que son otras regiones: la
+  // clave lleva el tipo de datos, porque desde la clasificación por defecto
+  // la clasificación sola no cambia (null antes y después).
+  const loadedDataKey = source.kind === "real" ? `real:${source.networkSource ?? ""}` : source.kind;
+  useEffect(() => {
+    resetHistory();
+  }, [loadedDataKey]);
+
+  // Aviso con «Deshacer» (spec 5.7): sale cuando un paso quita dos o más
+  // regiones de la selección (logic/historyStep.ts, stepNotice). Su texto lo
+  // anuncia la región viva de ToastRegion, sin mover el foco. Se va solo a
+  // los 8 s, salvo mientras tiene el ratón encima o el foco, y con el
+  // siguiente cambio del historial, también cuando se vacía (resetHistory)
+  // al cambiar de atlas o de clasificación, o al caer de los datos reales a
+  // los de demostración, también desde la clasificación por defecto
+  // (loadedDataKey): su «Deshacer» ya no tendría nada que deshacer.
+  // Por eso la suscripción es una sola, desde el montaje, y no una por cada
+  // `source`: en React 19 las bajas de los efectos corren antes que las
+  // altas, así que el efecto de arriba vaciaría el historial entre la baja
+  // de la suscripción anterior y el alta de la nueva, y nadie retiraría el
+  // aviso.
+  const undoButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Tras el «Deshacer» del aviso, el foco va al botón ↶ si se ve (con
+    // Filtros plegado no está), y si no, al título de la vista grande.
+    // Nunca a «Importar».
+    const focusAfterUndo = () => {
+      const button = undoButtonRef.current;
+      if (button && button.getClientRects().length > 0) button.focus();
+      else document.querySelector<HTMLElement>(".ws-view--main .ws-view__header h2")?.focus();
+    };
+    return useHistoryStore.subscribe((state, previous) => {
+      if (state.version === previous.version) return;
+      const loadedIds = loadedIdsRef.current;
+      const notice = state.lastStep && stepNotice(state.lastStep.before, state.lastStep.after, (id) => loadedIds.has(id));
+      if (!notice) {
+        // Si el foco estaba en el aviso, no se pierde con él.
+        if (document.activeElement?.closest(`[data-toast-key="${UNDO_TOAST}"]`)) focusAfterUndo();
+        setToasts((queue) => dismissToast(queue, UNDO_TOAST));
+        return;
+      }
+      setToasts((queue) =>
+        showToast(queue, UNDO_TOAST, {
+          tone: "info",
+          polite: true,
+          message: notice,
+          action: { label: "Deshacer", run: undo },
+          autoDismissMs: UNDO_NOTICE_MS,
+          stamp: state.version,
+          returnFocus: focusAfterUndo,
+        }),
+      );
+    });
+  }, []);
+
+  // Ctrl+K (⌘K) lleva al buscador de regiones, en la vista Atlas (D4 de
+  // docs/decisiones-diseno.md; spec 5.8). Con Filtros plegado, primero lo
+  // despliega, y el foco llega cuando el buscador ya está en la página.
+  const focusSearchAfterExpand = useRef(false);
+  useEffect(() => {
+    if (filtersCollapsed || !focusSearchAfterExpand.current) return;
+    focusSearchAfterExpand.current = false;
+    focusRegionSearch(filtersRef.current);
+  }, [filtersCollapsed]);
+  useRegionSearchShortcut(view === "atlas", () => {
+    if (!filtersCollapsed) {
+      focusRegionSearch(filtersRef.current);
+      return;
+    }
+    focusSearchAfterExpand.current = true;
+    setFiltersCollapsed(false);
+  });
 
   const selectedAtlas = ATLASES.find((a) => a.id === selectedAtlasId)!;
 
@@ -171,12 +352,23 @@ export default function App() {
   // que el archivo ya viniera bien resuelto, aunque quien lo generó ya
   // haya usado la herramienta MCP search_region para construirlo.
   async function handleImportSynthesis() {
-    setSynthesisImportError(null);
+    setToasts((queue) => dismissToast(queue, IMPORT_TOAST));
     let picked: PickedSynthesisFile | null;
     try {
-      picked = await pickAndReadSynthesisFile();
+      // En el navegador (npm run dev) no hay diálogo de Tauri: ni se
+      // intenta abrir (D4 de docs/decisiones-diseno.md; spec 5.6).
+      const outcome = await runInDesktop(pickAndReadSynthesisFile);
+      if (outcome.kind === "browser") {
+        showNotice(IMPORT_TOAST, { tone: "info", message: IMPORT_DESKTOP_ONLY_MESSAGE });
+        return;
+      }
+      picked = outcome.value;
     } catch (e) {
-      setSynthesisImportError(`No se pudo abrir el selector de archivos: ${e instanceof Error ? e.message : String(e)}`);
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: "No se pudo abrir o leer el archivo.",
+        details: String(e),
+      });
       return;
     }
     if (picked === null) {
@@ -186,20 +378,31 @@ export default function App() {
     let raw: unknown;
     try {
       raw = JSON.parse(picked.content);
-    } catch {
-      setSynthesisImportError(`'${picked.path}' no contiene un JSON válido.`);
+    } catch (e) {
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: "El archivo elegido no contiene un JSON válido.",
+        details: `Archivo: ${picked.path}\n${String(e)}`,
+      });
       return;
     }
     if (source.kind !== "real") {
-      setSynthesisImportError(
-        "No se puede importar una síntesis de IA ahora mismo: no hay datos reales cargados contra los que " +
-          "verificar sus regiones (estás viendo datos sintéticos, o la API todavía no respondió).",
-      );
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message:
+          "No se puede importar ahora: no hay datos reales cargados contra los que verificar sus regiones " +
+          "(estás viendo datos de demostración, o la API todavía no respondió).",
+      });
       return;
     }
     const result = validateSynthesisFile(raw, selectedAtlasId, source.nodes);
     if (!result.ok) {
-      setSynthesisImportError(result.errors.join("\n"));
+      const problems = result.errors.length === 1 ? "1 problema" : `${result.errors.length} problemas`;
+      showNotice(IMPORT_TOAST, {
+        tone: "error",
+        message: `La síntesis no se ha importado: tiene ${problems}.`,
+        details: result.errors.join("\n"),
+      });
       return;
     }
     const tabId = `synthesis-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -216,132 +419,143 @@ export default function App() {
     }
   }
 
-  const atlasSelector = (
-    <label className="atlas-selector">
-      Atlas:{" "}
-      <select value={selectedAtlasId} onChange={(e) => handleChangeAtlas(e.target.value)}>
-        {ATLASES.map((atlas) => (
-          <option key={atlas.id} value={atlas.id}>
-            {atlas.label}
-          </option>
-        ))}
-      </select>
-    </label>
+  // Contexto de datos de la barra (D4 de docs/decisiones-diseno.md; spec
+  // 5.1): listas desplegables en lugar de los <select> nativos, que
+  // cortaban el texto. El botón muestra un nombre corto y la lista, las
+  // etiquetas completas. Mismo estado y mismos manejadores que antes.
+  const atlasMenu = (
+    <DataContextMenu
+      caption="Atlas"
+      valueLabel={atlasShortLabel(selectedAtlas.label)}
+      title={selectedAtlas.label}
+      options={ATLASES.map((atlas) => ({ value: atlas.id, label: atlas.label }))}
+      value={selectedAtlasId}
+      onChange={handleChangeAtlas}
+    />
   );
 
   // Selector de clasificación de red (decisión 73): solo si el atlas tiene
   // más de una cargada. Cambia la red de cada región en TODAS las vistas a
   // la vez (connectograma, hemisferios, filtros, cerebro 3D).
-  const networkSourceSelector =
+  const chosenNetworkSource = networkSource ?? defaultNetworkSource ?? "";
+  const networkMenu =
     source.kind === "real" && sourcesForAtlas.length > 1 ? (
-      <label className="atlas-selector">
-        Redes:{" "}
-        <select
-          value={networkSource ?? defaultNetworkSource ?? ""}
-          onChange={(e) => {
-            setNetworkSourceError(null);
-            setNetworkSource(e.target.value === defaultNetworkSource ? null : e.target.value);
-          }}
-        >
-          {sourcesForAtlas.map((s) => (
-            <option key={s.source} value={s.source}>
-              {NETWORK_SOURCE_LABELS[s.source] ?? s.source} — {s.regionCount} de {source.nodes.length} regiones
-              {s.isDefault ? " (por defecto)" : ""}
-            </option>
-          ))}
-        </select>
-        {networkSourcePending && " cargando…"}
-      </label>
+      <DataContextMenu
+        caption="Redes"
+        valueLabel={chosenNetworkSource ? networkSourceShortLabel(chosenNetworkSource) : "—"}
+        title={chosenNetworkSource ? networkSourceLabel(chosenNetworkSource) : undefined}
+        options={sourcesForAtlas.map((s) => ({
+          value: s.source,
+          label: networkSourceOptionLabel(s, source.nodes.length),
+        }))}
+        value={chosenNetworkSource}
+        onChange={(value) => {
+          setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
+          setNetworkSource(value === defaultNetworkSource ? null : value);
+        }}
+        pending={networkSourcePending}
+      />
     ) : null;
 
-  const viewToggle = (
-    <nav className="view-toggle">
-      <button
-        type="button"
-        className={view === "atlas" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("atlas")}
-      >
-        Un atlas
-      </button>
-      <button
-        type="button"
-        className={view === "species" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("species")}
-      >
-        Comparar especies
-      </button>
-      <button
-        type="button"
-        className={view === "tractography" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("tractography")}
-      >
-        Tractografía 3D
-      </button>
-      <button
-        type="button"
-        className={view === "tractography-nodes" ? "view-toggle__btn view-toggle__btn--active" : "view-toggle__btn"}
-        onClick={() => setView("tractography-nodes")}
-      >
-        Nodos de tractografía
-      </button>
-      {/* Pestañas de síntesis de IA ya abiertas (decisión 71) -- closable,
-          nunca se pierden al cambiar a otra vista, solo al cerrarlas
-          explícitamente con el "×". */}
-      {synthesisTabs.map(({ tabId, validated }) => (
-        <button
-          key={tabId}
-          type="button"
-          className={
-            view === "synthesis" && activeSynthesisTabId === tabId
-              ? "view-toggle__btn view-toggle__btn--active"
-              : "view-toggle__btn"
-          }
-          onClick={() => {
-            setActiveSynthesisTabId(tabId);
-            setView("synthesis");
-          }}
-          title={`Síntesis de IA: ${validated.file.function}`}
-        >
-          🧪 {validated.file.function}
-          <span
-            className="synthesis-tab-close"
-            role="button"
-            aria-label={`Cerrar pestaña de síntesis "${validated.file.function}"`}
-            onClick={(e) => {
-              e.stopPropagation();
-              closeSynthesisTab(tabId);
-            }}
-          >
-            ×
-          </span>
-        </button>
-      ))}
-      <button type="button" className="synthesis-import-btn" onClick={handleImportSynthesis}>
-        Importar síntesis de IA…
-      </button>
-    </nav>
-  );
+  // Tour guiado (D11 de docs/decisiones-diseno.md; spec 5.10): se abre con el
+  // botón «?» de la barra y hace el ejemplo con el estado y los manejadores
+  // de aquí, los mismos que usa la interfaz. Al salir, lo devuelve todo como
+  // estaba y el foco vuelve a «?». El tour solo devuelve a setView una
+  // pestaña que ya estaba en `view`, o «atlas».
+  const [tourOpen, setTourOpen] = useState(false);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const tourHost: TourHost = {
+    view,
+    setView: (value) => setView(value as View),
+    atlasId: selectedAtlasId,
+    changeAtlas: handleChangeAtlas,
+    networkSource,
+    setNetworkSource: (value) => {
+      setToasts((queue) => dismissToast(queue, NETWORK_TOAST));
+      setNetworkSource(value);
+    },
+    data: source,
+    mainView,
+    setMainView,
+    filtersCollapsed,
+    setFiltersCollapsed,
+  };
 
-  const synthesisImportBanner = synthesisImportError ? (
-    <p className="synthesis-import-error">{synthesisImportError}</p>
-  ) : null;
+  // Pestañas de la barra (D4 de docs/decisiones-diseno.md; spec 5.1): las
+  // cuatro vistas y las pestañas de síntesis de IA ya abiertas (decisión
+  // 71). Estas nunca se pierden al cambiar de vista; solo se quitan al
+  // cerrarlas con su botón.
+  const tabs: TopBarTab[] = [
+    { id: "atlas", label: "Atlas", icon: "atlas", active: view === "atlas", onSelect: () => setView("atlas") },
+    {
+      id: "species",
+      label: "Comparar especies",
+      icon: "species",
+      active: view === "species",
+      onSelect: () => setView("species"),
+    },
+    {
+      id: "tractography",
+      label: "Tractografía 3D",
+      icon: "tracts",
+      active: view === "tractography",
+      onSelect: () => setView("tractography"),
+    },
+    {
+      id: "tractography-nodes",
+      label: "Nodos de tractografía",
+      icon: "nodes",
+      active: view === "tractography-nodes",
+      onSelect: () => setView("tractography-nodes"),
+    },
+    ...synthesisTabs.map(
+      ({ tabId, validated }): TopBarTab => ({
+        id: tabId,
+        label: validated.file.function,
+        icon: "synthesis",
+        title: `Síntesis de IA: ${validated.file.function}`,
+        active: view === "synthesis" && activeSynthesisTabId === tabId,
+        onSelect: () => {
+          setActiveSynthesisTabId(tabId);
+          setView("synthesis");
+        },
+        onClose: () => closeSynthesisTab(tabId),
+        closeLabel: `Cerrar pestaña de síntesis "${validated.file.function}"`,
+      }),
+    ),
+  ];
 
-  // Barra superior compacta (decisión 74, 24/09/2026): antes la cabecera
-  // ocupaba ~190 px en cinco filas centradas (título grande, pestañas,
-  // atlas, redes, etiqueta de datos); ahora es una sola franja. La
-  // etiqueta de DATOS REALES / SINTÉTICOS sigue siempre visible (sección
-  // 24: nunca se confunde lo real con lo ilustrativo); su explicación
-  // larga pasa al texto emergente.
-  const renderHeader = (controls: ReactNode = null) => (
-    <>
-      <header className="topbar">
-        <span className="topbar__brand">NeuroGraph</span>
-        {viewToggle}
-        {controls && <div className="topbar__controls">{controls}</div>}
-      </header>
-      {synthesisImportBanner}
-      {networkSourceError && <p className="synthesis-import-error">{networkSourceError}</p>}
-    </>
+  // Barra superior (D4 de docs/decisiones-diseno.md; spec 5.1). Sustituye
+  // a la franja compacta de la decisión 74 (D1): marca, pestañas con
+  // icono, contexto de datos, Importar y Ajustes. El contexto (atlas,
+  // redes y la etiqueta de datos reales o de demostración) solo llega en
+  // la vista Atlas, y ahí está siempre visible (sección 24: nunca se
+  // confunde lo real con lo ilustrativo). Fragment con clave: sin ella,
+  // React lo desenvuelve cuando es el único hijo (vista de carga) y la
+  // barra se vuelve a montar al cambiar de atlas, con lo que el foco se
+  // pierde y el estado de los datos no se anuncia.
+  const renderHeader = (context: ReactNode = null) => (
+    <Fragment key="barra">
+      <TopBar
+        tabs={tabs}
+        context={context}
+        onImport={handleImportSynthesis}
+        importRef={importButtonRef}
+        onHelp={() => setTourOpen(true)}
+        helpRef={helpButtonRef}
+      />
+      <ToastRegion
+        toasts={toasts}
+        onDismiss={(key) => setToasts((queue) => dismissToast(queue, key))}
+        onEmptied={() => importButtonRef.current?.focus()}
+      />
+      <GuidedTour
+        open={tourOpen}
+        host={tourHost}
+        onExit={() => helpButtonRef.current?.focus()}
+        onFinished={() => setTourOpen(false)}
+      />
+    </Fragment>
   );
 
   if (view === "species") {
@@ -406,8 +620,8 @@ export default function App() {
           <FunctionSynthesisTab validated={activeTab.validated} />
         ) : (
           <p className="canvas-error">
-            Esta pestaña de síntesis ya no existe (se cerró). Elige otra pestaña o importa una nueva con "Importar
-            síntesis de IA…".
+            Esta pestaña de síntesis ya no existe (se cerró). Elige otra pestaña o importa una nueva con «Importar»,
+            en la barra superior.
           </p>
         )}
       </div>
@@ -419,29 +633,20 @@ export default function App() {
       <div className="app">
         {renderHeader(
           <>
-            {atlasSelector}
-            <span className="demo-badge">Cargando…</span>
+            <div className="data-context">{atlasMenu}</div>
+            <DataStatus kind="loading" />
           </>,
         )}
       </div>
     );
   }
 
-  const badge =
+  // Estado de los datos (spec 5.1, punto 4).
+  const status =
     source.kind === "real" ? (
-      <span
-        className="real-badge"
-        title={`Datos reales de la base de datos · ${selectedAtlas.label} · ${source.nodes.length} regiones, ${source.connections.length} conexiones`}
-      >
-        DATOS REALES · {source.nodes.length} regiones · {source.connections.length} conexiones
-      </span>
+      <DataStatus kind="real" regionCount={source.nodes.length} connectionCount={source.connections.length} />
     ) : (
-      <span
-        className="demo-badge"
-        title="La API no respondió, o este atlas aún no tiene datos — revisa que el backend esté en marcha (docker compose up -d en desarrollo)"
-      >
-        DATOS SINTÉTICOS · SOLO ILUSTRATIVOS
-      </span>
+      <DataStatus kind="demo" />
     );
 
   // Espacio de trabajo "una vista grande + miniaturas" (decisión 74,
@@ -467,24 +672,36 @@ export default function App() {
     <div className="app app--workspace">
       {renderHeader(
         <>
-          {atlasSelector}
-          {networkSourceSelector}
-          {badge}
+          <div className="data-context" data-tour="contexto-datos">
+            {atlasMenu}
+            {networkMenu}
+          </div>
+          {status}
         </>,
       )}
       <div className={`workspace${filtersCollapsed ? " workspace--filters-collapsed" : ""}`}>
-        <div className="ws-filters">
+        <div className="ws-filters" ref={filtersRef}>
           {filtersCollapsed ? (
             <button
               type="button"
               className="ws-filters__expand"
               title="Desplegar el panel de filtros"
-              onClick={() => setFiltersCollapsed(false)}
+              aria-label="Desplegar el panel de filtros"
+              onClick={() => toggleFilters(false)}
             >
-              Filtros »
+              <Icon name="chevronsRight" />
+              <span>Filtros</span>
             </button>
           ) : (
-            <FilterPanel nodes={source.nodes} onCollapse={() => setFiltersCollapsed(true)} />
+            <FilterPanel
+              nodes={source.nodes}
+              onCollapse={() => toggleFilters(true)}
+              connectionCountsByType={connectionCounts.byType}
+              connectionTotals={{ visible: connectionCounts.visible, loaded: connectionCounts.loaded }}
+              historyControls={
+                <HistoryButtons nodes={source.nodes} connections={source.connections} undoRef={undoButtonRef} />
+              }
+            />
           )}
         </div>
 
@@ -540,10 +757,32 @@ const WORKSPACE_VIEW_TITLES: Record<WorkspaceViewId, string> = {
   brain3d: "Cerebro 3D",
 };
 
-// Marco de cada vista del espacio de trabajo (decisión 74). En miniatura,
-// una capa transparente encima recoge el clic para ampliarla -- así un
-// clic en la miniatura nunca selecciona por accidente una región que
-// apenas se ve; seleccionar se hace en la vista grande.
+// Una línea bajo el título de la vista grande que explica cómo leerla (D4
+// de docs/decisiones-diseno.md; spec 5.4). Es un texto fijo: vale con
+// cualquier atlas y cualquier selección. El grosor de las líneas del
+// connectograma es max(1, peso × 6) px, y en HCP-MMP1.0 ningún peso pasa
+// de 0,144: la frase no promete diferencias que no se ven.
+const WORKSPACE_VIEW_DESCRIPTIONS: Record<WorkspaceViewId, string> = {
+  connectogram:
+    "Cada punto del círculo es una región, con el color de su red, y cada línea, una conexión. El grosor solo cambia con pesos mayores que 0.17: por debajo, todas las líneas miden lo mismo.",
+  hemispheres:
+    "Vista desde arriba: la parte anterior arriba y el hemisferio izquierdo a la izquierda. Verde: conexiones dentro de un hemisferio; rosa: entre los dos.",
+  brain3d:
+    "Cada región en su posición real y con el color de su red. Con una selección, muestra lo seleccionado y sus conexiones: una región con sus vecinas, varias con las conexiones entre ellas, o una conexión. Arrastra para girar y usa la rueda para acercarte.",
+};
+
+// Marco de cada vista del espacio de trabajo (decisión 74, D1). En
+// miniatura, una capa transparente encima recoge el clic para ampliarla:
+// así un clic en la miniatura nunca selecciona por accidente una región
+// que apenas se ve, y seleccionar se hace en la vista grande.
+//
+// D4 (spec 5.4): la vista grande lleva una línea que explica cómo leerla.
+// Las miniaturas llevan un botón visible «Ampliar», que es también el
+// camino con el teclado: la capa sale del orden del tabulador. Al
+// ampliar con el botón, el foco pasa al título de la vista ampliada, que
+// es el mismo componente (las tres vistas nunca se desmontan). Las
+// herramientas de cada vista siguen dentro de ella; App.css las coloca a
+// la derecha de la cabecera cuando caben.
 function WorkspaceView({
   id,
   area,
@@ -558,19 +797,56 @@ function WorkspaceView({
   children: ReactNode;
 }) {
   const title = WORKSPACE_VIEW_TITLES[id];
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeadingWhenMain = useRef(false);
+
+  useEffect(() => {
+    if (isMain && focusHeadingWhenMain.current) {
+      focusHeadingWhenMain.current = false;
+      headingRef.current?.focus();
+    }
+  }, [isMain]);
+
+  const enlarge = () => {
+    focusHeadingWhenMain.current = true;
+    onEnlarge(id);
+  };
+
   return (
-    <section className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`} style={{ gridArea: area }}>
+    <section
+      className={`ws-view ${isMain ? "ws-view--main" : "ws-view--thumb"}`}
+      data-view={id}
+      data-tour="vista"
+      style={{ gridArea: area }}
+      aria-label={title}
+    >
       <div className="ws-view__header">
-        <h2>{title}</h2>
-        {!isMain && <span className="ws-view__enlarge-hint">⤢ ampliar</span>}
+        <div className="ws-view__heading">
+          <h2 ref={headingRef} tabIndex={-1}>
+            {title}
+          </h2>
+          {isMain && <p className="ws-view__description">{WORKSPACE_VIEW_DESCRIPTIONS[id]}</p>}
+        </div>
+        {!isMain && (
+          <button
+            type="button"
+            className="ws-view__enlarge"
+            aria-label={`Ampliar ${title}`}
+            title={`Ver ${title} en grande`}
+            onClick={enlarge}
+          >
+            <Icon name="expand" size={14} />
+            Ampliar
+          </button>
+        )}
       </div>
       <div className="ws-view__body">{children}</div>
       {!isMain && (
         <button
           type="button"
           className="ws-view__overlay"
-          title={`Ver ${title} en grande`}
-          aria-label={`Ver ${title} en grande`}
+          tabIndex={-1}
+          aria-hidden="true"
           onClick={() => onEnlarge(id)}
         />
       )}
