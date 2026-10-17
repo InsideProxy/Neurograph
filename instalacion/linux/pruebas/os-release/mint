@@ -1,0 +1,4 @@
+ID=linuxmint
+ID_LIKE="ubuntu debian"
+VERSION_CODENAME=wilma
+UBUNTU_CODENAME=noble

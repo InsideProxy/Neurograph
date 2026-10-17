@@ -1,0 +1,7 @@
+*
+!frontend
+!instalacion/docker/nginx.conf
+!instalacion/docker/web-entrypoint.sh
+frontend/node_modules
+frontend/dist
+frontend/src-tauri

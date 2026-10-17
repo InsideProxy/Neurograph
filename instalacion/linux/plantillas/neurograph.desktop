@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NeuroGraph
+Comment=Abre NeuroGraph en el navegador
+Exec=@NG_EXEC_NEUROGRAPH@ abrir --escritorio
+Icon=@NG_DIR@/neurograph.png
+Terminal=false
+Categories=Science;Education;

@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Comando diario de NeuroGraph instalado (H10, B3 del diseno). No necesita
+# la carpeta del proyecto: usa la copia de lib/, compose.yml y config.env
+# de ~/.local/share/neurograph.
+#
+#   neurograph abrir | apagar | estado | tractografia | conectar-ia | desinstalar
+#   (con --escritorio, desde un icono: avisa con notificaciones)
+# shellcheck disable=SC2034  # NG_REPETIR y NG_BIBLIOTECA_ELEGIDA los leen las bibliotecas de lib/
+set -Eeuo pipefail
+shopt -s inherit_errexit 2> /dev/null || true  # bash < 4.4 no lo tiene: lo para la comprobacion siguiente
+if [ "${BASH_VERSINFO[0]}" -lt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
+  echo "Hace falta bash 4.4 o posterior. Actualiza el sistema e inténtalo de nuevo." >&2; exit 1
+fi
+NG_EJECUTABLE="$(readlink -f "${BASH_SOURCE[0]}")"
+NG_ARGS=("$@")  # tal cual, para relanzarse con sg sin perder --escritorio
+DIR_LIB="$HOME/.local/share/neurograph/lib"
+# Desde el repositorio (pruebas), se usa lib/ del repositorio si no hay copia instalada.
+[ -d "$DIR_LIB" ] || DIR_LIB="$(dirname "$NG_EJECUTABLE")/../lib"
+for l in comun sistema docker puertos base tractografia ias escritorio; do
+  # shellcheck source=/dev/null
+  source "$DIR_LIB/$l.sh"
+done
+NG_PROYECTO="$(leer_valor "$NG_CONFIG" NG_PROYECTO)"
+NG_PROYECTO="${NG_PROYECTO:-neurograph-app}"
+
+orden="${1:-ayuda}"
+[ $# -gt 0 ] && shift
+if [ "${1:-}" = --escritorio ]; then NG_MODO_ESCRITORIO=1; shift; fi
+NG_REPETIR="neurograph $orden"
+
+al_salir_extra() {
+  parar_tractografia_en_curso
+  if [ "$1" != 0 ] && [ "$NG_MODO_ESCRITORIO" = 1 ]; then notificar_fallo; fi
+}
+
+cmd_abrir() {
+  if contenedor_en_marcha "$NG_PROYECTO-web" \
+     && curl -sf -o /dev/null "http://127.0.0.1:$(leer_valor "$NG_CONFIG" NG_WEB_PUERTO)/"; then
+    abrir_navegador
+    return 0
+  fi
+  notificar "Encendiendo NeuroGraph…"
+  decir "Encendiendo NeuroGraph…"
+  elegir_puertos
+  mostrar_avisos
+  encender
+  abrir_navegador
+  notificar "NeuroGraph está listo."
+}
+
+cmd_apagar() {
+  ng_compose stop
+  decir "NeuroGraph apagado. Tus datos se conservan."
+  notificar "NeuroGraph apagado."
+}
+
+cmd_estado() {
+  local web api tracto motivo ias="" ia
+  web="$(leer_valor "$NG_CONFIG" NG_WEB_PUERTO)"; api="$(leer_valor "$NG_CONFIG" NG_API_PUERTO)"
+  if contenedor_en_marcha "$NG_PROYECTO-web"; then
+    decir "NeuroGraph: encendido en http://127.0.0.1:$web (API en el $api)"
+    decir "Datos: $(ng_psql 'select count(*) from regions') regiones, $(ng_psql 'select count(*) from connections') conexiones"
+  else
+    decir "NeuroGraph: apagado (puertos guardados: web $web, API $api)"
+  fi
+  tracto="$(leer_valor "$NG_ESTADO" NG_TRACTOGRAFIA)"; motivo="$(leer_valor "$NG_ESTADO" NG_TRACTOGRAFIA_MOTIVO)"
+  decir "Tractografía: ${tracto:-sin instalar}${motivo:+ — $motivo}"
+  for ia in $(leer_valor "$NG_ESTADO" NG_IAS_REGISTRADAS); do ias+="${ias:+, }$(ia_nombre "$ia")"; done
+  # Registradas: si de verdad conectan solo lo dice su comprobacion (B5).
+  decir "IAs registradas por el instalador: ${ias:-ninguna}"
+  decir "Biblioteca: $(leer_valor "$NG_CONFIG" NG_BIBLIOTECA)"
+  decir "Último registro de instalación: $(ls -t "$NG_DIR"/registro/instalar-*.log 2> /dev/null | head -1 || true)"
+}
+
+cmd_tractografia() {
+  local encendida_aqui=0 instalada=0
+  NG_BIBLIOTECA_ELEGIDA="$(leer_valor "$NG_CONFIG" NG_BIBLIOTECA)"
+  # Sin ella, docker run la buscaria en Docker Hub con ese nombre (B1).
+  docker image inspect "$NG_PROYECTO-herramientas" > /dev/null 2>&1 || fallar imagenes
+  # Solo lo que necesita la tractografia: las imagenes ya estan construidas.
+  comprobar_recursos_tracto
+  mostrar_avisos  # ahora: si no, saldrian en el siguiente «neurograph abrir»
+  if ! contenedor_en_marcha "$NG_PROYECTO-postgres"; then
+    comprobar_imagenes
+    ejecutar_clasificado encender "la base de datos" -- ng_compose up -d postgres
+    esperar_postgres
+    encendida_aqui=1
+  fi
+  # Sin salto de linea: los puntos del latido siguen en ella.
+  printf '%s' "Instalando la tractografía (unos 500 MB; puede tardar)…" >&3
+  echo "[pantalla] Instalando la tractografía (unos 500 MB; puede tardar)…"
+  latido_empezar
+  if paso_tractografia; then instalada=1; fi
+  latido_parar
+  printf '\n' >&3
+  # Solo se apaga la base que encendio esta orden, y solo si la API no esta
+  # en marcha: si mientras tanto se abrio NeuroGraph, la necesita (B3).
+  if [ "$encendida_aqui" = 1 ] && ! contenedor_en_marcha "$NG_PROYECTO-api"; then
+    ng_compose stop postgres > /dev/null 2>&1 || true
+  fi
+  if [ "$instalada" = 1 ]; then
+    decir "✔ Tractografía: $NG_RESUMEN"
+    return 0
+  fi
+  # mostrar_fallo y exit, no return 1: un return 1 dispararia la trampa de errores.
+  mostrar_fallo "⚠ Tractografía: $NG_RESUMEN"
+  exit 1
+}
+
+cmd_conectar_ia() {
+  conectar_ias
+  decir "IAs: $NG_IAS_RESUMEN"
+  decir "Instrucciones: $NG_DIR/conectar-ia.md"
+}
+
+cmd_ayuda() {
+  decir "Uso: neurograph abrir | apagar | estado | tractografia | conectar-ia | desinstalar [--borrar-datos]"
+}
+
+case "$orden" in
+  desinstalar) exec "$NG_DIR/desinstalar.sh" "$@" ;;
+  ayuda|-h|--help) exec 3>&1 > /dev/null; cmd_ayuda; exit 0 ;;
+esac
+iniciar_registro "$orden"
+instalar_trampas
+case "$orden" in
+  abrir) asegurar_grupo_docker "${NG_ARGS[@]}"; cmd_abrir ;;
+  apagar) asegurar_grupo_docker "${NG_ARGS[@]}"; cmd_apagar ;;
+  estado) asegurar_grupo_docker "${NG_ARGS[@]}"; cmd_estado ;;
+  tractografia) asegurar_grupo_docker "${NG_ARGS[@]}"; tomar_bloqueo; cmd_tractografia ;;
+  conectar-ia) cmd_conectar_ia ;;
+  *) decir "Orden desconocida: $orden"; cmd_ayuda; NG_FALLO_MOSTRADO=1; exit 1 ;;
+esac

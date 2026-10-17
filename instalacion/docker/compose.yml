@@ -1,0 +1,41 @@
+# Compose del instalador Linux de NeuroGraph (H10, bloque A del diseno).
+# Solo usa imagenes ya construidas por instalar.sh (paso 5): no construye
+# nada. Los valores salen de config.env (--env-file). Postgres no publica
+# ningun puerto; la web y la API, solo en 127.0.0.1. Sin politica de
+# reinicio: tras reiniciar el ordenador, NeuroGraph queda apagado.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ${NG_PROYECTO:?}-postgres
+    environment:
+      POSTGRES_DB: neurograph
+      POSTGRES_USER: neurograph
+      POSTGRES_PASSWORD: ${NG_CONTRASENA_BASE:?}
+    volumes:
+      - datos:/var/lib/postgresql/data
+
+  api:
+    image: ${NG_PROYECTO}-api
+    # Imagen propia (paso 5): nunca se busca en Docker Hub con ese nombre.
+    pull_policy: never
+    container_name: ${NG_PROYECTO}-api
+    depends_on:
+      - postgres
+    environment:
+      NEUROGRAPH_DATABASE__HOST: postgres
+      NEUROGRAPH_DATABASE__PASSWORD: ${NG_CONTRASENA_BASE}
+    ports:
+      - "127.0.0.1:${NG_API_PUERTO:?}:8420"
+
+  web:
+    image: ${NG_PROYECTO}-web
+    pull_policy: never
+    container_name: ${NG_PROYECTO}-web
+    environment:
+      NG_API_PUERTO: ${NG_API_PUERTO}
+    ports:
+      - "127.0.0.1:${NG_WEB_PUERTO:?}:80"
+
+volumes:
+  datos:
+    name: ${NG_PROYECTO}-datos

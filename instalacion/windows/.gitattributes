@@ -1,0 +1,3 @@
+# Los .cmd van en ASCII y con CRLF, tal cual (bloque A del diseno, H11): con
+# LF, cmd falla al buscar las etiquetas de goto y call. Sin conversion de git.
+*.cmd -text

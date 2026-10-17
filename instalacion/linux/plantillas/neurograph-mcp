@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Conector MCP de NeuroGraph para IAs de terminal (H10, B4 del diseno).
+# Por la salida estandar solo sale el protocolo MCP: todo mensaje va a la
+# salida de errores y a registro/mcp.log. Si NeuroGraph esta apagado, no lo
+# enciende (decision del usuario, 02/10/2026): sale al momento, para que
+# abrir una IA en cualquier carpeta no gaste memoria.
+set -uo pipefail
+NG_DIR="$HOME/.local/share/neurograph"
+proyecto="$(sed -n 's/^NG_PROYECTO=//p' "$NG_DIR/config.env" 2> /dev/null | tail -1)"
+proyecto="${proyecto:-neurograph-app}"
+
+mensaje() {
+  printf 'neurograph-mcp: %s\n' "$*" >&2
+  { mkdir -p "$NG_DIR/registro" && printf '%s %s\n' "$(date -Is)" "$*" >> "$NG_DIR/registro/mcp.log"; } 2> /dev/null || true
+}
+
+# Comillas simples POSIX: el sh de sg puede ser dash, que no entiende el
+# $'...' de printf %q (la misma funcion que citar_sh de docker.sh; este
+# comando no carga las bibliotecas).
+citar_sh() { local a; for a in "$@"; do printf "'%s' " "${a//\'/\'\\\'\'}"; done; }
+
+if ! docker info > /dev/null 2>&1; then
+  # Recien instalado, la sesion aun no tiene el grupo docker: se relanza con sg.
+  if [ -z "${NEUROGRAPH_CON_GRUPO_DOCKER:-}" ] \
+     && [[ " $(id -nG "$(id -un)") " == *" docker "* ]] && [[ " $(id -nG) " != *" docker "* ]]; then
+    export NEUROGRAPH_CON_GRUPO_DOCKER=1
+    exec sg docker -c "exec $(citar_sh "$(readlink -f "$0")" "$@")"
+  fi
+  mensaje "No se puede usar Docker. ¿Está en marcha? (sudo systemctl start docker)"
+  exit 1
+fi
+if [ "$(docker inspect -f '{{.State.Running}}' "$proyecto-api" 2> /dev/null || true)" != true ]; then
+  mensaje "NeuroGraph está apagado: ábrelo con el icono o con «neurograph abrir», y vuelve a conectar (en Claude Code, /mcp)."
+  exit 1
+fi
+mensaje "conectando con $proyecto-api"
+exec docker exec -i "$proyecto-api" python -m backend.mcp.server

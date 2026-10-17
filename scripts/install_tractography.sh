@@ -6,7 +6,8 @@
 # docs/decisiones-herramientas.md).
 #
 # Pasos (los que ya estan hechos se saltan; se puede repetir sin riesgo):
-#   1. Descarga los dos originales a la biblioteca y comprueba su md5.
+#   1. Descarga los dos originales a la biblioteca y comprueba su md5; una
+#      descarga cortada sigue donde se quedo (H10).
 #   2. Crea un entorno de Python temporal con numpy, nibabel y vtk (vtk no
 #      es dependencia del proyecto). El entorno se borra al terminar.
 #   3. Genera el SQL en la biblioteca (derived/tractograms/) y comprueba los
@@ -93,16 +94,27 @@ con_limite() {
 }
 
 descargar() {  # carpeta archivo url md5
-  local destino="$1/$2"
+  local destino="$1/$2" codigo=0
   if [ -f "$destino" ] && [ "$(md5sum "$destino" | cut -d' ' -f1)" = "$4" ]; then
     echo "  $2: ya descargado (md5 correcto)"
     return
   fi
   echo "  $2: descargando de Zenodo ..."
-  curl -sS -L --fail --retry 3 -o "$destino.part" "$3" || falla "no se pudo descargar $2 de $3"
+  # Una descarga cortada sigue donde se quedo (-C -, H10). Con el .part ya
+  # completo, el servidor responde 416 y curl lo da por bueno (sale con 0).
+  # Si el servidor no acepta reanudar (33), se borra el .part y se descarga
+  # de cero una vez. Cualquier otro fallo conserva el .part para reanudar.
+  curl -sS -L --fail --retry 3 -C - -o "$destino.part" "$3" || codigo=$?
+  if [ "$codigo" = 33 ]; then
+    rm -f "$destino.part"
+    codigo=0
+    curl -sS -L --fail --retry 3 -o "$destino.part" "$3" || codigo=$?
+  fi
+  # Las lineas de fallo terminan en ": dato": el instalador Linux muestra ese dato (H10).
+  [ "$codigo" = 0 ] || falla "no se pudo descargar de $3 (curl $codigo; al repetir, sigue donde se quedo): $2"
   if [ "$(md5sum "$destino.part" | cut -d' ' -f1)" != "$4" ]; then
     rm -f "$destino.part"
-    falla "$2: el md5 no coincide con el publicado en Zenodo ($4)"
+    falla "el md5 no coincide con el publicado en Zenodo ($4): $2"
   fi
   mv "$destino.part" "$destino"
   echo "  $2: descargado (md5 correcto)"
@@ -190,7 +202,7 @@ def ficha(carpeta, archivos, datos):
     if ruta.exists():
         texto = ruta.read_text(encoding="utf-8")
         if not all(s in texto for s in sumas.values()):
-            sys.exit(f"ERROR: {ruta} no corresponde a sus archivos (checksum distinto)")
+            sys.exit(f"ERROR: la ficha no corresponde a sus archivos (checksum distinto): {ruta}")
         print(f"  {carpeta.name}: ya tiene ficha (checksums correctos)")
         return
     if len(archivos) == 1:
@@ -261,12 +273,16 @@ PY
 crear_entorno() {
   [ -x "$TMP/venv/bin/python" ] && return
   echo "  creando un entorno de Python temporal con ${DEPENDENCIAS[*]} ..."
+  # Sin este mensaje, un fallo de PyPI salia por set -e sin explicar nada.
+  # Solo ruedas (--only-binary): ningun setup.py de PyPI se ejecuta, y en el
+  # instalador Linux esto corre con el socket de Docker montado (H10).
   if command -v uv >/dev/null; then
-    uv venv -q --python "$(command -v python3)" "$TMP/venv"
-    uv pip install -q --python "$TMP/venv/bin/python" "${DEPENDENCIAS[@]}"
+    { uv venv -q --python "$(command -v python3)" "$TMP/venv" \
+        && uv pip install -q --only-binary=:all: --python "$TMP/venv/bin/python" "${DEPENDENCIAS[@]}"; } \
+      || falla "no se pudieron instalar las dependencias de Python desde PyPI: ${DEPENDENCIAS[*]}"
   else
-    python3 -m venv "$TMP/venv"
-    "$TMP/venv/bin/pip" install -q "${DEPENDENCIAS[@]}"
+    { python3 -m venv "$TMP/venv" && "$TMP/venv/bin/pip" install -q --only-binary=:all: "${DEPENDENCIAS[@]}"; } \
+      || falla "no se pudieron instalar las dependencias de Python desde PyPI: ${DEPENDENCIAS[*]}"
   fi
 }
 
@@ -289,7 +305,7 @@ generar() {  # destino texto_esperado script argumentos...
   if ! grep -qF "$esperado" "$TMP/log"; then
     cat "$TMP/log" >&2
     rm -f "$destino.part"
-    falla "$nombre: los recuentos no coinciden con los del log (se esperaba: $esperado)"
+    falla "los recuentos no coinciden con los del log (se esperaba: $esperado): $nombre"
   fi
   mv "$destino.part" "$destino"
   echo "  $nombre: generado ($(du -m "$destino" | cut -f1) MB; $esperado)"
@@ -298,7 +314,10 @@ generar() {  # destino texto_esperado script argumentos...
 aplicar() {
   printf '  %-36s ' "$(basename "$1")"
   docker cp "$1" "$CONTENEDOR:/tmp/neurograph_tractografia.sql"
-  if docker exec "$CONTENEDOR" psql -1 -v ON_ERROR_STOP=1 -q \
+  # Con nombre (PGAPPNAME): el instalador Linux, si se interrumpe, la termina
+  # con pg_terminate_backend, porque parar este script no para el psql que
+  # corre por docker exec en el contenedor (H10).
+  if docker exec -e PGAPPNAME=neurograph_tractografia "$CONTENEDOR" psql -1 -v ON_ERROR_STOP=1 -q \
        -U "$USUARIO" -d "$BASE" -f /tmp/neurograph_tractografia.sql >/dev/null 2>"$TMP/err"; then
     echo OK
   else
@@ -321,7 +340,10 @@ psql_c 'select 1' >/dev/null 2>&1 || falla "no hay conexion con '$CONTENEDOR' --
 mkdir -p "$ZIP_DIR" "$WMPARC_DIR" "$DERIVADOS"
 for dir in "$BIBLIOTECA" "$TMP"; do
   libre=$(df --output=avail -m "$dir" | tail -1 | tr -d ' ')
-  [ "$libre" -ge 1000 ] || falla "hacen falta al menos 1000 MB libres en $dir (hay $libre MB)"
+  donde="$dir"
+  # Con el instalador Linux corre en un contenedor: su temporal es espacio de Docker (H10).
+  [ "$dir" = "$TMP" ] && donde="la carpeta temporal $dir (con el instalador, espacio de Docker)"
+  [ "$libre" -ge 1000 ] || falla "hacen falta al menos 1000 MB libres en $donde (hay $libre MB)"
 done
 echo "  OK (biblioteca: $BIBLIOTECA)"
 mover_a_su_carpeta "$ANTES_ORIGINALES/$ZIP" "$ZIP_DIR"

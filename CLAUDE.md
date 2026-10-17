@@ -47,12 +47,13 @@ Se cargan siempre, con este archivo:
 | `docs/portabilidad.md` | Instalación y biblioteca de datos por separado | tocar la biblioteca (SSD) |
 | `docs/protocolo-ingesta-ia.md` | Ingesta de un formato nuevo con ayuda de IA | ingerir un formato nuevo |
 | `docs/protocolo-sintesis-ia.md` | Formato del archivo de síntesis de literatura | tocar la síntesis de IA |
-| `docs/instalador-linux-diseno.md` | Diseño del instalador para Linux (borrador) | trabajar en el instalador |
+| `docs/instalador-linux-diseno.md` | Diseño del instalador para Linux con Docker (implementado y probado en el equipo; falta la prueba en una máquina virtual limpia y el vídeo) | trabajar en el instalador de Linux |
+| `docs/instalador-windows-diseno.md` | Diseño del instalador para Windows con Docker Desktop (implementado y probado en Windows 11; pendiente: Windows 10, Windows Terminal, una cuenta con espacio y tilde, Codex y Gemini de verdad, el resto de fallos provocados y el vídeo) | trabajar en el instalador de Windows |
 | `docs/rediseno-interfaz-diseno.md` | Diseño del rediseño de la interfaz (spec): temas, tokens, estructura y gráficos, con sus valores | tocar el aspecto de la interfaz |
 | `docs/rediseno-interfaz-plan-fase1.md`, `docs/rediseno-interfaz-plan-fase2.md`, `docs/rediseno-interfaz-plan-fase3.md`, `docs/rediseno-interfaz-plan-3d.md`, `docs/rediseno-interfaz-plan-fase4.md` | Planes de implementación del rediseño, por fase | retomar o revisar una fase del rediseño |
 | `backend/database/migrations/README.md` | Migraciones y reconstrucción de la base | aplicar migraciones o cargar datos |
 
-`frontend/`, `backend/` y `scripts/` tienen su propio CLAUDE.md, que se carga al trabajar en esa carpeta, con las reglas y los comandos de verificación de cada parte.
+`frontend/`, `backend/`, `scripts/` e `instalacion/` tienen su propio CLAUDE.md, que se carga al trabajar en esa carpeta, con las reglas y los comandos de verificación de cada parte.
 
 ## Dónde se escribe cada cosa
 

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Apagar NeuroGraph
+Comment=Apaga NeuroGraph (los datos se conservan)
+Exec=@NG_EXEC_NEUROGRAPH@ apagar --escritorio
+Icon=@NG_DIR@/neurograph.png
+Terminal=false
+Categories=Science;Education;

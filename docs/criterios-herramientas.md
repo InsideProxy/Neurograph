@@ -4,11 +4,13 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 
 ## Entornos
 
-- **Hay dos bases de datos distintas, que no se sincronizan:**
+- **Hay cuatro bases de datos distintas, que no se sincronizan:**
   - la de **desarrollo**: Docker (`neurograph-postgres`, pgvector sobre PostgreSQL 16) más la API en el contenedor `neurograph-api` y Vite en el 5173;
-  - la del **ejecutable** (solo Windows): un Postgres embebido en el puerto 5433 (`trust`, solo loopback) con el backend empaquetado.
+  - la del **ejecutable** (solo Windows): un Postgres embebido en el puerto 5433 (`trust`, solo loopback) con el backend empaquetado;
+  - la del **instalador Linux**: Docker, con el proyecto `neurograph-app` y el volumen `neurograph-app-datos`; Postgres no expone ningún puerto en el ordenador;
+  - la del **instalador Windows**: Docker Desktop, con el mismo proyecto y el mismo volumen que en Linux; Postgres tampoco expone ningún puerto.
 
-  La embebida es la única fuente de la instantánea del instalador: lo que deba llegar a él se aplica en ella. En Linux solo existe la de desarrollo. (54, 64, 67, H4)
+  La embebida es la única fuente de la instantánea del instalador del ejecutable: lo que deba llegar a él se aplica en ella. En Linux existen la de desarrollo y la del instalador; en Windows pueden convivir la de desarrollo, la del ejecutable y la del instalador. (54, 64, 67, H4, H10, H11)
 - **Configuración** (`backend/config/settings.py`):
   - prioridad: variables de entorno > `.env` > `default.yaml` > valores por defecto;
   - `.env` se busca en una ruta absoluta de la raíz del repositorio;
@@ -79,12 +81,12 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
 
 - **Con volcado,** se aplican las migraciones y después el volcado, que solo lleva datos (de Docker, con `scripts/export_snapshot.ps1`; del embebido, con `scripts/export_snapshot_embedded.ps1`). **Sin volcado,** se aplican las migraciones y los 24 `.sql` de la carga inicial (15 de `init/` y 9 de `backend/database/seed/`) en orden de dependencias: en Linux, `scripts/rebuild_db_from_sql.sh` de una vez; en Windows, uno a uno con `scripts/apply_sql.ps1` (ver `backend/database/migrations/README.md`). (53, 67, H1)
 - **Tractografía ORG:** no está en la carga inicial ni en git. La instala `scripts/install_tractography.sh` (solo Linux), después de la carga inicial:
-  - descarga de Zenodo los originales a la biblioteca y comprueba su md5: `ORG-800FiberClusters.zip` (registro 2648292, md5 `ee5f73e15d28f177e65ba38dbb6c8a7a`) y `100HCP-population-mean-wmparc.nii.gz` (registro 8082481, md5 `b8bec868a3cc878dcfc62c704ba15e4b`);
-  - genera el SQL en `derived/tractograms/` de la biblioteca, con `vtk` en un entorno temporal;
+  - descarga de Zenodo los originales a la biblioteca y comprueba su md5: `ORG-800FiberClusters.zip` (registro 2648292, md5 `ee5f73e15d28f177e65ba38dbb6c8a7a`) y `100HCP-population-mean-wmparc.nii.gz` (registro 8082481, md5 `b8bec868a3cc878dcfc62c704ba15e4b`). Una descarga cortada sigue donde se quedó; si el servidor no lo acepta, empieza de cero una vez;
+  - genera el SQL en `derived/tractograms/` de la biblioteca, con `vtk` en un entorno temporal que solo instala ruedas de PyPI, nunca un `setup.py`;
   - no carga nada si los recuentos no son los del log: 41 tractos, 523 696 streamlines reales y 12 300 mostradas; 176 nodos y 5176 aristas;
   - cada dataset va en su carpeta con su ficha (`dataset.yaml`), y la biblioteca, con su manifiesto; la biblioteca es `NEUROGRAPH_LIBRARY__PATH`, o `~/NeuroData`.
 
-  (49, 66, H1, H4, H8)
+  (49, 66, H1, H4, H8, H10)
 - **La instantánea del instalador** (`neurograph_snapshot.sql`):
   - sale solo del Postgres embebido, con `scripts/export_snapshot_embedded.ps1`;
   - excluye `alembic_version` y `mcp_call_log`;
@@ -129,6 +131,31 @@ Reglas vigentes para instalar, poner en marcha, cargar datos, empaquetar y mante
   - SmartScreen sigue avisando, porque eso solo se evita con un certificado de pago.
 
   (68)
+
+## Instalador Linux
+
+- **Todo va en `instalacion/`.** Reutiliza tal cual `backend/Dockerfile` y `scripts/rebuild_db_from_sql.sh`. Fuera de esa carpeta solo se toca `scripts/install_tractography.sh`, que es nuestro, y solo para lo que el instalador necesita. (H10)
+- **Cada paso verifica con recuentos reales.** Las cifras esperadas se definen en `instalacion/linux/lib/esperado.sh`. Si cambian `init/`, las migraciones, la tractografía o las herramientas del MCP, se actualizan allí y en las pruebas que las repiten. (H10)
+- **Todo fallo conocido da su frase**, con qué ha pasado y qué hacer, y la ruta del registro. La contraseña de la base nunca va al registro. (H10)
+- **El instalador nunca borra** un volumen con la marca `NG_BASE_CARGADA` ni uno de origen desconocido. La base solo se borra con `neurograph desinstalar --borrar-datos`, tras escribir BORRAR. La biblioteca no se borra nunca. (H10)
+- **La biblioteca** es la de `--biblioteca` o la guardada en `config.env`. Si no hay ninguna, la primera vez se propone una que ya exista (`~/NeuroData` o la `NeuroData` de un disco montado, con su manifiesto) o `~/NeuroData`, se puede escribir otra y la elegida se guarda. (H10)
+- **La tractografía se instala en un contenedor de herramientas.** Si faltan recursos o falla, queda pendiente y no detiene la instalación; si faltan recursos pero sus datos ya están en la base, sigue instalada. (H10)
+- **`neurograph-mcp` no enciende NeuroGraph:** si está apagado, sale al momento y lo dice. (H10)
+- **Las pruebas de integración** usan un `HOME` de prueba y proyectos `neurograph-prueba*`, y nunca tocan el entorno de desarrollo. (H10)
+
+## Instalador Windows
+
+- **Todo va en `instalacion/windows/`**, en Windows PowerShell 5.1 y con los mismos nombres de funciones que en Linux. Reutiliza `instalacion/docker/`; fuera de su carpeta solo cambian los Dockerfiles de la web y de herramientas, que quitan el CR de sus scripts, y la prueba de Linux que compara las cifras esperadas. (H11)
+- **Valen las reglas del instalador Linux:** cada paso verifica con recuentos reales, cada fallo conocido da su frase y la ruta del registro, nunca se borra un volumen cargado ni la biblioteca, la tractografía pendiente no detiene nada y `neurograph-mcp` no enciende NeuroGraph. (H11)
+- **Nunca instala una distribución de Linux:** activa WSL2 sin distribución e instala Docker Desktop. La desinstalación deja Docker Desktop y WSL2. (H11)
+- **La licencia de Docker Desktop la acepta la persona:** se enseñan sus condiciones y solo con un sí se pasa `--accept-license`; la respuesta se guarda. (H11)
+- **Una sola elevación UAC**, en un proceso aparte, para lo que necesita administrador: comprobar la firma del instalador de Docker Desktop, activar WSL2 e instalar Docker Desktop. Una segunda solo si, tras reiniciar, WSL queda por debajo de la 2.1.5. Tras el reinicio, `RunOnce` sigue solo. (H11)
+- **La carpeta del instalador es `%LOCALAPPDATA%\neurograph-app\`** (configuración, estado, registros y comandos), no `…\NeuroGraph`: Windows no distingue mayúsculas, y la app Tauri se instala en `%LOCALAPPDATA%\neurograph`. (H11)
+- **La biblioteca** es la de `--biblioteca` o la guardada en `config.env`. Si no hay ninguna, el paso 1 propone una que ya exista o `%USERPROFILE%\NeuroData`, deja elegir otra con el selector de carpetas y guarda la elegida. (H11)
+- **La memoria libre se mide en dos sitios:** dentro de Docker y en Windows (lo que aún puede tomar la máquina virtual de WSL más lo que gasta Windows), con los umbrales medidos de `instalacion/windows/lib/esperado.ps1`. `.wslconfig` no se toca: si falta memoria, la frase dice cómo darla. (H11)
+- **Las cifras esperadas son las de Linux:** `esperado.ps1` lleva una copia, y `instalacion/linux/pruebas/prueba_esperado_windows.sh` falla si no coinciden con `esperado.sh`. (H11)
+- **Todo programa externo se lanza con `ejecutar_programa`** (`instalacion/windows/lib/comun.ps1`), nunca directamente; una prueba lo exige. (H11)
+- **Las pruebas de funciones** corren en cualquier Windows admitido con programas falsos, sin Docker, WSL ni IAs de verdad. **Las de integración** parten de la copia limpia de una máquina virtual de pruebas, que nunca se modifica, o de una instalación hecha desde ella, y se graban enteras; su arnés es interno y no forma parte del repositorio. (H11)
 
 ## Publicación y licencia
 
